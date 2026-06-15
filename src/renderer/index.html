@@ -52,6 +52,11 @@
           <strong id="browser-status">--</strong>
           <small id="browser-note">--</small>
         </article>
+        <article class="status-card">
+          <span class="label">Perakam page</span>
+          <strong id="perakam-status">--</strong>
+          <small id="perakam-note">--</small>
+        </article>
       </section>
 
       <section class="panel" aria-labelledby="today-title">
@@ -104,6 +109,71 @@
           </div>
         </div>
         <p id="browser-profile" class="summary-text">Browser profile path not loaded.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="perakam-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Read-only page status</p>
+            <h2 id="perakam-title">Perakam Dashboard</h2>
+          </div>
+          <div class="button-group" aria-label="Perakam controls">
+            <button id="open-perakam" type="button">Open Perakam</button>
+            <button id="refresh-perakam" class="secondary-button" type="button">Refresh status</button>
+          </div>
+        </div>
+        <p class="summary-text">Detection only. No attendance action is performed.</p>
+        <dl class="detail-list">
+          <div>
+            <dt>Configured URL</dt>
+            <dd>
+              <span id="perakam-configured-url">--</span>
+              <small id="perakam-url-note" class="detail-note"></small>
+            </dd>
+          </div>
+          <div>
+            <dt>Status</dt>
+            <dd id="perakam-detail-status">--</dd>
+          </div>
+          <div>
+            <dt>Clock-in control</dt>
+            <dd>
+              <span id="perakam-clock-in-availability">--</span>
+              <small id="perakam-clock-in-reason" class="detail-note"></small>
+            </dd>
+          </div>
+          <div>
+            <dt>Clock-out control</dt>
+            <dd>
+              <span id="perakam-clock-out-availability">--</span>
+              <small id="perakam-clock-out-reason" class="detail-note"></small>
+            </dd>
+          </div>
+          <div>
+            <dt>Last button check</dt>
+            <dd id="perakam-last-button-check">--</dd>
+          </div>
+          <div>
+            <dt>Current URL</dt>
+            <dd id="perakam-current-url">--</dd>
+          </div>
+          <div>
+            <dt>Page title</dt>
+            <dd id="perakam-page-title">--</dd>
+          </div>
+          <div>
+            <dt>Last navigation</dt>
+            <dd id="perakam-last-navigation">--</dd>
+          </div>
+          <div>
+            <dt>Last checked</dt>
+            <dd id="perakam-last-checked">--</dd>
+          </div>
+          <div>
+            <dt>Last error</dt>
+            <dd id="perakam-last-error">--</dd>
+          </div>
+        </dl>
       </section>
 
       <section class="panel" aria-labelledby="telegram-title">

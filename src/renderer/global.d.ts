@@ -1,4 +1,11 @@
-import type { AlilosApi, BrowserStatusSnapshot, DashboardSnapshot, TelegramSettings, TelegramTestResult } from "../shared/types";
+import type {
+  AlilosApi,
+  BrowserStatusSnapshot,
+  DashboardSnapshot,
+  PerakamStatusSnapshot,
+  TelegramSettings,
+  TelegramTestResult
+} from "../shared/types";
 
 declare global {
   interface Window {
@@ -7,6 +14,7 @@ declare global {
 
   type RendererDashboardSnapshot = DashboardSnapshot;
   type RendererBrowserStatusSnapshot = BrowserStatusSnapshot;
+  type RendererPerakamStatusSnapshot = PerakamStatusSnapshot;
   type RendererTelegramSettings = TelegramSettings;
   type RendererTelegramTestResult = TelegramTestResult;
 }

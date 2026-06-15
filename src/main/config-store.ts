@@ -36,6 +36,9 @@ const defaultConfig: AppConfig = {
     chatId: "",
     commandPrefix: "alilos",
     lastUpdateId: 0
+  },
+  perakam: {
+    dashboardUrl: "https://perakamwaktu3.upm.edu.my/"
   }
 };
 
@@ -98,6 +101,10 @@ export class ConfigStore {
       telegram: {
         ...defaultConfig.telegram,
         ...parsed.telegram
+      },
+      perakam: {
+        ...defaultConfig.perakam,
+        ...parsed.perakam
       }
     };
   }

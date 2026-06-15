@@ -12,12 +12,27 @@ const reminderStatus = document.querySelector<HTMLElement>("#reminder-status");
 const reminderNote = document.querySelector<HTMLElement>("#reminder-note");
 const browserStatus = document.querySelector<HTMLElement>("#browser-status");
 const browserNote = document.querySelector<HTMLElement>("#browser-note");
+const perakamStatus = document.querySelector<HTMLElement>("#perakam-status");
+const perakamNote = document.querySelector<HTMLElement>("#perakam-note");
 const todayDate = document.querySelector<HTMLElement>("#today-date");
 const scheduleSummary = document.querySelector<HTMLElement>("#schedule-summary");
 const placeholderList = document.querySelector<HTMLElement>("#placeholder-list");
 const skippedList = document.querySelector<HTMLOListElement>("#skipped-list");
 const reminderStageList = document.querySelector<HTMLOListElement>("#reminder-stage-list");
 const browserProfile = document.querySelector<HTMLElement>("#browser-profile");
+const perakamConfiguredUrl = document.querySelector<HTMLElement>("#perakam-configured-url");
+const perakamUrlNote = document.querySelector<HTMLElement>("#perakam-url-note");
+const perakamDetailStatus = document.querySelector<HTMLElement>("#perakam-detail-status");
+const perakamClockInAvailability = document.querySelector<HTMLElement>("#perakam-clock-in-availability");
+const perakamClockInReason = document.querySelector<HTMLElement>("#perakam-clock-in-reason");
+const perakamClockOutAvailability = document.querySelector<HTMLElement>("#perakam-clock-out-availability");
+const perakamClockOutReason = document.querySelector<HTMLElement>("#perakam-clock-out-reason");
+const perakamLastButtonCheck = document.querySelector<HTMLElement>("#perakam-last-button-check");
+const perakamCurrentUrl = document.querySelector<HTMLElement>("#perakam-current-url");
+const perakamPageTitle = document.querySelector<HTMLElement>("#perakam-page-title");
+const perakamLastNavigation = document.querySelector<HTMLElement>("#perakam-last-navigation");
+const perakamLastChecked = document.querySelector<HTMLElement>("#perakam-last-checked");
+const perakamLastError = document.querySelector<HTMLElement>("#perakam-last-error");
 const logList = document.querySelector<HTMLOListElement>("#log-list");
 const hideWindow = document.querySelector<HTMLButtonElement>("#hide-window");
 const skipToday = document.querySelector<HTMLButtonElement>("#skip-today");
@@ -26,6 +41,8 @@ const skipTomorrow = document.querySelector<HTMLButtonElement>("#skip-tomorrow")
 const unskipTomorrow = document.querySelector<HTMLButtonElement>("#unskip-tomorrow");
 const startBrowser = document.querySelector<HTMLButtonElement>("#start-browser");
 const stopBrowser = document.querySelector<HTMLButtonElement>("#stop-browser");
+const openPerakam = document.querySelector<HTMLButtonElement>("#open-perakam");
+const refreshPerakam = document.querySelector<HTMLButtonElement>("#refresh-perakam");
 const telegramForm = document.querySelector<HTMLFormElement>("#telegram-form");
 const telegramEnabled = document.querySelector<HTMLInputElement>("#telegram-enabled");
 const telegramBotToken = document.querySelector<HTMLInputElement>("#telegram-bot-token");
@@ -56,12 +73,27 @@ const elements = {
   reminderNote: requireElement(reminderNote, "reminder-note"),
   browserStatus: requireElement(browserStatus, "browser-status"),
   browserNote: requireElement(browserNote, "browser-note"),
+  perakamStatus: requireElement(perakamStatus, "perakam-status"),
+  perakamNote: requireElement(perakamNote, "perakam-note"),
   todayDate: requireElement(todayDate, "today-date"),
   scheduleSummary: requireElement(scheduleSummary, "schedule-summary"),
   placeholderList: requireElement(placeholderList, "placeholder-list"),
   skippedList: requireElement(skippedList, "skipped-list"),
   reminderStageList: requireElement(reminderStageList, "reminder-stage-list"),
   browserProfile: requireElement(browserProfile, "browser-profile"),
+  perakamConfiguredUrl: requireElement(perakamConfiguredUrl, "perakam-configured-url"),
+  perakamUrlNote: requireElement(perakamUrlNote, "perakam-url-note"),
+  perakamDetailStatus: requireElement(perakamDetailStatus, "perakam-detail-status"),
+  perakamClockInAvailability: requireElement(perakamClockInAvailability, "perakam-clock-in-availability"),
+  perakamClockInReason: requireElement(perakamClockInReason, "perakam-clock-in-reason"),
+  perakamClockOutAvailability: requireElement(perakamClockOutAvailability, "perakam-clock-out-availability"),
+  perakamClockOutReason: requireElement(perakamClockOutReason, "perakam-clock-out-reason"),
+  perakamLastButtonCheck: requireElement(perakamLastButtonCheck, "perakam-last-button-check"),
+  perakamCurrentUrl: requireElement(perakamCurrentUrl, "perakam-current-url"),
+  perakamPageTitle: requireElement(perakamPageTitle, "perakam-page-title"),
+  perakamLastNavigation: requireElement(perakamLastNavigation, "perakam-last-navigation"),
+  perakamLastChecked: requireElement(perakamLastChecked, "perakam-last-checked"),
+  perakamLastError: requireElement(perakamLastError, "perakam-last-error"),
   logList: requireElement(logList, "log-list"),
   hideWindow: requireElement(hideWindow, "hide-window"),
   skipToday: requireElement(skipToday, "skip-today"),
@@ -70,6 +102,8 @@ const elements = {
   unskipTomorrow: requireElement(unskipTomorrow, "unskip-tomorrow"),
   startBrowser: requireElement(startBrowser, "start-browser"),
   stopBrowser: requireElement(stopBrowser, "stop-browser"),
+  openPerakam: requireElement(openPerakam, "open-perakam"),
+  refreshPerakam: requireElement(refreshPerakam, "refresh-perakam"),
   telegramForm: requireElement(telegramForm, "telegram-form"),
   telegramEnabled: requireElement(telegramEnabled, "telegram-enabled"),
   telegramBotToken: requireElement(telegramBotToken, "telegram-bot-token"),
@@ -98,6 +132,7 @@ function render(snapshot: RendererDashboardSnapshot): void {
     ?? (snapshot.browser.lastStartedAt ? `Started ${new Date(snapshot.browser.lastStartedAt).toLocaleTimeString()}` : "Not started");
   elements.browserProfile.textContent = `Profile: ${snapshot.browser.profilePath}`;
   updateBrowserButtons(snapshot.browser.state);
+  renderPerakamStatus(snapshot.perakam, snapshot.browser.state);
   elements.scheduleSummary.textContent = snapshot.schedule.summary;
 
   elements.placeholderList.replaceChildren(
@@ -210,6 +245,12 @@ elements.startBrowser.addEventListener("click", () => {
 elements.stopBrowser.addEventListener("click", () => {
   void runBrowserAction(() => window.alilos.stopBrowser());
 });
+elements.openPerakam.addEventListener("click", () => {
+  void runPerakamAction(() => window.alilos.openPerakam());
+});
+elements.refreshPerakam.addEventListener("click", () => {
+  void runPerakamAction(() => window.alilos.getPerakamStatus());
+});
 elements.telegramForm.addEventListener("submit", (event) => {
   event.preventDefault();
 });
@@ -249,11 +290,96 @@ function updateBrowserButtons(state: string): void {
   const busy = state === "starting" || state === "stopping";
   elements.startBrowser.disabled = busy || state === "running";
   elements.stopBrowser.disabled = busy || state === "stopped";
+  updatePerakamButtons(state, elements.perakamDetailStatus.dataset.status ?? "not-opened");
 }
 
 function setBrowserControlsDisabled(disabled: boolean): void {
   elements.startBrowser.disabled = disabled;
   elements.stopBrowser.disabled = disabled;
+}
+
+async function runPerakamAction(action: () => Promise<RendererPerakamStatusSnapshot>): Promise<void> {
+  setPerakamControlsDisabled(true);
+
+  try {
+    await withTimeout(action(), "Perakam status request timed out.");
+    render(await window.alilos.getSnapshot());
+  } finally {
+    setPerakamControlsDisabled(false);
+  }
+}
+
+function renderPerakamStatus(status: RendererPerakamStatusSnapshot, browserState: string): void {
+  elements.perakamStatus.textContent = perakamStatusLabel(status.status);
+  elements.perakamNote.textContent = status.lastError
+    ?? (status.lastCheckedAt ? `Checked ${new Date(status.lastCheckedAt).toLocaleTimeString()}` : "Not checked");
+  elements.perakamConfiguredUrl.textContent = status.dashboardUrl;
+  elements.perakamUrlNote.textContent = buildPerakamUrlNote(status.dashboardUrl, status.legacyDashboardUrl);
+  elements.perakamDetailStatus.textContent = perakamStatusLabel(status.status);
+  elements.perakamDetailStatus.dataset.status = status.status;
+  elements.perakamClockInAvailability.textContent = availabilityLabel(status.clockInAvailable);
+  elements.perakamClockInAvailability.dataset.availability = status.clockInAvailable;
+  elements.perakamClockInReason.textContent = status.clockInReason;
+  elements.perakamClockOutAvailability.textContent = availabilityLabel(status.clockOutAvailable);
+  elements.perakamClockOutAvailability.dataset.availability = status.clockOutAvailable;
+  elements.perakamClockOutReason.textContent = status.clockOutReason;
+  elements.perakamLastButtonCheck.textContent = formatOptionalTime(status.lastButtonCheckAt);
+  elements.perakamCurrentUrl.textContent = status.currentUrl ?? "--";
+  elements.perakamPageTitle.textContent = status.pageTitle ?? "--";
+  elements.perakamLastNavigation.textContent = formatOptionalTime(status.lastNavigationAt);
+  elements.perakamLastChecked.textContent = formatOptionalTime(status.lastCheckedAt);
+  elements.perakamLastError.textContent = status.lastError ?? "--";
+  updatePerakamButtons(browserState, status.status);
+}
+
+function updatePerakamButtons(browserState: string, perakamState: string): void {
+  const browserBusy = browserState === "starting" || browserState === "stopping";
+  const perakamBusy = perakamState === "loading";
+  elements.openPerakam.disabled = browserBusy || perakamBusy;
+  elements.refreshPerakam.disabled = browserBusy || perakamBusy || browserState === "stopped";
+}
+
+function setPerakamControlsDisabled(disabled: boolean): void {
+  elements.openPerakam.disabled = disabled;
+  elements.refreshPerakam.disabled = disabled;
+}
+
+function perakamStatusLabel(status: string): string {
+  const labels = new Map<string, string>([
+    ["not-opened", "Not opened"],
+    ["loading", "Loading"],
+    ["reachable", "Reachable"],
+    ["likely-logged-in", "Likely logged in"],
+    ["likely-login-required", "Likely login required"],
+    ["unknown", "Unknown"],
+    ["error", "Error"]
+  ]);
+
+  return labels.get(status) ?? status;
+}
+
+function availabilityLabel(availability: string): string {
+  const labels = new Map<string, string>([
+    ["available", "Available"],
+    ["unavailable", "Unavailable"],
+    ["unknown", "Unknown"]
+  ]);
+
+  return labels.get(availability) ?? availability;
+}
+
+function formatOptionalTime(value: string | null): string {
+  return value ? new Date(value).toLocaleString() : "--";
+}
+
+function buildPerakamUrlNote(configuredUrl: string, legacyUrl: string): string {
+  return normalizeUrlForCompare(configuredUrl) === normalizeUrlForCompare(legacyUrl)
+    ? "Using older Perakam endpoint."
+    : `Configured endpoint differs from older ${legacyUrl}`;
+}
+
+function normalizeUrlForCompare(url: string): string {
+  return url.trim().replace(/\/+$/, "").toLowerCase();
 }
 
 async function loadTelegramSettings(): Promise<void> {

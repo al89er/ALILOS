@@ -15,6 +15,8 @@ const api: AlilosApi = {
   startBrowser: () => ipcRenderer.invoke("browser:start"),
   stopBrowser: () => ipcRenderer.invoke("browser:stop"),
   getBrowserStatus: () => ipcRenderer.invoke("browser:get-status"),
+  openPerakam: () => ipcRenderer.invoke("perakam:open"),
+  getPerakamStatus: () => ipcRenderer.invoke("perakam:get-status"),
   onSnapshotUpdated: (callback: (snapshot: DashboardSnapshot) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, snapshot: DashboardSnapshot): void => {
       callback(snapshot);

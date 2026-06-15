@@ -16,6 +16,15 @@ export type ReminderStage =
   | "clockOutGrace";
 export type ReminderSuppressionReason = "weekend" | "skipped";
 export type BrowserControllerState = "stopped" | "starting" | "running" | "stopping" | "error";
+export type PerakamPageStatus =
+  | "not-opened"
+  | "loading"
+  | "reachable"
+  | "likely-logged-in"
+  | "likely-login-required"
+  | "unknown"
+  | "error";
+export type AttendanceControlAvailability = "available" | "unavailable" | "unknown";
 
 export interface AttendancePlaceholder {
   label: "Clock In" | "Clock Out";
@@ -42,6 +51,7 @@ export interface AppConfig {
     notificationsByDate: Record<string, ReminderDateState>;
   };
   telegram: TelegramSettings;
+  perakam: PerakamSettings;
 }
 
 export interface ReminderSettings {
@@ -62,6 +72,10 @@ export interface TelegramSettings {
   chatId: string;
   commandPrefix: string;
   lastUpdateId: number;
+}
+
+export interface PerakamSettings {
+  dashboardUrl: string;
 }
 
 export interface TelegramTestResult {
@@ -92,6 +106,22 @@ export interface BrowserStatusSnapshot {
   profilePath: string;
   lastStartedAt: string | null;
   lastStoppedAt: string | null;
+  lastError: string | null;
+}
+
+export interface PerakamStatusSnapshot {
+  status: PerakamPageStatus;
+  dashboardUrl: string;
+  legacyDashboardUrl: string;
+  currentUrl: string | null;
+  pageTitle: string | null;
+  lastNavigationAt: string | null;
+  lastCheckedAt: string | null;
+  clockInAvailable: AttendanceControlAvailability;
+  clockOutAvailable: AttendanceControlAvailability;
+  clockInReason: string;
+  clockOutReason: string;
+  lastButtonCheckAt: string | null;
   lastError: string | null;
 }
 
@@ -148,6 +178,7 @@ export interface DashboardSnapshot {
   telegram: TelegramPollingSnapshot;
   reminders: ReminderSnapshot;
   browser: BrowserStatusSnapshot;
+  perakam: PerakamStatusSnapshot;
   logs: AppLogEntry[];
   configPath: string;
   logPath: string;
@@ -167,5 +198,7 @@ export interface AlilosApi {
   startBrowser: () => Promise<BrowserStatusSnapshot>;
   stopBrowser: () => Promise<BrowserStatusSnapshot>;
   getBrowserStatus: () => Promise<BrowserStatusSnapshot>;
+  openPerakam: () => Promise<PerakamStatusSnapshot>;
+  getPerakamStatus: () => Promise<PerakamStatusSnapshot>;
   onSnapshotUpdated: (callback: (snapshot: DashboardSnapshot) => void) => () => void;
 }

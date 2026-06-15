@@ -66,12 +66,13 @@ async function buildSnapshot(): Promise<DashboardSnapshot> {
   return {
     appStatus: "Ready for manual attendance confirmation",
     worker: worker.snapshot(),
-  localTime: new Date().toLocaleString(),
+    localTime: new Date().toLocaleString(),
     placeholders: buildPlaceholders(schedule),
     schedule,
     telegram: telegramService.snapshot(),
     reminders: reminderService.snapshot(),
     browser: browserController.status(),
+    perakam: browserController.getPerakamStatus(config.perakam.dashboardUrl),
     logs: await logger.recent(20),
     configPath: configStore.path,
     logPath: logger.path
@@ -196,6 +197,16 @@ app.whenReady().then(() => {
   });
   ipcMain.handle("browser:stop", async () => {
     const status = await browserController.stop();
+    await broadcastSnapshot();
+    return status;
+  });
+  ipcMain.handle("perakam:open", async () => {
+    const status = await browserController.openPerakam(config.perakam.dashboardUrl);
+    await broadcastSnapshot();
+    return status;
+  });
+  ipcMain.handle("perakam:get-status", async () => {
+    const status = await browserController.refreshPerakamStatus(config.perakam.dashboardUrl);
     await broadcastSnapshot();
     return status;
   });
