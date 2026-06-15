@@ -1,0 +1,27 @@
+{
+  "name": "alilos",
+  "version": "0.1.0",
+  "description": "A.L.I.L.O.S. Electron Attendance Assistant",
+  "main": "dist/main/main.js",
+  "private": true,
+  "scripts": {
+    "dev": "npm run build && electron .",
+    "build": "node scripts/clean-dist.cjs && tsc && node scripts/copy-renderer-assets.cjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "electron",
+    "attendance",
+    "assistant"
+  ],
+  "author": "",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "electron": "^33.2.1",
+    "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "playwright": "^1.60.0"
+  }
+}

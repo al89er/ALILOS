@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>A.L.I.L.O.S.</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="topbar" aria-labelledby="app-title">
+        <div>
+          <p class="eyebrow">Attendance Assistant</p>
+          <h1 id="app-title">A.L.I.L.O.S.</h1>
+        </div>
+        <div class="time-panel" aria-label="Current local time">
+          <span class="label">Local time</span>
+          <strong id="local-time">--</strong>
+        </div>
+      </section>
+
+      <section class="status-grid" aria-label="Status overview">
+        <article class="status-card">
+          <span class="label">App status</span>
+          <strong id="app-status">Loading</strong>
+        </article>
+        <article class="status-card">
+          <span class="label">Worker status</span>
+          <strong id="worker-status">Loading</strong>
+          <small id="worker-note">--</small>
+        </article>
+        <article class="status-card">
+          <span class="label">Today skipped</span>
+          <strong id="today-skipped">--</strong>
+        </article>
+        <article class="status-card">
+          <span class="label">Working day</span>
+          <strong id="working-day">--</strong>
+        </article>
+        <article class="status-card">
+          <span class="label">Telegram polling</span>
+          <strong id="telegram-polling">--</strong>
+          <small id="telegram-polling-note">--</small>
+        </article>
+        <article class="status-card">
+          <span class="label">Reminders</span>
+          <strong id="reminder-status">--</strong>
+          <small id="reminder-note">--</small>
+        </article>
+        <article class="status-card">
+          <span class="label">Browser</span>
+          <strong id="browser-status">--</strong>
+          <small id="browser-note">--</small>
+        </article>
+      </section>
+
+      <section class="panel" aria-labelledby="today-title">
+        <div class="section-heading">
+          <div>
+            <p id="today-date" class="eyebrow">Today</p>
+            <h2 id="today-title">Manual Confirmation Schedule</h2>
+          </div>
+          <div class="button-group" aria-label="Schedule controls">
+            <button id="skip-today" type="button">Skip today</button>
+            <button id="unskip-today" class="secondary-button" type="button">Unskip today</button>
+            <button id="skip-tomorrow" class="secondary-button" type="button">Skip tomorrow</button>
+            <button id="unskip-tomorrow" class="secondary-button" type="button">Unskip tomorrow</button>
+          </div>
+        </div>
+        <p id="schedule-summary" class="summary-text">Loading schedule status.</p>
+        <div id="placeholder-list" class="placeholder-list"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="skips-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Manual overrides</p>
+            <h2 id="skips-title">Skipped Dates</h2>
+          </div>
+          <button id="hide-window" class="secondary-button" type="button">Hide to tray</button>
+        </div>
+        <ol id="skipped-list" class="compact-list" aria-live="polite"></ol>
+      </section>
+
+      <section class="panel" aria-labelledby="reminders-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Notifications</p>
+            <h2 id="reminders-title">Reminder State</h2>
+          </div>
+        </div>
+        <ol id="reminder-stage-list" class="compact-list" aria-live="polite"></ol>
+      </section>
+
+      <section class="panel" aria-labelledby="browser-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Browser Controller</p>
+            <h2 id="browser-title">Manual Browser Scaffold</h2>
+          </div>
+          <div class="button-group" aria-label="Browser controls">
+            <button id="start-browser" type="button">Start browser</button>
+            <button id="stop-browser" class="secondary-button" type="button">Stop browser</button>
+          </div>
+        </div>
+        <p id="browser-profile" class="summary-text">Browser profile path not loaded.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="telegram-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Notifications</p>
+            <h2 id="telegram-title">Telegram Settings</h2>
+          </div>
+        </div>
+        <form id="telegram-form" class="settings-form">
+          <label class="checkbox-field">
+            <input id="telegram-enabled" type="checkbox" />
+            <span>Enable Telegram test notifications</span>
+          </label>
+          <label class="field">
+            <span>Bot token</span>
+            <input id="telegram-bot-token" type="password" autocomplete="off" spellcheck="false" />
+          </label>
+          <label class="field">
+            <span>Chat ID</span>
+            <input id="telegram-chat-id" type="text" autocomplete="off" spellcheck="false" />
+          </label>
+          <div class="button-group form-actions">
+            <button id="save-telegram-settings" type="button">Save settings</button>
+            <button id="send-telegram-test" class="secondary-button" type="button">Send test notification</button>
+          </div>
+          <p id="telegram-result" class="result-text" aria-live="polite">Telegram settings are stored locally in app config.</p>
+        </form>
+      </section>
+
+      <section class="panel" aria-labelledby="logs-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Activity</p>
+            <h2 id="logs-title">Recent Logs</h2>
+          </div>
+        </div>
+        <ol id="log-list" class="log-list" aria-live="polite"></ol>
+      </section>
+    </main>
+    <script src="./renderer.js"></script>
+  </body>
+</html>

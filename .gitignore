@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.env
+*.log
+.env.*
+!.env.example
+out/
+release/
+*.tsbuildinfo
+Tampermonkey Script - Perakam Waktu.txt
+npm-debug.log*
+*.local
+.DS_Store
+Thumbs.db
