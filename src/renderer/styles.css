@@ -176,6 +176,16 @@ button:disabled {
   color: var(--primary-strong);
 }
 
+.danger-button {
+  background: #8f2f2f;
+  color: #fff;
+}
+
+.danger-button:hover,
+.danger-button:focus-visible {
+  background: #742525;
+}
+
 .summary-text {
   margin: 0 0 16px;
   color: var(--muted);
@@ -205,7 +215,8 @@ button:disabled {
   height: 20px;
 }
 
-.field input {
+.field input,
+.field select {
   min-height: 44px;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -299,6 +310,53 @@ button:disabled {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.confirmation-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.confirmation-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  background: var(--surface-muted);
+}
+
+.confirmation-card strong[data-state="ready"] {
+  color: var(--success-text);
+}
+
+.confirmation-card strong[data-state="not-ready"] {
+  color: var(--warning-text);
+}
+
+.mini-detail-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.mini-detail-list div {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.mini-detail-list dt {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.mini-detail-list dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 .placeholder {
   min-height: 120px;
   border: 1px solid var(--border);
@@ -359,6 +417,28 @@ button:disabled {
   font-variant-numeric: tabular-nums;
 }
 
+.diagnostic-box {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.compact-list li[data-status="passed"],
+dd[data-status="passed"] {
+  border-color: rgba(23, 99, 61, 0.24);
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.compact-list li[data-status="rejected"],
+.compact-list li[data-status="failed"],
+dd[data-status="rejected"],
+dd[data-status="failed"] {
+  border-color: rgba(155, 28, 28, 0.24);
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
 .log-list {
   display: grid;
   gap: 10px;
@@ -396,7 +476,8 @@ button:disabled {
   .topbar,
   .section-heading,
   .status-grid,
-  .placeholder-list {
+  .placeholder-list,
+  .confirmation-grid {
     grid-template-columns: 1fr;
   }
 
@@ -417,6 +498,10 @@ button:disabled {
   }
 
   .detail-list div {
+    grid-template-columns: 1fr;
+  }
+
+  .mini-detail-list div {
     grid-template-columns: 1fr;
   }
 }

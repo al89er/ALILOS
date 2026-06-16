@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { AppConfig } from "../shared/types";
+import type { AppConfig, AttendanceCompletionRecord } from "../shared/types";
 
 const defaultConfig: AppConfig = {
   worker: {
@@ -9,7 +9,8 @@ const defaultConfig: AppConfig = {
   },
   attendance: {
     clockInPlaceholder: "08:00",
-    clockOutPlaceholder: "17:00"
+    clockOutPlaceholder: "17:00",
+    completionsByDate: {}
   },
   scheduler: {
     clockInWindow: {
@@ -38,7 +39,27 @@ const defaultConfig: AppConfig = {
     lastUpdateId: 0
   },
   perakam: {
-    dashboardUrl: "https://perakamwaktu3.upm.edu.my/"
+    dashboardUrl: "https://perakamwaktu3.upm.edu.my/",
+    autoLogin: {
+      enabled: false,
+      username: "",
+      encryptedPassword: "",
+      lastUpdatedAt: null,
+      lastLoginAttemptAt: null,
+      lastLoginResult: "unknown",
+      lastLoginReason: null
+    }
+  },
+  networkMonitor: {
+    enabled: true,
+    intervalSeconds: 60,
+    notifyOnInternetDown: true,
+    notifyOnPerakamDown: true,
+    notifyOnRecovery: true,
+    failureThreshold: 2,
+    captivePortalDetectionEnabled: true,
+    openDetectedPortalIn: "external",
+    retainPortalEvidenceMinutes: 120
   }
 };
 
@@ -71,7 +92,8 @@ export class ConfigStore {
       },
       attendance: {
         ...defaultConfig.attendance,
-        ...parsed.attendance
+        ...parsed.attendance,
+        completionsByDate: normalizeCompletionsByDate(parsed.attendance?.completionsByDate)
       },
       scheduler: {
         ...defaultConfig.scheduler,
@@ -104,7 +126,20 @@ export class ConfigStore {
       },
       perakam: {
         ...defaultConfig.perakam,
-        ...parsed.perakam
+        ...parsed.perakam,
+        autoLogin: {
+          ...defaultConfig.perakam.autoLogin,
+          ...parsed.perakam?.autoLogin
+        }
+      },
+      networkMonitor: {
+        ...defaultConfig.networkMonitor,
+        ...parsed.networkMonitor,
+        intervalSeconds: clampNumber(parsed.networkMonitor?.intervalSeconds, 30, 24 * 60 * 60, defaultConfig.networkMonitor.intervalSeconds),
+        failureThreshold: clampNumber(parsed.networkMonitor?.failureThreshold, 1, 20, defaultConfig.networkMonitor.failureThreshold),
+        captivePortalDetectionEnabled: parsed.networkMonitor?.captivePortalDetectionEnabled !== false,
+        openDetectedPortalIn: parsed.networkMonitor?.openDetectedPortalIn === "playwright" ? "playwright" : "external",
+        retainPortalEvidenceMinutes: clampNumber(parsed.networkMonitor?.retainPortalEvidenceMinutes, 5, 24 * 60, defaultConfig.networkMonitor.retainPortalEvidenceMinutes)
       }
     };
   }
@@ -113,4 +148,39 @@ export class ConfigStore {
     fs.mkdirSync(path.dirname(this.filePath), { recursive: true });
     fs.writeFileSync(this.filePath, `${JSON.stringify(config, null, 2)}\n`, "utf8");
   }
+}
+
+function clampNumber(value: unknown, minimum: number, maximum: number, fallback: number): number {
+  const numeric = Number(value);
+
+  if (!Number.isFinite(numeric)) {
+    return fallback;
+  }
+
+  return Math.min(maximum, Math.max(minimum, Math.round(numeric)));
+}
+
+function normalizeCompletionsByDate(
+  value: Partial<Record<string, Partial<AttendanceCompletionRecord>[]>> | undefined
+): Record<string, AttendanceCompletionRecord[]> {
+  const normalized: Record<string, AttendanceCompletionRecord[]> = {};
+
+  for (const [dateKey, records] of Object.entries(value ?? {})) {
+    normalized[dateKey] = (records ?? [])
+      .filter((record): record is Partial<AttendanceCompletionRecord> => Boolean(record?.dateKey && record.action && record.confirmationId && record.mappedTargetId))
+      .map((record) => ({
+        dateKey: record.dateKey ?? dateKey,
+        action: record.action!,
+        confirmationId: record.confirmationId!,
+        mappedTargetId: record.mappedTargetId!,
+        completedAt: record.completedAt ?? new Date().toISOString(),
+        generatedScheduleTime: record.generatedScheduleTime ?? "",
+        sanitizedUrlAfterClick: record.sanitizedUrlAfterClick ?? null,
+        state: record.state ?? "click-succeeded-local",
+        verification: record.verification ?? null,
+        manuallyVerifiedAt: record.manuallyVerifiedAt ?? null
+      }));
+  }
+
+  return normalized;
 }

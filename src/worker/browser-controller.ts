@@ -1,11 +1,20 @@
 import path from "node:path";
 import { chromium, type BrowserContext, type Page } from "playwright";
 import type {
+  AttendanceActionType,
   AttendanceControlAvailability,
+  AttendanceControlSnapshot,
+  AttendanceVerificationResult,
+  AttendanceVerificationStatus,
   BrowserControllerState,
   BrowserStatusSnapshot,
+  PerakamAutoLoginAttemptResult,
   PerakamPageStatus,
-  PerakamStatusSnapshot
+  PerakamStatusSnapshot,
+  TestClickTargetId,
+  TestClickTargetCandidateDiagnostic,
+  TestClickTargetDiagnostics,
+  TestClickTargetSnapshot
 } from "../shared/types";
 import type { AppLogger } from "../main/logger";
 
@@ -22,6 +31,27 @@ interface AttendanceControlDetection {
   lastButtonCheckAt: string | null;
 }
 
+interface PerakamPageMarkers {
+  title: string;
+  textSnippet: string;
+  hasLoginForm: boolean;
+  hasUsernameInput: boolean;
+  hasPasswordInput: boolean;
+  hasLoginButton: boolean;
+  hasLoginDoReference: boolean;
+  hasInfoPenggunaTitle: boolean;
+  hasNoUserInformationText: boolean;
+  hasGoToLoginText: boolean;
+  hasDashboardAncestry: boolean;
+  evidenceSnippets: string[];
+}
+
+interface PerakamPageClassification {
+  status: PerakamPageStatus;
+  reason: string;
+  evidenceSnippets: string[];
+}
+
 interface ControlProbeResult {
   availability: AttendanceControlAvailability;
   reason: string;
@@ -32,6 +62,23 @@ interface ControlProbeResult {
   dashboardCandidate?: boolean;
   descendantVisible?: boolean;
 }
+
+interface TestClickBrowserExecutionResult {
+  targetId: TestClickTargetId;
+  beforeUrl: string | null;
+  afterUrl: string | null;
+  targetAvailability: TestClickTargetSnapshot;
+}
+
+interface AttendanceBrowserExecutionResult {
+  action: AttendanceActionType;
+  mappedTargetId: "a50" | "a51";
+  beforeUrl: string | null;
+  afterUrl: string | null;
+  controlAvailability: AttendanceControlSnapshot;
+}
+
+interface AttendanceBrowserVerificationResult extends AttendanceVerificationResult {}
 
 export class BrowserController {
   private context: BrowserContext | null = null;
@@ -48,6 +95,9 @@ export class BrowserController {
     legacyDashboardUrl: LEGACY_PERAKAM_DASHBOARD_URL,
     currentUrl: null,
     pageTitle: null,
+    pageState: "not-opened",
+    statusReason: "Perakam page is not open.",
+    evidenceSnippets: [],
     lastNavigationAt: null,
     lastCheckedAt: null,
     ...unknownAttendanceControls("Not checked."),
@@ -125,6 +175,9 @@ export class BrowserController {
         legacyDashboardUrl: LEGACY_PERAKAM_DASHBOARD_URL,
         currentUrl: sanitizeUrlForDisplay(page.url()),
         pageTitle: null,
+        pageState: "loading",
+        statusReason: "Perakam navigation is loading.",
+        evidenceSnippets: [],
         lastNavigationAt: new Date().toISOString(),
         lastCheckedAt: new Date().toISOString(),
         ...unknownAttendanceControls("Navigation started; button availability is not current.", new Date().toISOString()),
@@ -146,6 +199,9 @@ export class BrowserController {
         legacyDashboardUrl: LEGACY_PERAKAM_DASHBOARD_URL,
         currentUrl: this.currentPerakamUrl(),
         pageTitle: this.perakamStatus.pageTitle,
+        pageState: "error",
+        statusReason: message,
+        evidenceSnippets: [],
         lastNavigationAt: this.perakamStatus.lastNavigationAt,
         lastCheckedAt: checkedAt,
         ...unknownAttendanceControls("Button check unavailable because navigation failed.", checkedAt),
@@ -169,6 +225,9 @@ export class BrowserController {
         legacyDashboardUrl: LEGACY_PERAKAM_DASHBOARD_URL,
         currentUrl: null,
         pageTitle: null,
+        pageState: "not-opened",
+        statusReason: "Perakam page is not open.",
+        evidenceSnippets: [],
         lastNavigationAt: this.perakamStatus.lastNavigationAt,
         lastCheckedAt: new Date().toISOString(),
         ...unknownAttendanceControls("Perakam page is not open."),
@@ -180,23 +239,35 @@ export class BrowserController {
 
     try {
       const page = this.perakamPage;
-      const [title, readyState, bodyText] = await Promise.all([
+      const [title, readyState, bodyText, markers] = await Promise.all([
         page.title().catch(() => ""),
         page.evaluate(() => document.readyState).catch(() => "unknown"),
-        page.evaluate((maxLength) => document.body?.innerText.slice(0, maxLength) ?? "", MAX_BODY_TEXT_FOR_STATUS).catch(() => "")
+        page.evaluate((maxLength) => document.body?.innerText.slice(0, maxLength) ?? "", MAX_BODY_TEXT_FOR_STATUS).catch(() => ""),
+        page.evaluate(readPerakamPageMarkersFromDocument).catch(() => null)
       ]);
-      const status = detectPerakamStatus(page.url(), title, bodyText, readyState);
       const buttonCheckAt = new Date().toISOString();
       const attendanceControls = readyState === "loading"
         ? unknownAttendanceControls("Page is still loading.", buttonCheckAt)
         : await detectAttendanceControls(page, buttonCheckAt);
+      const classification = classifyPerakamPage(
+        sanitizeUrlForDisplay(page.url()),
+        title,
+        bodyText,
+        readyState,
+        markers,
+        attendanceControls,
+        null
+      );
 
       this.setPerakamSnapshot({
-        status,
+        status: classification.status,
         dashboardUrl: displayUrl,
         legacyDashboardUrl: LEGACY_PERAKAM_DASHBOARD_URL,
         currentUrl: sanitizeUrlForDisplay(page.url()),
         pageTitle: title || null,
+        pageState: classification.status,
+        statusReason: classification.reason,
+        evidenceSnippets: classification.evidenceSnippets,
         lastNavigationAt: this.perakamStatus.lastNavigationAt,
         lastCheckedAt: buttonCheckAt,
         ...attendanceControls,
@@ -211,6 +282,9 @@ export class BrowserController {
         legacyDashboardUrl: LEGACY_PERAKAM_DASHBOARD_URL,
         currentUrl: this.currentPerakamUrl(),
         pageTitle: this.perakamStatus.pageTitle,
+        pageState: "error",
+        statusReason: message,
+        evidenceSnippets: [],
         lastNavigationAt: this.perakamStatus.lastNavigationAt,
         lastCheckedAt: checkedAt,
         ...unknownAttendanceControls("Button check unavailable because status detection failed.", checkedAt),
@@ -220,6 +294,464 @@ export class BrowserController {
 
     this.onStatusChanged();
     return this.getPerakamStatus(targetUrl);
+  }
+
+  async attemptPerakamAutoLogin(input: {
+    dashboardUrl: string;
+    username: string;
+    password: string;
+    force?: boolean;
+  }): Promise<PerakamAutoLoginAttemptResult> {
+    const attemptedAt = new Date().toISOString();
+    const targetUrl = normalizeUrl(input.dashboardUrl);
+    await this.refreshPerakamStatus(targetUrl);
+
+    if (!this.perakamPage || this.perakamPage.isClosed()) {
+      return {
+        ok: false,
+        status: "unavailable",
+        reason: "Perakam page is not open.",
+        attemptedAt,
+        pageState: "not-opened"
+      };
+    }
+
+    let currentState = this.perakamStatus.status as PerakamPageStatus;
+    if (currentState === "stale-session") {
+      const currentUrl = this.perakamPage.url();
+      let loginUrl: string;
+      try {
+        loginUrl = new URL("login.do", targetUrl).toString();
+      } catch {
+        return {
+          ok: false,
+          status: "unavailable",
+          reason: "Session stale: configured Perakam login URL is invalid.",
+          attemptedAt,
+          pageState: currentState
+        };
+      }
+
+      if (!isSameHost(currentUrl, targetUrl) || !isSameHost(loginUrl, targetUrl)) {
+        return {
+          ok: false,
+          status: "unavailable",
+          reason: "Session stale: auto-login recovery blocked because the page is not on the configured Perakam host.",
+          attemptedAt,
+          pageState: currentState
+        };
+      }
+
+      try {
+        this.logger.info("Session stale: returning to Perakam login page.");
+        await this.perakamPage.goto(loginUrl, {
+          waitUntil: "domcontentloaded",
+          timeout: PERAKAM_NAVIGATION_TIMEOUT_MS
+        });
+        await this.refreshPerakamStatus(targetUrl);
+        currentState = this.perakamStatus.status as PerakamPageStatus;
+      } catch (error) {
+        const reason = sanitizeError(error);
+        await this.refreshPerakamStatus(targetUrl).catch(() => undefined);
+        this.logger.warn(`Perakam stale-session recovery navigation failed: ${reason}`);
+        return {
+          ok: false,
+          status: "failed",
+          reason: "Perakam auto-login failed after stale-session recovery. Please check credentials or log in manually.",
+          attemptedAt,
+          pageState: this.perakamStatus.status
+        };
+      }
+
+      if (currentState !== "login-required") {
+        const reason = `Perakam auto-login failed after stale-session recovery. Resulting state: ${currentState}.`;
+        this.logger.warn(reason);
+        return {
+          ok: false,
+          status: "failed",
+          reason,
+          attemptedAt,
+          pageState: currentState
+        };
+      }
+
+      this.logger.info("Perakam login page detected. Auto-login in progress.");
+    }
+
+    if (currentState !== "login-required") {
+      return {
+        ok: false,
+        status: "unavailable",
+        reason: `Auto-login requires a recognized Perakam login page. Current state: ${currentState}.`,
+        attemptedAt,
+        pageState: currentState
+      };
+    }
+
+    const loginPageUrl = this.perakamPage.url();
+    if (!isSameHost(loginPageUrl, targetUrl)) {
+      return {
+        ok: false,
+        status: "unavailable",
+        reason: "Auto-login blocked because the current page is not on the configured Perakam host.",
+        attemptedAt,
+        pageState: currentState
+      };
+    }
+
+    this.logger.info("Perakam auto-login attempted.");
+
+    for (const frame of this.perakamPage.frames()) {
+      const recognized = await frame.evaluate(isRecognizedPerakamLoginForm).catch(() => false);
+      if (!recognized) {
+        continue;
+      }
+
+      try {
+        await frame.locator("input#username, input[name='username']").first().fill(input.username, { timeout: 5000 });
+        await frame.locator("input#password, input[name='password'], input[type='password']").first().fill(input.password, { timeout: 5000 });
+        const submit = frame.locator("#frmchklogin button, #frmchklogin input[type='submit'], #frmchklogin input[type='button']").first();
+        const navigationWait = this.perakamPage.waitForLoadState("domcontentloaded", { timeout: 12000 }).catch(() => undefined);
+        await submit.click({ timeout: 5000 });
+        await navigationWait;
+        const postLoginStatus = await this.waitForPostLoginStatus(targetUrl);
+
+        if (isLoggedInStatus(postLoginStatus)) {
+          this.logger.info("Perakam auto-login succeeded.");
+          return {
+            ok: true,
+            status: "success",
+            reason: "Perakam auto-login succeeded. Dashboard detected.",
+            attemptedAt,
+            pageState: postLoginStatus
+          };
+        }
+
+        const reason = loginFailureReason(postLoginStatus);
+        this.logger.warn(`Perakam auto-login failed: ${reason}`);
+        return {
+          ok: false,
+          status: "failed",
+          reason,
+          attemptedAt,
+          pageState: postLoginStatus
+        };
+      } catch (error) {
+        const reason = sanitizeError(error);
+        await this.refreshPerakamStatus(targetUrl).catch(() => undefined);
+        this.logger.warn(`Perakam auto-login failed: ${reason}`);
+        return {
+          ok: false,
+          status: "failed",
+          reason,
+          attemptedAt,
+          pageState: this.perakamStatus.status
+        };
+      }
+    }
+
+    return {
+      ok: false,
+      status: "unavailable",
+      reason: "Recognized Perakam login form was not found.",
+      attemptedAt,
+      pageState: this.perakamStatus.status
+    };
+  }
+
+  private async waitForPostLoginStatus(targetUrl: string): Promise<PerakamPageStatus> {
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      await this.refreshPerakamStatus(targetUrl);
+      const status = this.perakamStatus.status as PerakamPageStatus;
+
+      if (isLoggedInStatus(status) || status === "login-required" || status === "stale-session" || status === "error") {
+        return status;
+      }
+
+      if (attempt < 5) {
+        await delay(1000);
+      }
+    }
+
+    return this.perakamStatus.status as PerakamPageStatus;
+  }
+
+  async detectTestClickTarget(targetId: TestClickTargetId): Promise<TestClickTargetSnapshot> {
+    assertTestClickTarget(targetId);
+    const checkedAt = new Date().toISOString();
+    const diagnostics = await this.inspectTestClickTargets();
+    const candidates = diagnostics.targets[targetId];
+
+    if (candidates.length === 0) {
+      return {
+        targetId,
+        availability: "unknown",
+        reason: this.perakamPage && !this.perakamPage.isClosed()
+          ? `${targetId} test click target was not found.`
+          : "Perakam page is not open.",
+        checkedAt
+      };
+    }
+
+    const available = candidates.filter((candidate) => candidate.detectorDecision === "available");
+    const unavailable = candidates.filter((candidate) => candidate.detectorDecision === "unavailable");
+    const visible = candidates.filter((candidate) => candidate.ownVisible || candidate.meaningfulDescendantVisible);
+    const enabled = candidates.filter((candidate) => !candidate.disabled);
+    const hiddenSidebar = candidates.filter((candidate) => candidate.insideChildMenu || candidate.insideSidebarMenu || candidate.insideLeftCol);
+
+    if (available.length > 0) {
+      return {
+        targetId,
+        availability: "available",
+        reason: testClickCandidateSummary(candidates.length, visible.length, enabled.length, available.length, "visible test click target found"),
+        checkedAt
+      };
+    }
+
+    if (unavailable.length === candidates.length) {
+      const detail = hiddenSidebar.length === candidates.length
+        ? "all candidates are hidden in the sidebar; manually expand the relevant Perakam menu, then check readiness again"
+        : "all test click targets hidden or disabled";
+
+      return {
+        targetId,
+        availability: "unavailable",
+        reason: testClickCandidateSummary(candidates.length, visible.length, enabled.length, available.length, detail),
+        checkedAt
+      };
+    }
+
+    return {
+      targetId,
+      availability: "unknown",
+      reason: testClickCandidateSummary(candidates.length, visible.length, enabled.length, available.length, "test click target availability is uncertain"),
+      checkedAt
+    };
+  }
+
+  async inspectTestClickTargets(): Promise<TestClickTargetDiagnostics> {
+    const checkedAt = new Date().toISOString();
+
+    if (!this.perakamPage || this.perakamPage.isClosed()) {
+      return {
+        checkedAt,
+        targets: {
+          a56: [],
+          a57: []
+        }
+      };
+    }
+
+    const frameResults = await Promise.all(
+      this.perakamPage.frames().map(async (frame) => {
+        try {
+          return await frame.evaluate(readTestClickTargetDiagnosticsFromDocument, checkedAt);
+        } catch {
+          return null;
+        }
+      })
+    );
+    const results = frameResults.filter((result): result is TestClickTargetDiagnostics => result !== null);
+
+    return {
+      checkedAt,
+      targets: {
+        a56: results.flatMap((result) => result.targets.a56),
+        a57: results.flatMap((result) => result.targets.a57)
+      }
+    };
+  }
+
+  async clickVisibleTestTarget(targetId: TestClickTargetId): Promise<TestClickBrowserExecutionResult> {
+    assertTestClickTarget(targetId);
+
+    if (!this.perakamPage || this.perakamPage.isClosed()) {
+      throw new Error("Perakam page is not open.");
+    }
+
+    const page = this.perakamPage;
+    const beforeUrl = sanitizeUrlForDisplay(page.url()) || null;
+    const checkedAt = new Date().toISOString();
+
+    for (const frame of page.frames()) {
+      const result = await frame.evaluate(clickTestClickTargetInDocument, { targetId, checkedAt }).catch(() => null);
+      if (result?.clicked) {
+        await page.waitForLoadState("domcontentloaded", { timeout: 5000 }).catch(() => undefined);
+        await this.refreshPerakamStatus(this.perakamStatus.dashboardUrl);
+        return {
+          targetId,
+          beforeUrl,
+          afterUrl: sanitizeUrlForDisplay(page.url()) || null,
+          targetAvailability: result.target
+        };
+      }
+    }
+
+    throw new Error(`${targetId} test click target is not visibly available.`);
+  }
+
+  async clickVisibleAttendanceControl(action: AttendanceActionType): Promise<AttendanceBrowserExecutionResult> {
+    assertAttendanceAction(action);
+
+    if (!this.perakamPage || this.perakamPage.isClosed()) {
+      throw new Error("Perakam page is not open.");
+    }
+
+    const page = this.perakamPage;
+    const mappedTargetId = attendanceTargetId(action);
+    const beforeUrl = sanitizeUrlForDisplay(page.url()) || null;
+    const checkedAt = new Date().toISOString();
+
+    for (const frame of page.frames()) {
+      const result = await frame.evaluate(clickAttendanceControlInDocument, {
+        action,
+        mappedTargetId,
+        checkedAt
+      }).catch(() => null);
+
+      if (result?.clicked) {
+        await page.waitForLoadState("domcontentloaded", { timeout: 5000 }).catch(() => undefined);
+        await this.refreshPerakamStatus(this.perakamStatus.dashboardUrl);
+        return {
+          action,
+          mappedTargetId,
+          beforeUrl,
+          afterUrl: sanitizeUrlForDisplay(page.url()) || null,
+          controlAvailability: result.controlAvailability
+        };
+      }
+    }
+
+    throw new Error(`${mappedTargetId} attendance control is not visibly available.`);
+  }
+
+  async verifyAttendanceAfterClick(
+    action: AttendanceActionType,
+    dateKey: string,
+    localClickResult: AttendanceVerificationResult["localClickResult"]
+  ): Promise<AttendanceBrowserVerificationResult> {
+    assertAttendanceAction(action);
+    const checkedAt = new Date().toISOString();
+
+    if (!this.perakamPage || this.perakamPage.isClosed()) {
+      return {
+        action,
+        dateKey,
+        localClickResult,
+        status: "verification-unknown",
+        reason: "Perakam page is not open for read-only verification.",
+        sanitizedUrlAfterClick: null,
+        evidenceSnippets: [],
+        checkedAt
+      };
+    }
+
+    const page = this.perakamPage;
+    const sanitizedUrlAfterClick = sanitizeUrlForDisplay(page.url()) || null;
+    const [title, readyState, bodyText, markers] = await Promise.all([
+      page.title().catch(() => ""),
+      page.evaluate(() => document.readyState).catch(() => "unknown"),
+      page.evaluate((maxLength) => document.body?.innerText.slice(0, maxLength) ?? "", MAX_BODY_TEXT_FOR_STATUS).catch(() => ""),
+      page.evaluate(readPerakamPageMarkersFromDocument).catch(() => null)
+    ]);
+    const controls = await detectAttendanceControls(page, checkedAt).catch(() => unknownAttendanceControls("Unable to inspect attendance controls during verification.", checkedAt));
+    const classification = classifyPerakamPage(
+      sanitizedUrlAfterClick ?? "",
+      title,
+      bodyText,
+      readyState,
+      markers,
+      controls,
+      null
+    );
+    const frameResults = await Promise.all(
+      page.frames().map(async (frame) => {
+        try {
+          return await frame.evaluate(readAttendanceVerificationFromDocument, { action });
+        } catch {
+          return null;
+        }
+      })
+    );
+    const evidence = frameResults
+      .filter((result): result is { status: AttendanceVerificationStatus; reason: string; snippets: string[] } => result !== null)
+      .flatMap((result) => result.snippets)
+      .slice(0, 5);
+    const hasSuccess = frameResults.some((result) => result?.status === "verified-success");
+    const hasFailure = frameResults.some((result) => result?.status === "verification-failed");
+    const hasUnknown = frameResults.some((result) => result?.status === "verification-unknown");
+    const titleSnippet = boundedSnippet(title);
+    const evidenceSnippets = safeEvidence([
+      titleSnippet ? `Title: ${titleSnippet}` : "",
+      classification.reason,
+      ...classification.evidenceSnippets,
+      ...evidence
+    ]);
+
+    if (classification.status === "login-required") {
+      return {
+        action,
+        dateKey,
+        localClickResult,
+        status: "verification-unknown",
+        reason: "Login required after click. Local click succeeded, but server-side acceptance remains unconfirmed.",
+        sanitizedUrlAfterClick,
+        evidenceSnippets,
+        checkedAt
+      };
+    }
+
+    if (classification.status === "stale-session") {
+      return {
+        action,
+        dateKey,
+        localClickResult,
+        status: "verification-unknown",
+        reason: "Session stale after click. Perakam showed a no-user-info page, so server-side acceptance remains unconfirmed.",
+        sanitizedUrlAfterClick,
+        evidenceSnippets,
+        checkedAt
+      };
+    }
+
+    if (hasSuccess) {
+      return {
+        action,
+        dateKey,
+        localClickResult,
+        status: "verified-success",
+        reason: classification.status === "dashboard"
+          ? "Dashboard detected after click. Read-only page evidence suggests Perakam accepted the attendance action."
+          : "Read-only page evidence suggests Perakam accepted the attendance action.",
+        sanitizedUrlAfterClick,
+        evidenceSnippets,
+        checkedAt
+      };
+    }
+
+    if (hasFailure) {
+      return {
+        action,
+        dateKey,
+        localClickResult,
+        status: "verification-failed",
+        reason: "Read-only page evidence shows a visible error or rejection after the click.",
+        sanitizedUrlAfterClick,
+        evidenceSnippets,
+        checkedAt
+      };
+    }
+
+    return {
+      action,
+      dateKey,
+      localClickResult,
+      status: hasUnknown || evidenceSnippets.length > 0 ? "verification-unknown" : "verification-unknown",
+      reason: `${classification.reason} Local click succeeded, but server-side confirmation remains heuristic/unknown. Please visually confirm in the Perakam browser.`,
+      sanitizedUrlAfterClick,
+      evidenceSnippets,
+      checkedAt
+    };
   }
 
   async stop(): Promise<BrowserStatusSnapshot> {
@@ -352,6 +884,9 @@ export class BrowserController {
           legacyDashboardUrl: LEGACY_PERAKAM_DASHBOARD_URL,
           currentUrl: null,
           pageTitle: null,
+          pageState: "not-opened",
+          statusReason: "Perakam page is not open.",
+          evidenceSnippets: [],
           lastNavigationAt: this.perakamStatus.lastNavigationAt,
           lastCheckedAt: new Date().toISOString(),
           ...unknownAttendanceControls("Perakam page is not open."),
@@ -369,6 +904,9 @@ export class BrowserController {
       legacyDashboardUrl: LEGACY_PERAKAM_DASHBOARD_URL,
       currentUrl: null,
       pageTitle: null,
+      pageState: "not-opened",
+      statusReason: "Perakam page is not open.",
+      evidenceSnippets: [],
       lastNavigationAt: this.perakamStatus.lastNavigationAt,
       lastCheckedAt: new Date().toISOString(),
       ...unknownAttendanceControls("Perakam page is not open."),
@@ -406,16 +944,23 @@ export class BrowserController {
   private logPerakamStatus(snapshot: PerakamStatusSnapshot): void {
     switch (snapshot.status) {
       case "reachable":
-        this.logger.info("Perakam opened/reachable.");
+        this.logger.info(`Perakam opened/reachable. ${snapshot.statusReason}`);
         break;
+      case "dashboard":
+        this.logger.info("Perakam status: dashboard detected.");
+        break;
+      case "login-required":
       case "likely-login-required":
-        this.logger.info("Perakam status: likely login required.");
+        this.logger.info("Perakam status: login required.");
+        break;
+      case "stale-session":
+        this.logger.warn("Perakam status: stale session/no-user-info page.");
         break;
       case "likely-logged-in":
         this.logger.info("Perakam status: likely logged in.");
         break;
       case "unknown":
-        this.logger.warn("Perakam status: unknown.");
+        this.logger.warn(`Perakam status: unknown. ${snapshot.statusReason}`);
         break;
       case "error":
         this.logger.error(`Perakam navigation/status error: ${snapshot.lastError ?? "Unknown error."}`);
@@ -440,6 +985,14 @@ function normalizeUrl(url: string): string {
   return trimmed || DEFAULT_PERAKAM_DASHBOARD_URL;
 }
 
+function isSameHost(currentUrl: string, configuredUrl: string): boolean {
+  try {
+    return new URL(currentUrl).host === new URL(configuredUrl).host;
+  } catch {
+    return false;
+  }
+}
+
 function sanitizeUrlForDisplay(url: string): string {
   if (!url) {
     return "";
@@ -457,36 +1010,236 @@ function sanitizeUrlForDisplay(url: string): string {
   }
 }
 
-function detectPerakamStatus(url: string, title: string, bodyText: string, readyState: string): PerakamPageStatus {
+function boundedSnippet(value: string): string {
+  return value.replace(/\s+/g, " ").trim().slice(0, 180);
+}
+
+function classifyPerakamPage(
+  sanitizedUrl: string,
+  title: string,
+  bodyText: string,
+  readyState: string,
+  markers: PerakamPageMarkers | null,
+  controls: AttendanceControlDetection,
+  lastError: string | null
+): PerakamPageClassification {
+  if (lastError) {
+    return {
+      status: "error",
+      reason: lastError,
+      evidenceSnippets: []
+    };
+  }
+
+  if (!sanitizedUrl || sanitizedUrl === "about:blank") {
+    return {
+      status: "not-opened",
+      reason: "Perakam page is not open.",
+      evidenceSnippets: []
+    };
+  }
+
   if (readyState === "loading") {
-    return "loading";
+    return {
+      status: "loading",
+      reason: "Perakam page is loading.",
+      evidenceSnippets: []
+    };
   }
 
-  const combined = `${url}\n${title}\n${bodyText}`.toLowerCase();
-  const isPerakamUrl = url.toLowerCase().includes("perakamwaktu3.upm.edu.my");
+  const combined = `${sanitizedUrl}\n${title}\n${bodyText}\n${markers?.textSnippet ?? ""}`.toLowerCase();
+  const normalizedTitle = title.toLowerCase();
+  const normalizedUrl = sanitizedUrl.toLowerCase();
+  const isPerakamUrl = normalizedUrl.includes("perakamwaktu3.upm.edu.my") || normalizedUrl.includes("perakamwaktu.upm.edu.my");
+  const isLoginDoUrl = isPerakamUrl && normalizedUrl.includes("login.do");
   const hasPageContent = title.trim().length > 0 || bodyText.trim().length > 0;
+  const evidence = safeEvidence([
+    title ? `Title: ${boundedSnippet(title)}` : "",
+    ...(markers?.evidenceSnippets ?? [])
+  ]);
+  const loginSignals = [
+    isLoginDoUrl,
+    normalizedTitle.includes("login page"),
+    hasAny(combined, ["e-perakam waktu online"]),
+    Boolean(markers?.hasLoginForm),
+    Boolean(markers?.hasUsernameInput),
+    Boolean(markers?.hasPasswordInput),
+    Boolean(markers?.hasLoginButton),
+    hasAny(combined, ["log masuk!"])
+  ].filter(Boolean).length;
+  const staleSignals = [
+    normalizedTitle.includes("info pengguna"),
+    Boolean(markers?.hasInfoPenggunaTitle),
+    Boolean(markers?.hasNoUserInformationText),
+    Boolean(markers?.hasGoToLoginText),
+    Boolean(markers?.hasLoginDoReference),
+    hasAny(combined, ["no user informations", "sorry! we couldn't find this user's record", "go to login page"])
+  ].filter(Boolean).length;
+  const hasVisibleAttendanceControl = controls.clockInAvailable === "available" || controls.clockOutAvailable === "available";
+  const dashboardSignals = [
+    hasVisibleAttendanceControl,
+    Boolean(markers?.hasDashboardAncestry),
+    normalizedTitle.includes("salam sejahtera"),
+    hasAny(combined, [
+      "masa hadir",
+      "masa keluar",
+      "klik masuk",
+      "klik keluar",
+      "eperakam waktu online",
+      "notis & kad perakam",
+      "kad perakam",
+      "senarai kehadiran",
+      "kenyataan kehadiran"
+    ])
+  ].filter(Boolean).length;
 
-  if (!url || url === "about:blank") {
-    return "not-opened";
+  if (loginSignals >= 3) {
+    return {
+      status: "login-required",
+      reason: "Login required: please log in manually in the browser.",
+      evidenceSnippets: evidence
+    };
   }
 
-  if (hasAny(combined, ["log masuk", "id pengguna", "kata laluan", "katalaluan"]) || hasAny(combined, ["login", "password"])) {
-    return "likely-login-required";
+  if (staleSignals >= 2) {
+    return {
+      status: "stale-session",
+      reason: "Session stale: Perakam showed a no-user-info page. Please return to login manually.",
+      evidenceSnippets: evidence
+    };
   }
 
-  if (isPerakamUrl && hasAny(combined, ["perakam waktu", "dashboard"]) && hasAny(combined, ["profil", "rekod", "keluar", "logout"])) {
-    return "likely-logged-in";
+  if (dashboardSignals >= 1 && hasVisibleAttendanceControl) {
+    return {
+      status: "dashboard",
+      reason: "Dashboard detected.",
+      evidenceSnippets: evidence
+    };
+  }
+
+  if (dashboardSignals >= 1) {
+    return {
+      status: "likely-logged-in",
+      reason: "Perakam dashboard markers detected, but attendance controls were not confirmed.",
+      evidenceSnippets: evidence
+    };
   }
 
   if (isPerakamUrl && hasPageContent) {
-    return "reachable";
+    return {
+      status: "reachable",
+      reason: "Perakam host is reachable, but dashboard controls were not confirmed.",
+      evidenceSnippets: evidence
+    };
   }
 
-  return "unknown";
+  return {
+    status: "unknown",
+    reason: "Perakam state unknown. Open or inspect the browser manually.",
+    evidenceSnippets: evidence
+  };
 }
 
 function hasAny(value: string, needles: string[]): boolean {
   return needles.some((needle) => value.includes(needle));
+}
+
+function loginFailureReason(status: PerakamPageStatus): string {
+  switch (status) {
+    case "login-required":
+    case "likely-login-required":
+      return "login page still shown";
+    case "stale-session":
+      return "stale-session";
+    case "dashboard":
+      return "dashboard detected";
+    case "error":
+      return "Perakam status error after login attempt";
+    default:
+      return `Perakam state after login attempt: ${status}`;
+  }
+}
+
+function isLoggedInStatus(status: PerakamPageStatus): boolean {
+  return status === "dashboard" || status === "likely-logged-in";
+}
+
+function delay(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, milliseconds);
+  });
+}
+
+function safeEvidence(values: string[]): string[] {
+  return Array.from(new Set(values.map((value) => boundedSnippet(value)).filter(Boolean))).slice(0, 6);
+}
+
+function readPerakamPageMarkersFromDocument(): PerakamPageMarkers {
+  function localBoundedSnippet(value: string): string {
+    return value.replace(/\s+/g, " ").trim().slice(0, 180);
+  }
+
+  function localSafeEvidence(values: string[]): string[] {
+    return Array.from(new Set(values.map((value) => localBoundedSnippet(value)).filter(Boolean))).slice(0, 6);
+  }
+
+  const title = document.title ?? "";
+  const bodyText = localBoundedSnippet(document.body?.innerText || document.body?.textContent || "");
+  const allText = `${title}\n${bodyText}`.toLowerCase();
+  const loginButton = Array.from(document.querySelectorAll<HTMLElement>("button,input[type='button'],input[type='submit'],a"))
+    .some((element) => localBoundedSnippet(element.innerText || element.textContent || (element as HTMLInputElement).value || "").toLowerCase().includes("log masuk"));
+  const usernameInput = Boolean(document.querySelector("input[name='username'], input#username, input[name='userName'], input#userName"));
+  const passwordInput = Boolean(document.querySelector("input[name='password'], input#password, input[type='password']"));
+  const loginRefs = Array.from(document.querySelectorAll<HTMLAnchorElement | HTMLLinkElement | HTMLScriptElement>("a[href], link[href], script[src]"))
+    .some((element) => {
+      const value = "href" in element ? element.href : element.src;
+      return value.toLowerCase().includes("login.do");
+    });
+  const evidenceSources = [
+    title ? `Title: ${title}` : "",
+    bodyText,
+    document.querySelector("#frmchklogin") ? "form#frmchklogin present" : "",
+    usernameInput ? "username input marker present" : "",
+    passwordInput ? "password input marker present" : "",
+    loginButton ? "login button marker present" : "",
+    loginRefs ? "login.do reference present" : "",
+    document.querySelector(".top_tiles, .right_col, .tile-stats") ? "dashboard ancestry marker present" : ""
+  ];
+
+  return {
+    title,
+    textSnippet: bodyText,
+    hasLoginForm: Boolean(document.querySelector("#frmchklogin, form[name='frmchklogin']")),
+    hasUsernameInput: usernameInput,
+    hasPasswordInput: passwordInput,
+    hasLoginButton: loginButton,
+    hasLoginDoReference: loginRefs,
+    hasInfoPenggunaTitle: title.toLowerCase().includes("info pengguna"),
+    hasNoUserInformationText: allText.includes("no user informations") || allText.includes("sorry! we couldn't find this user's record"),
+    hasGoToLoginText: allText.includes("go to login page"),
+    hasDashboardAncestry: Boolean(document.querySelector(".top_tiles, .right_col, .tile-stats")),
+    evidenceSnippets: localSafeEvidence(evidenceSources)
+  };
+}
+
+function isRecognizedPerakamLoginForm(): boolean {
+  const form = document.querySelector<HTMLFormElement>("#frmchklogin, form[name='frmchklogin']");
+  const username = document.querySelector<HTMLInputElement>("input#username, input[name='username']");
+  const password = document.querySelector<HTMLInputElement>("input#password, input[name='password'], input[type='password']");
+  const submitCandidates = Array.from(document.querySelectorAll<HTMLElement>("#frmchklogin button, #frmchklogin input[type='submit'], #frmchklogin input[type='button'], button, input[type='submit'], input[type='button']"));
+  const hasSubmit = submitCandidates.some((element) => {
+    const value = element instanceof HTMLInputElement ? element.value : "";
+    return `${element.innerText} ${element.textContent} ${value}`.toLowerCase().includes("log masuk");
+  });
+  const text = `${document.title} ${document.body?.innerText ?? ""} ${document.body?.textContent ?? ""}`.toLowerCase();
+
+  return Boolean(
+    form
+    && username
+    && password
+    && hasSubmit
+    && (document.title.toLowerCase().includes("login page") || text.includes("e-perakam waktu online"))
+  );
 }
 
 async function detectAttendanceControls(page: Page, checkedAt: string): Promise<AttendanceControlDetection> {
@@ -854,6 +1607,756 @@ function readAttendanceControlsFromDocument(): AttendanceControlDetection {
   };
 }
 
+function readTestClickTargetDiagnosticsFromDocument(checkedAt: string): TestClickTargetDiagnostics {
+  function inspectTarget(targetId: TestClickTargetId): TestClickTargetCandidateDiagnostic[] {
+    return Array.from(document.querySelectorAll<HTMLElement>(`[id="${targetId}"]`)).map((candidate, candidateIndex) => {
+      const decision = describeCandidate(candidate);
+      const rect = candidate.getBoundingClientRect();
+      const style = window.getComputedStyle(candidate);
+      const nearestAnchor = candidate.closest<HTMLElement>("a");
+      const nearestButton = candidate.closest<HTMLElement>("button");
+      const nearestRoleButton = candidate.closest<HTMLElement>("[role='button']");
+      const nearestLi = candidate.closest<HTMLElement>("li");
+      const nearestUl = candidate.closest<HTMLElement>("ul");
+
+      return {
+        targetId,
+        candidateIndex,
+        tagName: candidate.tagName.toLowerCase(),
+        id: bounded(candidate.id),
+        name: bounded(candidate.getAttribute("name")),
+        type: bounded(candidate.getAttribute("type")),
+        href: sanitizeHref(candidate.getAttribute("href")),
+        className: bounded(candidate.className),
+        role: bounded(candidate.getAttribute("role")),
+        ariaHidden: bounded(candidate.getAttribute("aria-hidden")),
+        hidden: candidate.hidden,
+        disabled: isDisabled(candidate),
+        textSnippet: bounded(candidate.innerText || candidate.textContent),
+        valueSnippet: candidate instanceof HTMLInputElement ? bounded(candidate.value) : null,
+        title: bounded(candidate.getAttribute("title")),
+        nearestAnchor: summarizeElement(nearestAnchor),
+        nearestButton: summarizeElement(nearestButton),
+        nearestRoleButton: summarizeElement(nearestRoleButton),
+        nearestLiClass: bounded(nearestLi?.className ?? null),
+        nearestUlClass: bounded(nearestUl?.className ?? null),
+        insideChildMenu: Boolean(candidate.closest("ul.nav.child_menu")),
+        insideSidebarMenu: Boolean(candidate.closest("#sidebar-menu")),
+        insideLeftCol: Boolean(candidate.closest(".left_col")),
+        insideRightCol: Boolean(candidate.closest(".right_col")),
+        insideTopTiles: Boolean(candidate.closest(".top_tiles")),
+        computedDisplay: style.display,
+        computedVisibility: style.visibility,
+        computedOpacity: style.opacity,
+        boundingRect: {
+          width: roundRectValue(rect.width),
+          height: roundRectValue(rect.height),
+          top: roundRectValue(rect.top),
+          left: roundRectValue(rect.left)
+        },
+        offsetParentPresent: candidate.offsetParent !== null,
+        ownVisible: decision.ownVisible,
+        meaningfulDescendantVisible: decision.meaningfulDescendantVisible,
+        detectorDecision: decision.availability,
+        rejectionReason: decision.reason
+      };
+    });
+  }
+
+  function describeCandidate(element: HTMLElement): {
+    availability: AttendanceControlAvailability;
+    reason: string;
+    ownVisible: boolean;
+    meaningfulDescendantVisible: boolean;
+  } {
+    const visibility = inspectVisibility(element);
+    const enabled = !isDisabled(element);
+    const actionable = isLikelyActionable(element) || Boolean(nearestActionable(element));
+
+    if (!visibility.visible) {
+      return {
+        availability: "unavailable",
+        reason: visibility.hiddenSidebar
+          ? "Target exists but is hidden in the sidebar. Manually expand the relevant Perakam menu in the browser, then check readiness again."
+          : visibility.reason,
+        ownVisible: visibility.ownVisible,
+        meaningfulDescendantVisible: visibility.meaningfulDescendantVisible
+      };
+    }
+
+    if (!enabled) {
+      return {
+        availability: "unavailable",
+        reason: "Target is visible but disabled.",
+        ownVisible: visibility.ownVisible,
+        meaningfulDescendantVisible: visibility.meaningfulDescendantVisible
+      };
+    }
+
+    if (!actionable) {
+      return {
+        availability: "unknown",
+        reason: "Target is visible but no actionable anchor, button, input, or role=button was found.",
+        ownVisible: visibility.ownVisible,
+        meaningfulDescendantVisible: visibility.meaningfulDescendantVisible
+      };
+    }
+
+    return {
+      availability: "available",
+      reason: "Target is visible, enabled, and has an actionable candidate.",
+      ownVisible: visibility.ownVisible,
+      meaningfulDescendantVisible: visibility.meaningfulDescendantVisible
+    };
+  }
+
+  function inspectVisibility(element: HTMLElement): {
+    visible: boolean;
+    reason: string;
+    hiddenSidebar: boolean;
+    ownVisible: boolean;
+    meaningfulDescendantVisible: boolean;
+  } {
+    let current: HTMLElement | null = element;
+    let hiddenSidebar = false;
+
+    while (current) {
+      const style = window.getComputedStyle(current);
+      const isHiddenSidebar = current.matches("ul.nav.child_menu, #sidebar-menu, .left_col");
+      hiddenSidebar = hiddenSidebar || isHiddenSidebar;
+
+      if (current.hidden || current.getAttribute("aria-hidden") === "true") {
+        return {
+          visible: false,
+          reason: isHiddenSidebar ? "hidden sidebar menu candidate" : "element or ancestor is hidden",
+          hiddenSidebar,
+          ownVisible: false,
+          meaningfulDescendantVisible: false
+        };
+      }
+
+      if (style.display === "none") {
+        return {
+          visible: false,
+          reason: isHiddenSidebar ? "hidden sidebar menu candidate" : "element or ancestor uses display none",
+          hiddenSidebar,
+          ownVisible: false,
+          meaningfulDescendantVisible: false
+        };
+      }
+
+      if (style.visibility === "hidden" || style.visibility === "collapse") {
+        return {
+          visible: false,
+          reason: isHiddenSidebar ? "hidden sidebar menu candidate" : "element or ancestor is visibility hidden",
+          hiddenSidebar,
+          ownVisible: false,
+          meaningfulDescendantVisible: false
+        };
+      }
+
+      if (style.opacity === "0") {
+        return {
+          visible: false,
+          reason: isHiddenSidebar ? "hidden sidebar menu candidate" : "element or ancestor is transparent",
+          hiddenSidebar,
+          ownVisible: false,
+          meaningfulDescendantVisible: false
+        };
+      }
+
+      current = current.parentElement;
+    }
+
+    const rect = element.getBoundingClientRect();
+    const ownVisible = rect.width > 0 && rect.height > 0;
+    const meaningfulDescendantVisible = Array.from(element.querySelectorAll<HTMLElement>(".tile-stats, .animated, div, h3, .count, span, i"))
+      .slice(0, 30)
+      .some((descendant) => {
+        const descendantStyle = window.getComputedStyle(descendant);
+        const descendantRect = descendant.getBoundingClientRect();
+        return (
+          descendantStyle.display !== "none"
+          && descendantStyle.visibility !== "hidden"
+          && descendantStyle.visibility !== "collapse"
+          && descendantStyle.opacity !== "0"
+          && descendantRect.width > 0
+          && descendantRect.height > 0
+          && !descendant.hidden
+          && descendant.getAttribute("aria-hidden") !== "true"
+        );
+      });
+
+    return {
+      visible: ownVisible || meaningfulDescendantVisible,
+      reason: ownVisible ? "candidate own rect visible" : meaningfulDescendantVisible ? "meaningful descendant visible" : "candidate and meaningful descendants have zero bounding box",
+      hiddenSidebar,
+      ownVisible,
+      meaningfulDescendantVisible
+    };
+  }
+
+  function nearestActionable(element: HTMLElement): HTMLElement | null {
+    return element.closest<HTMLElement>("a,button,input,[role='button']");
+  }
+
+  function isLikelyActionable(element: HTMLElement): boolean {
+    const tagName = element.tagName.toLowerCase();
+
+    if (tagName === "button") {
+      return true;
+    }
+
+    if (tagName === "input") {
+      const type = (element.getAttribute("type") ?? "").toLowerCase();
+      return ["button", "submit", "image"].includes(type);
+    }
+
+    if (tagName === "a") {
+      return Boolean(element.getAttribute("href"));
+    }
+
+    return element.getAttribute("role") === "button";
+  }
+
+  function isDisabled(element: HTMLElement): boolean {
+    const formControl = element as HTMLButtonElement | HTMLInputElement;
+    return Boolean(formControl.disabled) || element.getAttribute("aria-disabled") === "true" || element.classList.contains("disabled");
+  }
+
+  function summarizeElement(element: HTMLElement | null): TestClickTargetCandidateDiagnostic["nearestAnchor"] {
+    if (!element) {
+      return null;
+    }
+
+    return {
+      tagName: element.tagName.toLowerCase(),
+      id: bounded(element.id),
+      className: bounded(element.className),
+      role: bounded(element.getAttribute("role")),
+      href: sanitizeHref(element.getAttribute("href")),
+      textSnippet: bounded(element.innerText || element.textContent)
+    };
+  }
+
+  function sanitizeHref(href: string | null): string | null {
+    if (!href) {
+      return null;
+    }
+
+    try {
+      const parsed = new URL(href, window.location.href);
+      parsed.username = "";
+      parsed.password = "";
+      parsed.search = parsed.search ? "?[redacted]" : "";
+      parsed.hash = parsed.hash ? "#[redacted]" : "";
+      return parsed.toString();
+    } catch {
+      return href.replace(/[?#].*$/, "?[redacted]").slice(0, 120);
+    }
+  }
+
+  function bounded(value: unknown): string | null {
+    if (typeof value !== "string") {
+      return null;
+    }
+
+    const normalized = value.replace(/\s+/g, " ").trim();
+    return normalized ? normalized.slice(0, 120) : null;
+  }
+
+  function roundRectValue(value: number): number {
+    return Math.round(value * 100) / 100;
+  }
+
+  return {
+    checkedAt,
+    targets: {
+      a56: inspectTarget("a56"),
+      a57: inspectTarget("a57")
+    }
+  };
+}
+
+function clickTestClickTargetInDocument(input: {
+  targetId: TestClickTargetId;
+  checkedAt: string;
+}): { clicked: boolean; target: TestClickTargetSnapshot } {
+  const candidates = Array.from(document.querySelectorAll<HTMLElement>(`[id="${input.targetId}"]`));
+  const probe = candidates
+    .map((candidate) => ({
+      candidate,
+      result: describeClickCandidate(candidate)
+    }))
+    .find((entry) => entry.result.availability === "available");
+
+  if (!probe) {
+    return {
+      clicked: false,
+      target: {
+        targetId: input.targetId,
+        availability: "unavailable",
+        reason: "No visible validated test click target was found.",
+        checkedAt: input.checkedAt
+      }
+    };
+  }
+
+  probe.candidate.click();
+  return {
+    clicked: true,
+    target: {
+      targetId: input.targetId,
+      availability: "available",
+      reason: probe.result.reason,
+      checkedAt: input.checkedAt
+    }
+  };
+
+  function describeClickCandidate(element: HTMLElement): { availability: AttendanceControlAvailability; reason: string } {
+    const visibility = inspectClickVisibility(element);
+    const enabled = !isDisabled(element);
+    const actionable = isLikelyActionable(element) || Boolean(element.closest("a,button,input,[role='button']"));
+
+    if (!visibility.visible) {
+      return {
+        availability: "unavailable",
+        reason: visibility.hiddenSidebar
+          ? "Target exists but is hidden in the sidebar. Manually expand the relevant Perakam menu in the browser, then check readiness again."
+          : visibility.reason
+      };
+    }
+
+    if (!enabled) {
+      return {
+        availability: "unavailable",
+        reason: "Target is visible but disabled."
+      };
+    }
+
+    if (!actionable) {
+      return {
+        availability: "unknown",
+        reason: "Target is visible but no actionable anchor, button, input, or role=button was found."
+      };
+    }
+
+    return {
+      availability: "available",
+      reason: "Target is visible, enabled, and selected for one manual test click."
+    };
+  }
+
+  function inspectClickVisibility(element: HTMLElement): { visible: boolean; reason: string; hiddenSidebar: boolean } {
+    let current: HTMLElement | null = element;
+    let hiddenSidebar = false;
+
+    while (current) {
+      const style = window.getComputedStyle(current);
+      const isHiddenSidebar = current.matches("ul.nav.child_menu, #sidebar-menu, .left_col");
+      hiddenSidebar = hiddenSidebar || isHiddenSidebar;
+
+      if (current.hidden || current.getAttribute("aria-hidden") === "true" || style.display === "none" || style.visibility === "hidden" || style.visibility === "collapse" || style.opacity === "0") {
+        return {
+          visible: false,
+          reason: isHiddenSidebar ? "hidden sidebar menu candidate" : "element or ancestor is hidden",
+          hiddenSidebar
+        };
+      }
+
+      current = current.parentElement;
+    }
+
+    const rect = element.getBoundingClientRect();
+    const ownVisible = rect.width > 0 && rect.height > 0;
+    const descendantVisible = Array.from(element.querySelectorAll<HTMLElement>(".tile-stats, .animated, div, h3, .count, span, i"))
+      .slice(0, 30)
+      .some((descendant) => {
+        const descendantStyle = window.getComputedStyle(descendant);
+        const descendantRect = descendant.getBoundingClientRect();
+        return descendantStyle.display !== "none"
+          && descendantStyle.visibility !== "hidden"
+          && descendantStyle.visibility !== "collapse"
+          && descendantStyle.opacity !== "0"
+          && descendantRect.width > 0
+          && descendantRect.height > 0
+          && !descendant.hidden
+          && descendant.getAttribute("aria-hidden") !== "true";
+      });
+
+    return {
+      visible: ownVisible || descendantVisible,
+      reason: ownVisible ? "candidate own rect visible" : descendantVisible ? "meaningful descendant visible" : "candidate and meaningful descendants have zero bounding box",
+      hiddenSidebar
+    };
+  }
+
+  function isDisabled(element: HTMLElement): boolean {
+    const formControl = element as HTMLButtonElement | HTMLInputElement;
+    return Boolean(formControl.disabled) || element.getAttribute("aria-disabled") === "true" || element.classList.contains("disabled");
+  }
+
+  function isLikelyActionable(element: HTMLElement): boolean {
+    const tagName = element.tagName.toLowerCase();
+
+    if (tagName === "button") {
+      return true;
+    }
+
+    if (tagName === "input") {
+      const type = (element.getAttribute("type") ?? "").toLowerCase();
+      return ["button", "submit", "image"].includes(type);
+    }
+
+    if (tagName === "a") {
+      return Boolean(element.getAttribute("href"));
+    }
+
+    return element.getAttribute("role") === "button";
+  }
+}
+
+function clickAttendanceControlInDocument(input: {
+  action: AttendanceActionType;
+  mappedTargetId: "a50" | "a51";
+  checkedAt: string;
+}): { clicked: boolean; controlAvailability: AttendanceControlSnapshot } {
+  const labels = input.action === "clock-in"
+    ? ["masa hadir", "klik masuk", "clock in", "clock-in", "masuk"]
+    : ["masa keluar", "klik keluar", "clock out", "clock-out", "keluar"];
+  const candidates = Array.from(document.querySelectorAll<HTMLElement>(`[id="${input.mappedTargetId}"]`));
+  const probes = candidates.map((candidate) => ({
+    candidate,
+    result: describeAttendanceClickCandidate(candidate, labels)
+  }));
+  const dashboardProbe = probes.find((entry) => entry.result.availability === "available");
+
+  if (!dashboardProbe) {
+    const hiddenCount = probes.filter((entry) => entry.result.hiddenSidebar).length;
+    const visibleCount = probes.filter((entry) => entry.result.visible).length;
+    const reason = candidates.length === 0
+      ? `${input.mappedTargetId} was not found.`
+      : `${candidates.length} candidates found; ${visibleCount} visible dashboard/actionable; ${hiddenCount} hidden sidebar candidate(s) ignored. No validated attendance control was clicked.`;
+
+    return {
+      clicked: false,
+      controlAvailability: {
+        availability: candidates.length > 0 ? "unavailable" : "unknown",
+        reason,
+        checkedAt: input.checkedAt
+      }
+    };
+  }
+
+  dashboardProbe.candidate.click();
+  return {
+    clicked: true,
+    controlAvailability: {
+      availability: "available",
+      reason: dashboardProbe.result.reason,
+      checkedAt: input.checkedAt
+    }
+  };
+
+  function describeAttendanceClickCandidate(
+    element: HTMLElement,
+    expectedLabels: string[]
+  ): {
+    availability: AttendanceControlAvailability;
+    reason: string;
+    visible: boolean;
+    hiddenSidebar: boolean;
+  } {
+    const visibility = inspectAttendanceClickVisibility(element);
+    const enabled = !isDisabled(element);
+    const actionable = isLikelyActionable(element) || Boolean(element.closest("a,button,input,[role='button']"));
+    const labelText = controlText(element);
+    const labelMatches = expectedLabels.some((label) => labelText.includes(label));
+
+    if (visibility.hiddenSidebar) {
+      return {
+        availability: "unavailable",
+        reason: "Hidden sidebar attendance candidate ignored.",
+        visible: false,
+        hiddenSidebar: true
+      };
+    }
+
+    if (!visibility.dashboardCandidate) {
+      return {
+        availability: "unknown",
+        reason: "Candidate is not in the visible dashboard tile area.",
+        visible: visibility.visible,
+        hiddenSidebar: false
+      };
+    }
+
+    if (!visibility.visible) {
+      return {
+        availability: "unavailable",
+        reason: visibility.reason,
+        visible: false,
+        hiddenSidebar: false
+      };
+    }
+
+    if (!enabled) {
+      return {
+        availability: "unavailable",
+        reason: "Dashboard attendance candidate is visible but disabled.",
+        visible: true,
+        hiddenSidebar: false
+      };
+    }
+
+    if (!actionable) {
+      return {
+        availability: "unknown",
+        reason: "Dashboard attendance candidate is visible but not clearly actionable.",
+        visible: true,
+        hiddenSidebar: false
+      };
+    }
+
+    if (!labelMatches) {
+      return {
+        availability: "unknown",
+        reason: "Dashboard attendance candidate is visible but label context is ambiguous.",
+        visible: true,
+        hiddenSidebar: false
+      };
+    }
+
+    return {
+      availability: "available",
+      reason: `${input.mappedTargetId} visible dashboard tile validated for one ${input.action} click.`,
+      visible: true,
+      hiddenSidebar: false
+    };
+  }
+
+  function inspectAttendanceClickVisibility(element: HTMLElement): {
+    visible: boolean;
+    reason: string;
+    hiddenSidebar: boolean;
+    dashboardCandidate: boolean;
+  } {
+    let current: HTMLElement | null = element;
+    let hiddenSidebar = false;
+    let dashboardCandidate = Boolean(element.closest(".top_tiles, .right_col, .tile-stats"));
+
+    while (current) {
+      const style = window.getComputedStyle(current);
+      const isHiddenSidebar = current.matches("ul.nav.child_menu, #sidebar-menu, .left_col");
+      hiddenSidebar = hiddenSidebar || isHiddenSidebar;
+      dashboardCandidate = dashboardCandidate || current.matches(".top_tiles, .right_col, .tile-stats");
+
+      if (current.hidden || current.getAttribute("aria-hidden") === "true" || style.display === "none" || style.visibility === "hidden" || style.visibility === "collapse" || style.opacity === "0") {
+        return {
+          visible: false,
+          reason: isHiddenSidebar ? "hidden sidebar menu candidate" : "element or ancestor is hidden",
+          hiddenSidebar,
+          dashboardCandidate
+        };
+      }
+
+      current = current.parentElement;
+    }
+
+    const rect = element.getBoundingClientRect();
+    const ownVisible = rect.width > 0 && rect.height > 0;
+    const descendantVisible = Array.from(element.querySelectorAll<HTMLElement>(".tile-stats, .animated, div, h3, .count, span, i"))
+      .slice(0, 30)
+      .some((descendant) => {
+        const style = window.getComputedStyle(descendant);
+        const descendantRect = descendant.getBoundingClientRect();
+        return style.display !== "none"
+          && style.visibility !== "hidden"
+          && style.visibility !== "collapse"
+          && style.opacity !== "0"
+          && descendantRect.width > 0
+          && descendantRect.height > 0
+          && !descendant.hidden
+          && descendant.getAttribute("aria-hidden") !== "true";
+      });
+
+    return {
+      visible: ownVisible || descendantVisible,
+      reason: ownVisible ? "candidate own rect visible" : descendantVisible ? "descendant dashboard tile visible" : "candidate and meaningful descendants have zero bounding box",
+      hiddenSidebar,
+      dashboardCandidate
+    };
+  }
+
+  function isDisabled(element: HTMLElement): boolean {
+    const formControl = element as HTMLButtonElement | HTMLInputElement;
+    return Boolean(formControl.disabled) || element.getAttribute("aria-disabled") === "true" || element.classList.contains("disabled");
+  }
+
+  function isLikelyActionable(element: HTMLElement): boolean {
+    const tagName = element.tagName.toLowerCase();
+
+    if (tagName === "button") {
+      return true;
+    }
+
+    if (tagName === "input") {
+      const type = (element.getAttribute("type") ?? "").toLowerCase();
+      return ["button", "submit", "image"].includes(type);
+    }
+
+    if (tagName === "a") {
+      return Boolean(element.getAttribute("href"));
+    }
+
+    return element.getAttribute("role") === "button";
+  }
+
+  function controlText(element: HTMLElement): string {
+    return [
+      element.innerText,
+      element.textContent,
+      element.getAttribute("aria-label"),
+      element.getAttribute("title")
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .trim()
+      .toLowerCase();
+  }
+}
+
+function readAttendanceVerificationFromDocument(input: {
+  action: AttendanceActionType;
+}): { status: AttendanceVerificationStatus; reason: string; snippets: string[] } {
+  function localBoundedSnippet(value: string): string {
+    return value.replace(/\s+/g, " ").trim().slice(0, 180);
+  }
+
+  const normalizedText = localBoundedSnippet(document.body?.innerText || document.body?.textContent || "");
+  const snippets = collectEvidenceSnippets(input.action);
+  const lowerText = normalizedText.toLowerCase();
+  const successPhrases = [
+    "berjaya",
+    "success",
+    "telah direkod",
+    "rekod berjaya",
+    "masa hadir",
+    "masa keluar"
+  ];
+  const failurePhrases = [
+    "gagal",
+    "failed",
+    "error",
+    "ralat",
+    "tidak berjaya",
+    "sila cuba"
+  ];
+  const hasFailure = failurePhrases.some((phrase) => lowerText.includes(phrase));
+  const hasSuccess = successPhrases.some((phrase) => lowerText.includes(phrase));
+  const controlStillVisible = isAttendanceControlVisible(input.action);
+
+  if (hasFailure) {
+    return {
+      status: "verification-failed",
+      reason: "Visible page text appears to contain an error or rejection.",
+      snippets
+    };
+  }
+
+  if (hasSuccess && !controlStillVisible) {
+    return {
+      status: "verified-success",
+      reason: "Success-like text is visible and the clicked control is no longer visibly available.",
+      snippets
+    };
+  }
+
+  if (!controlStillVisible && snippets.length > 0) {
+    return {
+      status: "verification-unknown",
+      reason: "Clicked control disappeared, but success could not be confirmed confidently.",
+      snippets
+    };
+  }
+
+  return {
+    status: "verification-unknown",
+    reason: "No conclusive read-only success or failure evidence found.",
+    snippets
+  };
+
+  function collectEvidenceSnippets(action: AttendanceActionType): string[] {
+    const phrases = action === "clock-in"
+      ? ["berjaya", "success", "masa hadir", "klik masuk", "hadir", "gagal", "ralat", "error"]
+      : ["berjaya", "success", "masa keluar", "klik keluar", "keluar", "gagal", "ralat", "error"];
+    const candidates = Array.from(document.querySelectorAll<HTMLElement>(".alert, .notification, .toast, .swal2-title, .swal2-html-container, .modal, .panel, .tile-stats, body"))
+      .slice(0, 40)
+      .map((element) => localBoundedSnippet(element.innerText || element.textContent || ""))
+      .filter((text) => {
+        const lower = text.toLowerCase();
+        return text.length > 0 && phrases.some((phrase) => lower.includes(phrase));
+      });
+
+    return Array.from(new Set(candidates)).slice(0, 5);
+  }
+
+  function isAttendanceControlVisible(action: AttendanceActionType): boolean {
+    const id = action === "clock-in" ? "a50" : "a51";
+    return Array.from(document.querySelectorAll<HTMLElement>(`[id="${id}"]`))
+      .some((element) => isVisibleDashboardElement(element));
+  }
+
+  function isVisibleDashboardElement(element: HTMLElement): boolean {
+    if (!element.closest(".top_tiles, .right_col, .tile-stats")) {
+      return false;
+    }
+
+    let current: HTMLElement | null = element;
+    while (current) {
+      const style = window.getComputedStyle(current);
+      if (current.matches("ul.nav.child_menu, #sidebar-menu, .left_col")) {
+        return false;
+      }
+
+      if (current.hidden || current.getAttribute("aria-hidden") === "true" || style.display === "none" || style.visibility === "hidden" || style.visibility === "collapse" || style.opacity === "0") {
+        return false;
+      }
+
+      current = current.parentElement;
+    }
+
+    const rect = element.getBoundingClientRect();
+    const ownVisible = rect.width > 0 && rect.height > 0;
+    const descendantVisible = Array.from(element.querySelectorAll<HTMLElement>(".tile-stats, .animated, div, h3, .count, span, i"))
+      .slice(0, 20)
+      .some((descendant) => {
+        const style = window.getComputedStyle(descendant);
+        const descendantRect = descendant.getBoundingClientRect();
+        return style.display !== "none"
+          && style.visibility !== "hidden"
+          && style.visibility !== "collapse"
+          && style.opacity !== "0"
+          && descendantRect.width > 0
+          && descendantRect.height > 0
+          && !descendant.hidden
+          && descendant.getAttribute("aria-hidden") !== "true";
+      });
+
+    return ownVisible || descendantVisible;
+  }
+}
+
+function testClickCandidateSummary(
+  foundCount: number,
+  visibleCount: number,
+  enabledCount: number,
+  visibleActionableCount: number,
+  detail: string
+): string {
+  return `${foundCount} candidates found; ${visibleCount} visible; ${enabledCount} enabled; ${visibleActionableCount} visible/actionable; ${detail}.`;
+}
+
 function mergeControlAvailability(values: AttendanceControlAvailability[]): AttendanceControlAvailability {
   if (values.includes("available")) {
     return "available";
@@ -864,6 +2367,30 @@ function mergeControlAvailability(values: AttendanceControlAvailability[]): Atte
   }
 
   return "unknown";
+}
+
+function mergeTestClickTargetReason(results: TestClickTargetSnapshot[]): string {
+  return results.find((result) => result.availability === "available")?.reason
+    ?? results.find((result) => result.availability === "unavailable")?.reason
+    ?? results[0]?.reason
+    ?? "Test click target was not checked.";
+}
+
+function assertTestClickTarget(targetId: TestClickTargetId): void {
+  if (targetId !== "a56" && targetId !== "a57") {
+    throw new Error("Invalid manual test click target.");
+  }
+}
+
+function assertAttendanceAction(action: AttendanceActionType): void {
+  if (action !== "clock-in" && action !== "clock-out") {
+    throw new Error("Invalid attendance action.");
+  }
+}
+
+function attendanceTargetId(action: AttendanceActionType): "a50" | "a51" {
+  assertAttendanceAction(action);
+  return action === "clock-in" ? "a50" : "a51";
 }
 
 function mergeControlReason(results: ControlProbeResult[]): string {

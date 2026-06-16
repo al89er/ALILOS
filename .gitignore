@@ -8,6 +8,7 @@ out/
 release/
 *.tsbuildinfo
 Tampermonkey Script - Perakam Waktu.txt
+perkamwaktu3 website.html
 npm-debug.log*
 *.local
 .DS_Store
