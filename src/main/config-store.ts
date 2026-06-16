@@ -38,10 +38,17 @@ const defaultConfig: AppConfig = {
     commandPrefix: "alilos",
     lastUpdateId: 0
   },
+  institutionCredential: {
+    enabled: true,
+    username: "",
+    encryptedPassword: "",
+    lastUpdatedAt: null
+  },
   perakam: {
     dashboardUrl: "https://perakamwaktu3.upm.edu.my/",
     autoLogin: {
       enabled: false,
+      useSharedCredential: true,
       username: "",
       encryptedPassword: "",
       lastUpdatedAt: null,
@@ -84,6 +91,23 @@ export class ConfigStore {
 
     const raw = fs.readFileSync(this.filePath, "utf8");
     const parsed = JSON.parse(raw) as Partial<AppConfig>;
+    const legacyPerakamCredential = parsed.perakam?.autoLogin;
+    const institutionCredential = {
+      ...defaultConfig.institutionCredential,
+      ...parsed.institutionCredential
+    };
+
+    if (!institutionCredential.username && legacyPerakamCredential?.username) {
+      institutionCredential.username = legacyPerakamCredential.username;
+    }
+
+    if (!institutionCredential.encryptedPassword && legacyPerakamCredential?.encryptedPassword) {
+      institutionCredential.encryptedPassword = legacyPerakamCredential.encryptedPassword;
+    }
+
+    if (!institutionCredential.lastUpdatedAt && legacyPerakamCredential?.lastUpdatedAt) {
+      institutionCredential.lastUpdatedAt = legacyPerakamCredential.lastUpdatedAt;
+    }
 
     return {
       worker: {
@@ -124,12 +148,14 @@ export class ConfigStore {
         ...defaultConfig.telegram,
         ...parsed.telegram
       },
+      institutionCredential,
       perakam: {
         ...defaultConfig.perakam,
         ...parsed.perakam,
         autoLogin: {
           ...defaultConfig.perakam.autoLogin,
-          ...parsed.perakam?.autoLogin
+          ...parsed.perakam?.autoLogin,
+          useSharedCredential: parsed.perakam?.autoLogin?.useSharedCredential !== false
         }
       },
       networkMonitor: {

@@ -1394,7 +1394,7 @@ function renderPerakamAutoLogin(settings: RendererPerakamAutoLoginSnapshot, opti
   if (!perakamLoginFormDirty || options.forceFormSync) {
     setPerakamLoginResult(
       settings.secureStorageAvailable
-        ? "Credentials are stored locally on this Windows user profile."
+        ? "UPM credentials are stored locally on this Windows user profile. Captive portal login is not enabled in this phase."
         : "Secure local password storage is unavailable on this device.",
       settings.secureStorageAvailable ? "neutral" : "error"
     );
@@ -1411,16 +1411,16 @@ function readPerakamAutoLoginInput(): RendererPerakamAutoLoginInput {
 
 async function savePerakamAutoLoginSettings(): Promise<void> {
   setPerakamLoginControlsDisabled(true);
-  setPerakamLoginResult("Saving Perakam credentials.", "neutral");
+  setPerakamLoginResult("Saving UPM credentials used for Perakam login.", "neutral");
 
   try {
-    const result = await withTimeout(window.alilos.savePerakamAutoLoginSettings(readPerakamAutoLoginInput()), "Saving Perakam credentials timed out.");
+    const result = await withTimeout(window.alilos.savePerakamAutoLoginSettings(readPerakamAutoLoginInput()), "Saving UPM credentials timed out.");
     elements.perakamLoginPassword.value = "";
     perakamLoginFormDirty = false;
     renderPerakamAutoLogin(result, { forceFormSync: true });
-    setPerakamLoginResult(`Perakam credentials saved at ${new Date().toLocaleTimeString()}.`, "success");
+    setPerakamLoginResult(`UPM credentials saved at ${new Date().toLocaleTimeString()}.`, "success");
   } catch (error) {
-    setPerakamLoginResult(error instanceof Error ? error.message : "Unable to save Perakam credentials.", "error");
+    setPerakamLoginResult(error instanceof Error ? error.message : "Unable to save UPM credentials.", "error");
   } finally {
     setPerakamLoginControlsDisabled(false);
   }
@@ -1428,16 +1428,16 @@ async function savePerakamAutoLoginSettings(): Promise<void> {
 
 async function clearPerakamAutoLoginCredentials(): Promise<void> {
   setPerakamLoginControlsDisabled(true);
-  setPerakamLoginResult("Clearing Perakam credentials.", "neutral");
+  setPerakamLoginResult("Clearing saved UPM credentials.", "neutral");
 
   try {
-    const result = await withTimeout(window.alilos.clearPerakamAutoLoginCredentials(), "Clearing Perakam credentials timed out.");
+    const result = await withTimeout(window.alilos.clearPerakamAutoLoginCredentials(), "Clearing UPM credentials timed out.");
     elements.perakamLoginPassword.value = "";
     perakamLoginFormDirty = false;
     renderPerakamAutoLogin(result, { forceFormSync: true });
-    setPerakamLoginResult("Saved Perakam credentials cleared.", "success");
+    setPerakamLoginResult("Saved UPM credentials cleared.", "success");
   } catch (error) {
-    setPerakamLoginResult(error instanceof Error ? error.message : "Unable to clear Perakam credentials.", "error");
+    setPerakamLoginResult(error instanceof Error ? error.message : "Unable to clear UPM credentials.", "error");
   } finally {
     setPerakamLoginControlsDisabled(false);
   }

@@ -397,11 +397,11 @@
       <section class="panel" aria-labelledby="perakam-login-title">
         <div class="section-heading">
           <div>
-            <p class="eyebrow">Local credentials</p>
+            <p class="eyebrow">Shared UPM credentials</p>
             <h2 id="perakam-login-title">Perakam Auto-login</h2>
           </div>
         </div>
-        <p class="summary-text">Credentials are stored locally on this Windows user profile. Do not use this feature on shared or untrusted accounts.</p>
+        <p class="summary-text">UPM credentials used for Perakam login are stored locally on this Windows user profile. The same UPM credentials may be reused later for approved captive portal login, but captive portal login is not enabled in this phase.</p>
         <form id="perakam-login-form" class="settings-form">
           <label class="checkbox-field">
             <input id="perakam-login-enabled" type="checkbox" />
@@ -426,11 +426,11 @@
             </div>
           </dl>
           <div class="button-group form-actions">
-            <button id="save-perakam-login" type="button">Save credentials</button>
-            <button id="clear-perakam-login" class="secondary-button" type="button">Clear saved credentials</button>
+            <button id="save-perakam-login" type="button">Save UPM credentials</button>
+            <button id="clear-perakam-login" class="secondary-button" type="button">Clear saved UPM credentials</button>
             <button id="test-perakam-login" class="secondary-button" type="button">Test Perakam login</button>
           </div>
-          <p id="perakam-login-result" class="result-text" aria-live="polite">Password is never displayed after save.</p>
+          <p id="perakam-login-result" class="result-text" aria-live="polite">Password is never displayed after save. Captive portal login is detection-only in this phase.</p>
         </form>
       </section>
 

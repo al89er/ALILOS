@@ -317,22 +317,31 @@ app.whenReady().then(() => {
     config.perakam.autoLogin = {
       ...config.perakam.autoLogin,
       enabled: false,
+      useSharedCredential: true,
       username: "",
       encryptedPassword: "",
       lastUpdatedAt: new Date().toISOString(),
       lastLoginResult: "unknown",
-      lastLoginReason: "Saved Perakam credentials cleared."
+      lastLoginReason: "Saved UPM credentials cleared."
+    };
+    config.institutionCredential = {
+      ...config.institutionCredential,
+      username: "",
+      encryptedPassword: "",
+      lastUpdatedAt: new Date().toISOString()
     };
     configStore.save(config);
-    logger.info("Perakam saved credentials cleared.");
+    logger.info("Saved UPM credentials used for Perakam login cleared.");
     return buildPerakamAutoLoginSnapshot();
   });
   ipcMain.handle("perakam:test-auto-login", async (_event, settings: Partial<PerakamAutoLoginInput> | null) => {
     const transientPassword = typeof settings?.password === "string" && settings.password.length > 0 ? settings.password : undefined;
     if (typeof settings?.enabled === "boolean" || typeof settings?.username === "string") {
       config.perakam.autoLogin.enabled = Boolean(settings.enabled);
-      config.perakam.autoLogin.username = sanitizeCredentialText(settings.username ?? config.perakam.autoLogin.username);
-      config.perakam.autoLogin.lastUpdatedAt = new Date().toISOString();
+      config.perakam.autoLogin.useSharedCredential = true;
+      config.institutionCredential.username = sanitizeCredentialText(settings.username ?? config.institutionCredential.username);
+      config.institutionCredential.lastUpdatedAt = new Date().toISOString();
+      syncLegacyPerakamCredential();
       configStore.save(config);
     }
     await attemptPerakamAutoLogin(true, transientPassword);
@@ -494,13 +503,16 @@ function isHttpUrl(value: string): boolean {
 }
 
 function buildPerakamAutoLoginSnapshot(): PerakamAutoLoginSnapshot {
+  const credential = effectiveInstitutionCredential();
+
   return {
     enabled: config.perakam.autoLogin.enabled,
-    username: config.perakam.autoLogin.username,
-    hasSavedPassword: Boolean(config.perakam.autoLogin.encryptedPassword),
+    useSharedCredential: config.perakam.autoLogin.useSharedCredential,
+    username: credential.username,
+    hasSavedPassword: Boolean(credential.encryptedPassword),
     secureStorageAvailable: isSecureStorageAvailable(),
     inFlight: perakamLoginInFlight,
-    lastUpdatedAt: config.perakam.autoLogin.lastUpdatedAt,
+    lastUpdatedAt: credential.lastUpdatedAt,
     lastLoginAttemptAt: config.perakam.autoLogin.lastLoginAttemptAt,
     lastLoginResult: config.perakam.autoLogin.lastLoginResult,
     lastLoginReason: config.perakam.autoLogin.lastLoginReason
@@ -512,18 +524,22 @@ function savePerakamAutoLoginSettings(settings: Partial<PerakamAutoLoginInput> |
   const now = new Date().toISOString();
 
   config.perakam.autoLogin.enabled = Boolean(settings?.enabled);
-  config.perakam.autoLogin.username = sanitizeCredentialText(settings?.username ?? "");
-  config.perakam.autoLogin.lastUpdatedAt = now;
+  config.perakam.autoLogin.useSharedCredential = true;
+  config.institutionCredential.enabled = true;
+  config.institutionCredential.username = sanitizeCredentialText(settings?.username ?? "");
+  config.institutionCredential.lastUpdatedAt = now;
+  syncLegacyPerakamCredential();
 
   if (password) {
-    config.perakam.autoLogin.encryptedPassword = encryptSecret(password);
-  } else if (!config.perakam.autoLogin.encryptedPassword) {
+    config.institutionCredential.encryptedPassword = encryptSecret(password);
+    syncLegacyPerakamCredential();
+  } else if (!config.institutionCredential.encryptedPassword) {
     config.perakam.autoLogin.lastLoginResult = "unavailable";
-    config.perakam.autoLogin.lastLoginReason = "No saved Perakam password.";
+    config.perakam.autoLogin.lastLoginReason = "No saved UPM password.";
   }
 
   configStore.save(config);
-  logger.info(`Perakam auto-login settings saved. Enabled: ${config.perakam.autoLogin.enabled ? "yes" : "no"}.`);
+  logger.info(`UPM credentials used for Perakam login saved. Perakam auto-login enabled: ${config.perakam.autoLogin.enabled ? "yes" : "no"}.`);
 }
 
 async function maybeAttemptPerakamAutoLogin(source: string, status?: PerakamStatusSnapshot): Promise<void> {
@@ -560,7 +576,8 @@ function canAttemptPerakamAutoLogin(): boolean {
     return false;
   }
 
-  if (!config.perakam.autoLogin.username || !config.perakam.autoLogin.encryptedPassword) {
+  const credential = effectiveInstitutionCredential();
+  if (!credential.username || !credential.encryptedPassword) {
     return false;
   }
 
@@ -639,8 +656,9 @@ async function attemptPerakamAutoLogin(force: boolean, transientPassword?: strin
     });
   }
 
-  const username = sanitizeCredentialText(config.perakam.autoLogin.username);
-  const password = transientPassword ?? decryptSecret(config.perakam.autoLogin.encryptedPassword);
+  const credential = effectiveInstitutionCredential();
+  const username = sanitizeCredentialText(credential.username);
+  const password = transientPassword ?? decryptSecret(credential.encryptedPassword);
   if (!username || !password) {
     const pageState = browserController.getPerakamStatus(config.perakam.dashboardUrl).status;
     return updatePerakamLoginResult({
@@ -682,6 +700,37 @@ function updatePerakamLoginResult(result: PerakamAutoLoginAttemptResult): Peraka
   config.perakam.autoLogin.lastLoginReason = sanitizeLoginReason(result.reason);
   configStore.save(config);
   return result;
+}
+
+function effectiveInstitutionCredential(): AppConfig["institutionCredential"] {
+  if (config.perakam.autoLogin.useSharedCredential === false) {
+    return {
+      enabled: true,
+      username: config.perakam.autoLogin.username,
+      encryptedPassword: config.perakam.autoLogin.encryptedPassword,
+      lastUpdatedAt: config.perakam.autoLogin.lastUpdatedAt
+    };
+  }
+
+  if (!config.institutionCredential.username && config.perakam.autoLogin.username) {
+    config.institutionCredential.username = config.perakam.autoLogin.username;
+  }
+
+  if (!config.institutionCredential.encryptedPassword && config.perakam.autoLogin.encryptedPassword) {
+    config.institutionCredential.encryptedPassword = config.perakam.autoLogin.encryptedPassword;
+  }
+
+  if (!config.institutionCredential.lastUpdatedAt && config.perakam.autoLogin.lastUpdatedAt) {
+    config.institutionCredential.lastUpdatedAt = config.perakam.autoLogin.lastUpdatedAt;
+  }
+
+  return config.institutionCredential;
+}
+
+function syncLegacyPerakamCredential(): void {
+  config.perakam.autoLogin.username = config.institutionCredential.username;
+  config.perakam.autoLogin.encryptedPassword = config.institutionCredential.encryptedPassword;
+  config.perakam.autoLogin.lastUpdatedAt = config.institutionCredential.lastUpdatedAt;
 }
 
 function sanitizeCredentialText(value: unknown): string {

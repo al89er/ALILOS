@@ -153,6 +153,7 @@ export interface AppConfig {
     notificationsByDate: Record<string, ReminderDateState>;
   };
   telegram: TelegramSettings;
+  institutionCredential: InstitutionCredentialSettings;
   perakam: PerakamSettings;
   networkMonitor: NetworkMonitorSettings;
 }
@@ -180,6 +181,13 @@ export interface TelegramSettings {
 export interface PerakamSettings {
   dashboardUrl: string;
   autoLogin: PerakamAutoLoginSettings;
+}
+
+export interface InstitutionCredentialSettings {
+  enabled: boolean;
+  username: string;
+  encryptedPassword: string;
+  lastUpdatedAt: string | null;
 }
 
 export interface NetworkMonitorSettings {
@@ -230,6 +238,8 @@ export type PerakamLoginResultStatus = "success" | "failed" | "unavailable" | "u
 
 export interface PerakamAutoLoginSettings {
   enabled: boolean;
+  useSharedCredential: boolean;
+  // Legacy compatibility fields. New credential writes should use institutionCredential.
   username: string;
   encryptedPassword: string;
   lastUpdatedAt: string | null;
@@ -240,6 +250,7 @@ export interface PerakamAutoLoginSettings {
 
 export interface PerakamAutoLoginSnapshot {
   enabled: boolean;
+  useSharedCredential: boolean;
   username: string;
   hasSavedPassword: boolean;
   secureStorageAvailable: boolean;
