@@ -146,7 +146,7 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 
 - Workplace Perakam smoke test is pending.
 - Scheduled dry-run testing is pending.
-- Windows packaging is pending.
+- Packaged Windows smoke testing is pending.
 - Startup/tray reliability testing is pending.
 
 ### Workplace Smoke-Test Checklist
@@ -171,14 +171,23 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 
 ### Packaging / Startup Checklist
 
-- Run `npm run package:win` for the minimal Windows unpacked directory package proof.
-- Verify tray/minimize behavior.
-- Add a real tray icon; the current tray uses an empty native image.
-- Decide whether launch at login is in scope.
-- Test behavior during a locked Windows session.
-- Test sleep/wake behavior.
-- Verify Playwright browser binaries/executable path work in the packaged app; this remains the main packaging concern.
-- Confirm log location and any sanitized log/export flow.
+- Run `npm run package:win` and verify `release/win-unpacked` exists.
+- Launch `release/win-unpacked/A.L.I.L.O.S.exe`.
+- Confirm the app opens, the tray icon/menu works, close hides to tray, and Quit exits.
+- Confirm config and logs use packaged Electron `userData`, not repository folders.
+- Confirm existing local dev secrets are not bundled, and `.env.local` is not packaged.
+- Confirm worker services start.
+- Confirm scheduler loads or generates today's times.
+- Confirm Telegram polling behavior is unchanged.
+- Confirm the network monitor starts.
+- Confirm Supabase heartbeat remains disabled by default.
+- Confirm Playwright browser launch works from the packaged app.
+- If browser launch fails, capture sanitized error/log text only.
+- Do not broaden selectors or change Perakam detection during the packaging test.
+- Keep mode as `dry-run` or `manual-confirm`.
+- Do not perform an unattended real scheduled action.
+- Do not store or send sensitive data.
+- Known remaining concerns: default Electron icon, Playwright browser binary handling, launch-at-login not implemented, installer not implemented, and the high-severity npm advisory requires separate review rather than automatic fix.
 
 ## Packaging / Startup Audit
 

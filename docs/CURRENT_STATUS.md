@@ -31,8 +31,8 @@
 - `BackgroundWorker` is still a heartbeat scaffold. The real implemented behavior is in specialized services such as scheduler, reminder, browser controller, confirmation service, and network monitor.
 - Post-click verification is heuristic/read-only. It can mark success, failure, or unknown and asks for visual confirmation when server-side acceptance cannot be confirmed.
 - Perakam auto-login exists for Perakam only. Captive portal login remains detection-only.
-- Packaging/distribution is not present. There is no `electron-builder` config in the inspected repo.
-- P1 added minimal `electron-builder` metadata and `npm run package:win` for a Windows unpacked directory package proof.
+- P1 added minimal `electron-builder` metadata and `npm run package:win` for a Windows unpacked directory package proof at `release/win-unpacked`.
+- P2 packaged-app smoke testing is documented but still pending on the intended Windows environment.
 - Automated coverage is limited to the Perakam sanitized fixture harness. Runtime behavior still relies on TypeScript checks/build and manual smoke tests.
 - Existing Phase 4D design docs are stale relative to current implementation because guarded execution and auto-login have since been implemented.
 - Settings can edit selected operational values only. Generated schedules, completion records, automation audit events, raw logs, target mappings, credentials, cookies/session data, screenshots, raw HTML, and personal identifiers remain outside editable settings.
@@ -69,12 +69,25 @@ The active implementation focus appears to be hardening the guarded manual-confi
 
 - Workplace Perakam smoke test is pending.
 - Scheduled dry-run testing is pending.
-- Windows packaging is pending.
+- Packaged Windows smoke testing is pending.
 - Startup/tray reliability testing is pending.
 
 ### Readiness Gate
 
 - Do not package for unattended daily use until workplace detection, scheduled dry-run, tray/startup behavior, sleep/wake behavior, and sanitized logging have been tested on the intended Windows environment.
+
+### Packaged Windows Smoke-Test Checklist
+
+- Run `npm run package:win` and verify `release/win-unpacked` exists.
+- Launch `release/win-unpacked/A.L.I.L.O.S.exe`.
+- Confirm the app opens, the tray icon/menu works, close hides to tray, and Quit exits.
+- Confirm config and logs use packaged Electron `userData`, not repository folders.
+- Confirm local dev secrets are not bundled, and `.env.local` is not packaged.
+- Confirm worker services start, today's schedule loads or generates, Telegram polling behavior is unchanged, the network monitor starts, and Supabase heartbeat remains disabled by default.
+- Confirm Playwright browser launch works from the packaged app. If it fails, capture sanitized error/log text only.
+- Do not broaden Perakam selectors or detection behavior during packaging smoke testing.
+- Keep execution mode as `dry-run` or `manual-confirm`; do not perform an unattended real scheduled action.
+- Do not store or send sensitive data during the test.
 
 ## Known Issues And Gaps
 
@@ -82,7 +95,8 @@ The active implementation focus appears to be hardening the guarded manual-confi
 - No signed installer, auto-update, or launch-at-login workflow exists.
 - Tray icon is currently empty.
 - Launch-at-login is not implemented.
-- Playwright browser binaries/executable handling for a packaged Windows app is not decided yet.
+- Playwright browser binaries/executable handling for a packaged Windows app remains the main package smoke-test concern.
+- The high-severity npm advisory reported during packaging setup requires separate review, not an automatic fix during packaging work.
 - `BackgroundWorker` status text may understate implemented services because it says the worker scaffold performs no configured-site clicking, while the separate confirmation/browser services do implement guarded clicking.
 - Telegram bot token/chat ID can be stored in local config or supplied by `.env.local`; both are sensitive and must remain untracked/unlogged.
 - Perakam selectors and page-text heuristics may drift if the site changes.

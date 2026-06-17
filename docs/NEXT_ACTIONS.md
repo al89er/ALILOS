@@ -26,7 +26,7 @@ Desktop operational blockers:
 
 - Workplace Perakam smoke test pending.
 - Scheduled dry-run pending.
-- Windows packaging pending.
+- Packaged Windows smoke testing pending.
 - Startup/tray reliability pending.
 
 Before packaging/startup work:
@@ -112,14 +112,23 @@ Recommended first packaging/startup step:
 
 ### Packaging / Startup Checklist
 
-- Run `npm run package:win`.
-- Verify tray/minimize behavior.
-- Add a real tray icon.
-- Decide whether launch at login is in scope.
-- Test behavior during a locked Windows session.
-- Test sleep/wake behavior.
-- Verify Playwright browser binaries/executable path work in the packaged app; this remains the main packaging concern.
-- Confirm log location and any sanitized log/export flow.
+- Run `npm run package:win` and verify `release/win-unpacked` exists.
+- Launch `release/win-unpacked/A.L.I.L.O.S.exe`.
+- Confirm the app opens, the tray icon/menu works, close hides to tray, and Quit exits.
+- Confirm config and logs use packaged Electron `userData`, not repository folders.
+- Confirm local dev secrets are not bundled, and `.env.local` is not packaged.
+- Confirm worker services start.
+- Confirm scheduler loads or generates today's times.
+- Confirm Telegram polling behavior is unchanged.
+- Confirm the network monitor starts.
+- Confirm Supabase heartbeat remains disabled by default.
+- Confirm Playwright browser launch works from the packaged app.
+- If browser launch fails, capture sanitized error/log text only.
+- Do not broaden selectors or change Perakam detection during the packaging test.
+- Keep mode as `dry-run` or `manual-confirm`.
+- Do not perform an unattended real scheduled action.
+- Do not store or send sensitive data.
+- Known remaining concerns: default Electron icon, Playwright browser binary handling, launch-at-login not implemented, installer not implemented, and the high-severity npm advisory requires separate review rather than automatic fix.
 
 ## Supabase / Webapp Roadmap
 
