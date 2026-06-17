@@ -18,9 +18,9 @@
 - Manual-confirm web-action flow with readiness checks, confirmation creation/accept/cancel/expiry, dry-run safety checks, guarded one-shot execution, post-click verification, completion tracking, and manual visual verification.
 - Manual test-click pipeline for non-primary `a56`/`a57` targets with diagnostics, confirmation, dry-run, and one-shot execution.
 - Notify-only network and Perakam reachability monitoring, including captive portal detection/suspected state, retained sanitized evidence, notifications, and portal URL open/copy actions.
-- Phase 6A automation telemetry foundation with execution modes, automatic simulated dry-run monitoring in `dry-run` mode, persisted sanitized audit events, dashboard visibility, and disabled-by-default heartbeat payload support.
+- Phase 6A automation telemetry foundation with execution modes, automatic simulated dry-run monitoring in `dry-run` mode, persisted sanitized audit events, dashboard visibility, and disabled-by-default Supabase heartbeat skeleton support.
 - UI organization pass completed: existing controls were moved into tab/page sections without changing scheduler, target detection, Telegram, network, confirmation, completion, or config persistence behavior.
-- Phase UI-2 Settings editor completed: safe app settings can be viewed/edited from the Settings tab through typed IPC, with heartbeat endpoint and Telegram credentials visually masked and blank secret fields preserving existing local values.
+- Phase UI-2 Settings editor completed: safe app settings can be viewed/edited from the Settings tab through typed IPC, with Supabase heartbeat URL and Telegram credentials visually masked and blank secret fields preserving existing local values.
 - Phase UI-3 / Config-1 Telegram bootstrap completed: `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` in `.env.local` can supply missing Telegram secrets at runtime without exposing or auto-persisting them.
 - Phase TEST-1 fixture harness completed: `npm test` validates sanitized Perakam fixture structure/redaction assumptions without live Perakam access.
 - Project identity guard files/scripts are present in the working tree.
@@ -35,8 +35,8 @@
 - Automated coverage is limited to the Perakam sanitized fixture harness. Runtime behavior still relies on TypeScript checks/build and manual smoke tests.
 - Existing Phase 4D design docs are stale relative to current implementation because guarded execution and auto-login have since been implemented.
 - Settings can edit selected operational values only. Generated schedules, completion records, automation audit events, raw logs, target mappings, credentials, cookies/session data, screenshots, raw HTML, and personal identifiers remain outside editable settings.
-- Heartbeat has a Settings-tab endpoint editor, but the backend/phone-webapp receiver is still not implemented in this repository.
-- Supabase is not a runtime backend yet. No schema migrations, Supabase writes, schedule backup ledger, completion backup ledger, hosted webapp/PWA, or remote command/control queue are implemented.
+- Supabase heartbeat has a Settings-tab project URL editor and disabled-by-default sender skeleton, but the phone-webapp receiver/dashboard is still not implemented in this repository.
+- Supabase is not required for local scheduled operation. The repository has the S2A heartbeat schema migration and S2B sender skeleton only; schedule backup ledger, completion backup ledger, hosted webapp/PWA, and remote command/control queue are not implemented.
 - The old Tampermonkey script and old webapp remain fallback/backup references only.
 - Live Perakam target-detection smoke testing is paused until intended workplace network access is available. The latest target-detection bugfix is assumed acceptable for now and remains pending workplace manual validation.
 
@@ -80,12 +80,12 @@ The active implementation focus appears to be hardening the guarded manual-confi
 - Perakam auto-login shares the `institutionCredential` config fields and keeps legacy Perakam credential fields synchronized.
 - Execution mode is stored under `automation.executionMode`; default is `manual-confirm`.
 - `dry-run` mode records simulated action results and never calls the real target click method.
-- Heartbeat payloads include sanitized app/network/Perakam/schedule/confirmation state and exclude credentials, Telegram identifiers, personal identifiers, raw HTML, screenshots, cookies, and full sensitive URLs.
+- Supabase heartbeat payloads include sanitized app/worker/execution/network/Perakam/Telegram status metadata and exclude schedules, completion records, credentials, Telegram identifiers, personal identifiers, raw HTML, screenshots, cookies, and full sensitive URLs.
 - Future Supabase payloads must continue excluding configured-site username/password, cookies/session data, raw page HTML, screenshots, staff ID/name, Telegram token/chat ID, and full tokenized URLs or opaque query strings.
 - Generated schedules and completion records should eventually be backed up to Supabase as a durable ledger, after schema and identity planning. They remain local-only today.
 - No remote command/control is implemented. Future command queue/control work is S5 and requires explicit approval before implementation.
 - Renderer tabs are UI-only; all existing DOM IDs and preload calls remain the behavior boundary.
-- The Settings tab can edit worker enable/interval, automation execution mode/interval/dry-run preparation, scheduler windows/grace/reminders, Perakam dashboard URL, and heartbeat enable/endpoint/interval. Heartbeat endpoint input is blank on load and only replaces the stored URL when a new URL is entered.
+- The Settings tab can edit worker enable/interval, automation execution mode/interval/dry-run preparation, scheduler windows/grace/reminders, Perakam dashboard URL, and Supabase heartbeat enable/project URL/interval. Supabase URL input is blank on load and only replaces the stored URL when a new URL is entered.
 - Telegram token/chat fields are password inputs, blank on load, and preserve existing configured or `.env.local` effective values unless replacements are typed. The renderer receives only configured/env-local/missing status, not actual token/chat values. The command prefix is editable.
 
 ## Testing And Build Status

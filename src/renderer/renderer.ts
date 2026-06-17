@@ -572,7 +572,7 @@ function renderSettingsSummaries(snapshot: RendererDashboardSnapshot): void {
   elements.settingsTelegramSummary.textContent = currentTelegramSettings
     ? `${currentTelegramSettings.enabled ? "Enabled" : "Disabled"}; bot token ${telegramSecretStatusLabel(currentTelegramSettings.secretStatus.botToken)}; chat ${telegramSecretStatusLabel(currentTelegramSettings.secretStatus.chatId)}; prefix ${commandPrefixLabel(currentTelegramSettings.commandPrefix)}.`
     : `${snapshot.telegram.enabled ? "Enabled" : "Disabled"}; settings are loaded through the secure preload bridge.`;
-  elements.settingsHeartbeatSummary.textContent = `${(settings?.heartbeat.enabled ?? snapshot.heartbeat.enabled) ? "Enabled" : "Disabled"}; ${(settings?.heartbeat.configured ?? snapshot.heartbeat.configured) ? `endpoint ${(settings?.heartbeat.endpointHost ?? snapshot.heartbeat.endpointHost) ?? "configured"}` : "no endpoint configured"}.`;
+  elements.settingsHeartbeatSummary.textContent = `${(settings?.heartbeat.enabled ?? snapshot.heartbeat.enabled) ? "Enabled" : "Disabled"}; ${(settings?.heartbeat.configured ?? snapshot.heartbeat.configured) ? `Supabase ${(settings?.heartbeat.endpointHost ?? snapshot.heartbeat.endpointHost) ?? "configured"}` : "Supabase URL/key not configured"}.`;
   elements.settingsConfigPath.textContent = snapshot.configPath;
   elements.settingsLogPath.textContent = snapshot.logPath;
 }
@@ -596,7 +596,7 @@ function renderAutomationTelemetry(snapshot: RendererDashboardSnapshot): void {
       ? "Monitoring and notifications only."
       : "Real clicks require confirmation.";
 
-  elements.heartbeatStatus.textContent = heartbeat.enabled ? heartbeat.configured ? "Enabled" : "Needs endpoint" : "Disabled";
+  elements.heartbeatStatus.textContent = heartbeat.enabled ? heartbeat.configured ? "Enabled" : "Needs Supabase config" : "Disabled";
   elements.heartbeatNote.textContent = heartbeat.lastError
     ?? (heartbeat.lastSuccessAt ? `Last sent ${new Date(heartbeat.lastSuccessAt).toLocaleTimeString()}` : "No heartbeat sent.");
 
@@ -611,7 +611,7 @@ function renderAutomationTelemetry(snapshot: RendererDashboardSnapshot): void {
     : "Dry-run mode records due actions without submitting a real configured action.";
 
   elements.heartbeatEndpoint.textContent = heartbeat.enabled
-    ? heartbeat.endpointHost ?? "Configured endpoint is invalid or missing."
+    ? heartbeat.endpointHost ?? "Supabase URL/key is invalid or missing."
     : "Disabled.";
   elements.heartbeatLastSuccess.textContent = formatOptionalTime(heartbeat.lastSuccessAt);
   elements.heartbeatError.textContent = heartbeat.lastError ?? "--";
@@ -1871,15 +1871,15 @@ function renderAppSettings(settings: RendererAppSettingsSnapshot, options: { for
     elements.settingsDashboardUrl.value = settings.perakam.dashboardUrl;
     elements.settingsHeartbeatEnabled.checked = settings.heartbeat.enabled;
     elements.settingsHeartbeatEndpoint.value = "";
-    elements.settingsHeartbeatEndpoint.placeholder = settings.heartbeat.configured
+  elements.settingsHeartbeatEndpoint.placeholder = settings.heartbeat.configured
       ? "Configured - leave blank to keep"
       : "Not configured";
     elements.settingsHeartbeatInterval.value = String(settings.heartbeat.intervalSeconds);
   }
 
   elements.settingsHeartbeatEndpointState.textContent = settings.heartbeat.configured
-    ? `Configured for ${settings.heartbeat.endpointHost ?? "backend endpoint"}; leave blank to keep the current URL.`
-    : "No backend endpoint configured.";
+    ? `Configured for ${settings.heartbeat.endpointHost ?? "Supabase project"} with key ${telegramSecretStatusLabel(settings.heartbeat.keyStatus)}; leave blank to keep the current URL.`
+    : `Supabase URL/key not configured; key ${telegramSecretStatusLabel(settings.heartbeat.keyStatus)}.`;
 
   if (latestSnapshot) {
     renderSettingsSummaries(latestSnapshot);

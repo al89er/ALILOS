@@ -43,7 +43,7 @@ These are local safety checks. They are not runtime app checks.
 | `src/worker/browser-controller.ts` | Playwright browser, Perakam detection, DOM control detection/clicks, verification. |
 | `src/worker/automation-monitor.ts` | Phase 6A due-action monitoring and simulated dry-run telemetry. |
 | `src/worker/automation-audit.ts` | Bounded sanitized automation audit event persistence. |
-| `src/worker/heartbeat-service.ts` | Disabled-by-default sanitized heartbeat sender/status. |
+| `src/worker/heartbeat-service.ts` | Disabled-by-default sanitized Supabase heartbeat sender/status. |
 | `src/worker/confirmation-service.ts` | Manual-confirm action state machine and safety checks. |
 | `src/worker/test-click-service.ts` | Guarded non-primary test-click pipeline. |
 | `src/worker/network-monitor.ts` | Internet, Perakam reachability, captive portal monitoring. |
@@ -61,7 +61,7 @@ Runtime config is stored at:
 <Electron userData>/config.json
 ```
 
-The exact path is shown in dashboard snapshots as `configPath`. Config includes schedules, skips, completions, Telegram settings, UPM credential metadata/encrypted password, Perakam settings, network settings, automation execution mode/audit events, and heartbeat settings.
+The exact path is shown in dashboard snapshots as `configPath`. Config includes schedules, skips, completions, Telegram settings, UPM credential metadata/encrypted password, Perakam settings, network settings, automation execution mode/audit events, and disabled-by-default Supabase heartbeat settings.
 
 Telegram secret precedence is:
 
@@ -70,6 +70,8 @@ Telegram secret precedence is:
 3. missing/not configured
 
 `.env.local` values are runtime bootstrap defaults only and are not written into `config.json` automatically.
+
+Supabase heartbeat uses the same bootstrap rule for missing `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` / `SUPABASE_ANON_KEY`; the key is used only in the main/worker process and is not sent to the renderer.
 
 Do not commit local config files. Do not paste private config values into docs or chat.
 
@@ -98,8 +100,8 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 
 ## Settings Editor Safety
 
-- The Settings tab edits only selected operational settings: worker enable/interval, automation execution mode/interval/dry-run browser preparation, scheduler windows/grace/reminders, Perakam dashboard URL, heartbeat enable/endpoint/interval.
-- Heartbeat endpoint is displayed as configured/not configured plus host only. The URL input is blank on load; saving a blank endpoint preserves the existing local endpoint.
+- The Settings tab edits only selected operational settings: worker enable/interval, automation execution mode/interval/dry-run browser preparation, scheduler windows/grace/reminders, Perakam dashboard URL, and Supabase heartbeat enable/project URL/interval.
+- Supabase heartbeat is displayed as configured/not configured plus host and key source only. The URL input is blank on load; saving a blank URL preserves the existing local Supabase URL. The publishable key is configured through local config or `.env.local`, not exposed in the renderer.
 - Telegram token and chat fields are password inputs and are blank on load. The renderer receives only configured/env-local/missing status, never the actual token or chat ID. Saving blank fields preserves existing local or `.env.local` effective values; typing a new value saves it into local app config.
 - The Settings tab does not edit generated schedules, completion records, automation audit events, target mappings, UPM credentials, cookies/session data, screenshots, raw HTML, staff identifiers, or raw log files.
 - Main-process settings normalization owns persistence and validation. Renderer validation is only a first-pass usability layer.
@@ -143,7 +145,7 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 ## Testing Heartbeat Safely
 
 - Heartbeat is disabled by default.
-- Configure endpoint URLs only through local config or the Settings tab. The renderer shows only configured state and endpoint host after loading.
+- Configure the Supabase heartbeat URL only through local config or the Settings tab. The renderer shows only configured state, project host, and key source after loading.
 - Heartbeat payloads include app status, worker state, execution mode, network state, captive portal state, Perakam status, schedule times, confirmation state, last dry-run state, last real action state, sanitized error summary, and timestamp.
 - Heartbeat payloads must not include credentials, Telegram token, Telegram chat ID, staff name, staff number, personal identifiers, raw HTML, screenshots, cookies, session data, or full sensitive URLs.
 

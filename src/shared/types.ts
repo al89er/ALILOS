@@ -218,7 +218,10 @@ export interface AutomationSnapshot {
 
 export interface HeartbeatSettings {
   enabled: boolean;
-  endpointUrl: string;
+  deviceId: string;
+  deviceLabel: string;
+  supabaseUrl: string;
+  publishableKey: string;
   intervalSeconds: number;
 }
 
@@ -226,35 +229,12 @@ export interface HeartbeatPayload {
   appStatus: string;
   workerState: WorkerState;
   executionMode: ExecutionMode;
-  network: {
-    connectivityState: NetworkConnectivityState;
-    perakamReachabilityState: PerakamReachabilityState;
-    captivePortalState: CaptivePortalState;
-  };
-  perakam: {
-    status: PerakamPageStatus;
-    clockInAvailable: AttendanceControlAvailability;
-    clockOutAvailable: AttendanceControlAvailability;
-  };
-  schedule: {
-    today: string;
-    clockInTime: string;
-    clockOutTime: string;
-    nextAction: ScheduleAction | null;
-    nextActionTime: string | null;
-  };
-  confirmation: {
-    clockInState: ReadinessState;
-    clockOutState: ReadinessState;
-    hasPendingConfirmation: boolean;
-  };
-  automation: {
-    lastDryRunStatus: AutomationDryRunRecord["status"] | null;
-    lastDryRunAction: AttendanceActionType | null;
-    lastRealActionStatus: AttendanceExecutionStatus | null;
-  };
-  lastSanitizedErrorSummary: string | null;
-  timestamp: string;
+  networkStatus: string;
+  perakamPageStatus: string;
+  telegramStatus: string;
+  lastSeenAt: string;
+  statusText: string | null;
+  lastErrorText: string | null;
 }
 
 export interface HeartbeatSnapshot {
@@ -263,6 +243,7 @@ export interface HeartbeatSnapshot {
   active: boolean;
   intervalSeconds: number;
   endpointHost: string | null;
+  keyStatus: TelegramSecretStatus;
   lastAttemptAt: string | null;
   lastSuccessAt: string | null;
   lastError: string | null;
@@ -346,6 +327,7 @@ export interface AppSettingsSnapshot {
     enabled: boolean;
     configured: boolean;
     endpointHost: string | null;
+    keyStatus: TelegramSecretStatus;
     intervalSeconds: number;
   };
 }

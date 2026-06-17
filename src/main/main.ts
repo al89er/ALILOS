@@ -15,7 +15,7 @@ import { AppLogger } from "./logger";
 import { decryptSecret, encryptSecret, isSecureStorageAvailable } from "./secret-store";
 import { TelegramService } from "./telegram-service";
 import { createAppTray } from "./tray";
-import type { AppConfig, AppSettingsInput, AppSettingsSnapshot, AttendanceActionType, AttendanceCompletionRecord, AttendanceExecutionResult, AttendancePlaceholder, DashboardSnapshot, ExecutionMode, HeartbeatPayload, NetworkMonitorSettings, PerakamAutoLoginAttemptResult, PerakamAutoLoginInput, PerakamAutoLoginSnapshot, PerakamPageStatus, PerakamStatusSnapshot, ReminderSettings, ScheduleActionSnapshot, ScheduleSnapshot, TelegramSecretStatus, TelegramSettings, TelegramSettingsInput, TelegramSettingsSnapshot, TestClickTargetId, TimeWindow } from "../shared/types";
+import type { AppConfig, AppSettingsInput, AppSettingsSnapshot, AttendanceActionType, AttendanceCompletionRecord, AttendanceExecutionResult, AttendancePlaceholder, DashboardSnapshot, ExecutionMode, HeartbeatPayload, NetworkMonitorSettings, PerakamAutoLoginAttemptResult, PerakamAutoLoginInput, PerakamAutoLoginSnapshot, PerakamPageStatus, PerakamStatusSnapshot, ReminderSettings, ScheduleSnapshot, TelegramSecretStatus, TelegramSettings, TelegramSettingsInput, TelegramSettingsSnapshot, TestClickTargetId, TimeWindow } from "../shared/types";
 
 let mainWindow: BrowserWindow | null = null;
 let isQuitting = false;
@@ -202,7 +202,7 @@ app.whenReady().then(() => {
       void broadcastSnapshot();
     }
   });
-  heartbeatService = new HeartbeatService(config, logger, buildHeartbeatPayload);
+  heartbeatService = new HeartbeatService(config, logger, buildHeartbeatPayload, configStore.supabaseEnvLocal, app.getVersion());
   automationMonitor = new AutomationMonitor(
     config,
     configStore,
@@ -298,9 +298,9 @@ app.whenReady().then(() => {
     config.heartbeat = {
       ...config.heartbeat,
       enabled: next.heartbeat.enabled,
-      endpointUrl: typeof next.heartbeat.endpointUrl === "string" && next.heartbeat.endpointUrl.trim()
+      supabaseUrl: typeof next.heartbeat.endpointUrl === "string" && next.heartbeat.endpointUrl.trim()
         ? next.heartbeat.endpointUrl.trim()
-        : config.heartbeat.endpointUrl,
+        : config.heartbeat.supabaseUrl,
       intervalSeconds: next.heartbeat.intervalSeconds
     };
 
@@ -645,8 +645,13 @@ function buildAppSettingsSnapshot(): AppSettingsSnapshot {
     },
     heartbeat: {
       enabled: config.heartbeat.enabled,
-      configured: Boolean(parseHttpUrl(config.heartbeat.endpointUrl)),
-      endpointHost: endpointHost(config.heartbeat.endpointUrl),
+      configured: Boolean(effectiveSupabaseUrl()) && Boolean(effectiveSupabasePublishableKey()),
+      endpointHost: effectiveSupabaseUrl()?.host ?? null,
+      keyStatus: config.heartbeat.publishableKey.trim()
+        ? "configured"
+        : configStore.supabaseEnvLocal.publishableKey.trim()
+          ? "env-local"
+          : "missing",
       intervalSeconds: config.heartbeat.intervalSeconds
     }
   };
@@ -656,7 +661,7 @@ function normalizeAppSettings(settings: Partial<AppSettingsInput> | null): AppSe
   const clockInWindow = normalizeTimeWindow(settings?.scheduler?.clockInWindow, config.scheduler.clockInWindow, "Morning action window");
   const clockOutWindow = normalizeTimeWindow(settings?.scheduler?.clockOutWindow, config.scheduler.clockOutWindow, "Evening action window");
   const dashboardUrl = normalizeRequiredHttpUrl(settings?.perakam?.dashboardUrl ?? config.perakam.dashboardUrl, "Perakam dashboard URL");
-  const heartbeatEndpoint = normalizeOptionalHttpUrl(settings?.heartbeat?.endpointUrl, "Heartbeat endpoint URL");
+  const heartbeatEndpoint = normalizeOptionalSupabaseUrl(settings?.heartbeat?.endpointUrl, "Supabase project URL");
 
   return {
     worker: {
@@ -751,17 +756,20 @@ function normalizeRequiredHttpUrl(value: unknown, label: string): string {
   return parsed.toString();
 }
 
-function normalizeOptionalHttpUrl(value: unknown, label: string): string | null {
+function normalizeOptionalSupabaseUrl(value: unknown, label: string): string | null {
   const raw = String(value ?? "").trim();
   if (!raw) {
     return null;
   }
 
   const parsed = parseHttpUrl(raw);
-  if (!parsed) {
-    throw new Error(`${label} must be blank or a valid http/https URL.`);
+  if (!parsed || parsed.protocol !== "https:") {
+    throw new Error(`${label} must be blank or a valid https URL.`);
   }
 
+  parsed.pathname = "/";
+  parsed.search = "";
+  parsed.hash = "";
   return parsed.toString();
 }
 
@@ -774,13 +782,45 @@ function parseHttpUrl(value: string): URL | null {
   }
 }
 
-function endpointHost(value: string): string | null {
-  return parseHttpUrl(value)?.host ?? null;
-}
-
 function normalizeCommandPrefix(prefix: unknown): string {
   const normalized = String(prefix ?? "").trim().replace(/^\/+/, "").toLowerCase();
   return normalized || "alilos";
+}
+
+function effectiveSupabaseUrl(): URL | null {
+  const raw = config.heartbeat.supabaseUrl.trim() || configStore.supabaseEnvLocal.supabaseUrl.trim();
+  const parsed = parseHttpUrl(raw);
+  if (!parsed || parsed.protocol !== "https:") {
+    return null;
+  }
+
+  parsed.pathname = "/";
+  parsed.search = "";
+  parsed.hash = "";
+  return parsed;
+}
+
+function effectiveSupabasePublishableKey(): string {
+  const key = config.heartbeat.publishableKey.trim() || configStore.supabaseEnvLocal.publishableKey.trim();
+  return looksLikeSecretKey(key) ? "" : key;
+}
+
+function looksLikeSecretKey(value: string): boolean {
+  if (value.startsWith("sb_secret_")) {
+    return true;
+  }
+
+  const parts = value.split(".");
+  if (parts.length < 2) {
+    return false;
+  }
+
+  try {
+    const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8")) as { role?: unknown };
+    return payload.role === "service_role";
+  } catch {
+    return false;
+  }
 }
 
 function isHttpUrl(value: string): boolean {
@@ -821,61 +861,47 @@ function appStatusText(): string {
 }
 
 function buildHeartbeatPayload(): HeartbeatPayload {
-  const schedule = scheduler.getSnapshot();
   const workerSnapshot = worker.snapshot();
   const network = networkMonitor.snapshot();
   const perakam = browserController.getPerakamStatus(config.perakam.dashboardUrl);
-  const confirmations = confirmationService.snapshot();
-  const latestDryRun = automationMonitor.snapshot().latestDryRun;
-  const latestExecution = confirmationService.latestExecution();
-  const nextAction = nextRelevantAction(schedule.actions);
+  const telegram = telegramService.snapshot();
+  const lastSeenAt = new Date().toISOString();
 
   return {
-    appStatus: appStatusText(),
+    appStatus: sanitizeHeartbeatText(appStatusText(), 80) ?? "unknown",
     workerState: workerSnapshot.state,
     executionMode: config.automation.executionMode,
-    network: {
-      connectivityState: network.connectivityState,
-      perakamReachabilityState: network.perakamReachabilityState,
-      captivePortalState: network.captivePortal.state
-    },
-    perakam: {
-      status: perakam.status,
-      clockInAvailable: perakam.clockInAvailable,
-      clockOutAvailable: perakam.clockOutAvailable
-    },
-    schedule: {
-      today: schedule.today,
-      clockInTime: schedule.schedule.clockInTime,
-      clockOutTime: schedule.schedule.clockOutTime,
-      nextAction: nextAction?.action ?? null,
-      nextActionTime: nextAction?.time ?? null
-    },
-    confirmation: {
-      clockInState: confirmations.clockIn.state,
-      clockOutState: confirmations.clockOut.state,
-      hasPendingConfirmation: confirmations.clockIn.activeConfirmation?.status === "pending"
-        || confirmations.clockOut.activeConfirmation?.status === "pending"
-    },
-    automation: {
-      lastDryRunStatus: latestDryRun?.status ?? null,
-      lastDryRunAction: latestDryRun?.action ?? null,
-      lastRealActionStatus: latestExecution?.status ?? null
-    },
-    lastSanitizedErrorSummary: lastSanitizedErrorSummary(network.sanitizedError, perakam.lastError, browserController.status().lastError, telegramService.snapshot().lastError, reminderService.snapshot().lastError),
-    timestamp: new Date().toISOString()
+    networkStatus: sanitizeHeartbeatText(`connectivity=${network.connectivityState}; perakam=${network.perakamReachabilityState}; captivePortal=${network.captivePortal.state}`, 120) ?? "unknown",
+    perakamPageStatus: sanitizeHeartbeatText(`status=${perakam.status}; clockIn=${perakam.clockInAvailable}; clockOut=${perakam.clockOutAvailable}`, 120) ?? "unknown",
+    telegramStatus: sanitizeHeartbeatText(`enabled=${telegram.enabled}; running=${telegram.running}`, 120) ?? "unknown",
+    lastSeenAt,
+    statusText: sanitizeHeartbeatText(`worker=${workerSnapshot.state}; executionMode=${config.automation.executionMode}`, 500),
+    lastErrorText: lastSanitizedErrorSummary(network.sanitizedError, perakam.lastError, browserController.status().lastError, telegram.lastError, reminderService.snapshot().lastError)
   };
-}
-
-function nextRelevantAction(actions: ScheduleActionSnapshot[]): ScheduleActionSnapshot | null {
-  return actions.find((action) => action.status === "due-now" || action.status === "within-grace-period")
-    ?? actions.find((action) => action.status === "upcoming")
-    ?? null;
 }
 
 function lastSanitizedErrorSummary(...messages: Array<string | null>): string | null {
   const message = messages.find((item) => item && item.trim());
-  return message ? sanitizeLoginReason(message) : null;
+  return message ? sanitizeHeartbeatText(message, 500) : null;
+}
+
+function sanitizeHeartbeatText(value: string, maxLength: number): string | null {
+  const sanitized = value
+    .replace(/https?:\/\/[^\s]+/gi, (match) => {
+      try {
+        const url = new URL(match);
+        return `${url.protocol}//${url.host}/[redacted]`;
+      } catch {
+        return "[redacted-url]";
+      }
+    })
+    .replace(/[?#][^\s]*/g, "?[redacted]")
+    .replace(/bot[0-9]+:[A-Za-z0-9_-]+/g, "bot[redacted]")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLength);
+
+  return sanitized || null;
 }
 
 function recordAttendanceExecutionAudit(result: AttendanceExecutionResult): void {

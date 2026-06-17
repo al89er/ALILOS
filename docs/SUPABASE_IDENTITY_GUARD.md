@@ -6,7 +6,7 @@ The guard exists to prevent accidental migrations, database pushes, function dep
 
 ## Planned Role
 
-Supabase is planned as a shared backend for a future monitoring/control plane. It is not a runtime dependency of the desktop agent yet. This repository currently has only the S2A status-only heartbeat schema migration; it still has no Supabase runtime writes, hosted webapp/PWA, or remote command/control queue.
+Supabase is planned as a shared backend for a future monitoring/control plane. It is not required for scheduled local desktop operation. This repository currently has the S2A status-only heartbeat schema migration and an S2B disabled-by-default heartbeat sender skeleton; it still has no hosted webapp/PWA, schedule/completion backup, or remote command/control queue.
 
 The agreed roadmap is:
 
@@ -214,6 +214,18 @@ Rationale:
 - `heartbeats` as one latest sanitized heartbeat row per device.
 
 RLS is enabled on both tables. No final row policies are included yet because the device pairing, owner authorization, and runtime write path are not implemented. The migration revokes direct `anon` and `authenticated` table privileges until a later approved phase defines the access model.
+
+## S2B Runtime Skeleton Status
+
+The desktop app has a config-gated Supabase heartbeat sender skeleton. It is disabled by default, and local scheduling continues normally when Supabase is disabled, missing config, or unreachable.
+
+Runtime defaults:
+
+- Local config stores a stable generated non-personal `heartbeat.deviceId`.
+- Supabase URL/key can come from local config, or `.env.local` values `SUPABASE_URL` plus `SUPABASE_PUBLISHABLE_KEY` / `SUPABASE_ANON_KEY` when local values are missing.
+- The renderer receives only configured state, host, and key source. It never receives the key value.
+- Service-role-looking JWT keys are rejected by the sender.
+- Outbound rows are limited to `devices` and latest-row `heartbeats` status metadata.
 
 ## Source of Truth
 

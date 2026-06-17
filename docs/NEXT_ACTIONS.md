@@ -114,7 +114,8 @@ S2A migration status:
 
 - `supabase/migrations/20260617125521_s2a_status_heartbeat.sql` adds only `devices` and latest-row `heartbeats`.
 - RLS is enabled, with no final row policies yet because pairing/authorization/runtime writes are still pending.
-- Runtime Electron code, Supabase client code, schedule/completion backup, and command queue remain unimplemented.
+- S2B adds a disabled-by-default Electron heartbeat sender skeleton using built-in `fetch`, local config/`.env.local` bootstrap, and sanitized status-only metadata.
+- Supabase client dependencies, schedule/completion backup, and command queue remain unimplemented.
 
 ## Documentation Maintenance Tasks
 

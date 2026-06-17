@@ -1,100 +1,116 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { AppConfig, AttendanceCompletionRecord, AutomationAuditEvent, ExecutionMode } from "../shared/types";
+import { randomUUID } from "node:crypto";
+import type { AppConfig, AttendanceCompletionRecord, AutomationAuditEvent, ExecutionMode, HeartbeatSettings } from "../shared/types";
 
 export interface EnvLocalTelegramSecrets {
   botToken: string;
   chatId: string;
 }
 
-const defaultConfig: AppConfig = {
-  worker: {
-    enabled: true,
-    pollIntervalSeconds: 60
-  },
-  automation: {
-    executionMode: "manual-confirm",
-    monitorIntervalSeconds: 30,
-    prepareBrowserInDryRun: true,
-    auditEvents: []
-  },
-  heartbeat: {
-    enabled: false,
-    endpointUrl: "",
-    intervalSeconds: 60
-  },
-  attendance: {
-    clockInPlaceholder: "08:00",
-    clockOutPlaceholder: "17:00",
-    completionsByDate: {}
-  },
-  scheduler: {
-    clockInWindow: {
-      start: "07:45",
-      end: "07:50"
-    },
-    clockOutWindow: {
-      start: "17:05",
-      end: "17:10"
-    },
-    gracePeriodMinutes: 5,
-    reminders: {
+export interface EnvLocalSupabaseSettings {
+  supabaseUrl: string;
+  publishableKey: string;
+}
+
+function createDefaultConfig(): AppConfig {
+  return {
+    worker: {
       enabled: true,
-      approachingMinutes: 5,
-      systemNotificationsEnabled: true
+      pollIntervalSeconds: 60
     },
-    schedulesByDate: {},
-    skippedDates: [],
-    notificationsByDate: {}
-  },
-  telegram: {
-    enabled: false,
-    botToken: "",
-    chatId: "",
-    commandPrefix: "alilos",
-    lastUpdateId: 0
-  },
-  institutionCredential: {
-    enabled: true,
-    username: "",
-    encryptedPassword: "",
-    lastUpdatedAt: null
-  },
-  perakam: {
-    dashboardUrl: "https://perakamwaktu3.upm.edu.my/",
-    autoLogin: {
+    automation: {
+      executionMode: "manual-confirm",
+      monitorIntervalSeconds: 30,
+      prepareBrowserInDryRun: true,
+      auditEvents: []
+    },
+    heartbeat: {
       enabled: false,
-      useSharedCredential: true,
+      deviceId: randomUUID(),
+      deviceLabel: "A.L.I.L.O.S. desktop",
+      supabaseUrl: "",
+      publishableKey: "",
+      intervalSeconds: 60
+    },
+    attendance: {
+      clockInPlaceholder: "08:00",
+      clockOutPlaceholder: "17:00",
+      completionsByDate: {}
+    },
+    scheduler: {
+      clockInWindow: {
+        start: "07:45",
+        end: "07:50"
+      },
+      clockOutWindow: {
+        start: "17:05",
+        end: "17:10"
+      },
+      gracePeriodMinutes: 5,
+      reminders: {
+        enabled: true,
+        approachingMinutes: 5,
+        systemNotificationsEnabled: true
+      },
+      schedulesByDate: {},
+      skippedDates: [],
+      notificationsByDate: {}
+    },
+    telegram: {
+      enabled: false,
+      botToken: "",
+      chatId: "",
+      commandPrefix: "alilos",
+      lastUpdateId: 0
+    },
+    institutionCredential: {
+      enabled: true,
       username: "",
       encryptedPassword: "",
-      lastUpdatedAt: null,
-      lastLoginAttemptAt: null,
-      lastLoginResult: "unknown",
-      lastLoginReason: null
+      lastUpdatedAt: null
+    },
+    perakam: {
+      dashboardUrl: "https://perakamwaktu3.upm.edu.my/",
+      autoLogin: {
+        enabled: false,
+        useSharedCredential: true,
+        username: "",
+        encryptedPassword: "",
+        lastUpdatedAt: null,
+        lastLoginAttemptAt: null,
+        lastLoginResult: "unknown",
+        lastLoginReason: null
+      }
+    },
+    networkMonitor: {
+      enabled: true,
+      intervalSeconds: 60,
+      notifyOnInternetDown: true,
+      notifyOnPerakamDown: true,
+      notifyOnRecovery: true,
+      failureThreshold: 2,
+      captivePortalDetectionEnabled: true,
+      openDetectedPortalIn: "external",
+      retainPortalEvidenceMinutes: 120
     }
-  },
-  networkMonitor: {
-    enabled: true,
-    intervalSeconds: 60,
-    notifyOnInternetDown: true,
-    notifyOnPerakamDown: true,
-    notifyOnRecovery: true,
-    failureThreshold: 2,
-    captivePortalDetectionEnabled: true,
-    openDetectedPortalIn: "external",
-    retainPortalEvidenceMinutes: 120
-  }
-};
+  };
+}
+
+const defaultConfig = createDefaultConfig();
 
 export class ConfigStore {
   private readonly filePath: string;
   private readonly envLocalPath: string;
   private readonly envLocalTelegramSecrets: EnvLocalTelegramSecrets;
+  private readonly envLocalSupabaseSettings: EnvLocalSupabaseSettings;
 
   constructor(userDataPath: string, appRootPath = process.cwd()) {
     this.filePath = path.join(userDataPath, "config.json");
     this.envLocalPath = path.join(appRootPath, ".env.local");
-    this.envLocalTelegramSecrets = readEnvLocalTelegramSecrets(this.envLocalPath);
+    const envLocalValues = readEnvLocalFile(this.envLocalPath);
+    this.envLocalTelegramSecrets = readEnvLocalTelegramSecrets(envLocalValues);
+    this.envLocalSupabaseSettings = readEnvLocalSupabaseSettings(envLocalValues);
   }
 
   get path(): string {
@@ -105,16 +121,22 @@ export class ConfigStore {
     return this.envLocalTelegramSecrets;
   }
 
+  get supabaseEnvLocal(): EnvLocalSupabaseSettings {
+    return this.envLocalSupabaseSettings;
+  }
+
   load(): AppConfig {
     fs.mkdirSync(path.dirname(this.filePath), { recursive: true });
 
     if (!fs.existsSync(this.filePath)) {
-      this.save(defaultConfig);
-      return defaultConfig;
+      const initialConfig = createDefaultConfig();
+      this.save(initialConfig);
+      return initialConfig;
     }
 
     const raw = fs.readFileSync(this.filePath, "utf8");
     const parsed = JSON.parse(raw) as Partial<AppConfig>;
+    const parsedHeartbeat = parsed.heartbeat as (Partial<HeartbeatSettings> & { endpointUrl?: string }) | undefined;
     const legacyPerakamCredential = parsed.perakam?.autoLogin;
     const institutionCredential = {
       ...defaultConfig.institutionCredential,
@@ -133,7 +155,7 @@ export class ConfigStore {
       institutionCredential.lastUpdatedAt = legacyPerakamCredential.lastUpdatedAt;
     }
 
-    return {
+    const normalized: AppConfig = {
       worker: {
         ...defaultConfig.worker,
         ...parsed.worker
@@ -148,10 +170,13 @@ export class ConfigStore {
       },
       heartbeat: {
         ...defaultConfig.heartbeat,
-        ...parsed.heartbeat,
-        enabled: Boolean(parsed.heartbeat?.enabled),
-        endpointUrl: sanitizeUrlText(parsed.heartbeat?.endpointUrl),
-        intervalSeconds: clampNumber(parsed.heartbeat?.intervalSeconds, 30, 24 * 60 * 60, defaultConfig.heartbeat.intervalSeconds)
+        ...parsedHeartbeat,
+        enabled: Boolean(parsedHeartbeat?.enabled),
+        deviceId: normalizeDeviceId(parsedHeartbeat?.deviceId),
+        deviceLabel: sanitizePlainText(parsedHeartbeat?.deviceLabel, 120) || defaultConfig.heartbeat.deviceLabel,
+        supabaseUrl: sanitizeUrlText(parsedHeartbeat?.supabaseUrl || parsedHeartbeat?.endpointUrl),
+        publishableKey: sanitizeEnvSecret(parsedHeartbeat?.publishableKey),
+        intervalSeconds: clampNumber(parsedHeartbeat?.intervalSeconds, 30, 24 * 60 * 60, defaultConfig.heartbeat.intervalSeconds)
       },
       attendance: {
         ...defaultConfig.attendance,
@@ -207,6 +232,12 @@ export class ConfigStore {
         retainPortalEvidenceMinutes: clampNumber(parsed.networkMonitor?.retainPortalEvidenceMinutes, 5, 24 * 60, defaultConfig.networkMonitor.retainPortalEvidenceMinutes)
       }
     };
+
+    if (parsedHeartbeat?.deviceId !== normalized.heartbeat.deviceId) {
+      this.save(normalized);
+    }
+
+    return normalized;
   }
 
   save(config: AppConfig): void {
@@ -215,12 +246,17 @@ export class ConfigStore {
   }
 }
 
-function readEnvLocalTelegramSecrets(filePath: string): EnvLocalTelegramSecrets {
-  const values = readEnvLocalFile(filePath);
-
+function readEnvLocalTelegramSecrets(values: Record<string, string>): EnvLocalTelegramSecrets {
   return {
     botToken: sanitizeEnvSecret(values.TELEGRAM_BOT_TOKEN),
     chatId: sanitizeEnvSecret(values.TELEGRAM_CHAT_ID)
+  };
+}
+
+function readEnvLocalSupabaseSettings(values: Record<string, string>): EnvLocalSupabaseSettings {
+  return {
+    supabaseUrl: sanitizeUrlText(values.SUPABASE_URL),
+    publishableKey: sanitizeEnvSecret(values.SUPABASE_PUBLISHABLE_KEY || values.SUPABASE_ANON_KEY)
   };
 }
 
@@ -279,6 +315,20 @@ function unwrapEnvValue(value: string): string {
 
 function sanitizeEnvSecret(value: unknown): string {
   return String(value ?? "").trim();
+}
+
+function sanitizePlainText(value: unknown, maxLength: number): string {
+  return String(value ?? "")
+    .replace(/[\r\n\t]+/g, " ")
+    .trim()
+    .slice(0, maxLength);
+}
+
+function normalizeDeviceId(value: unknown): string {
+  const text = String(value ?? "").trim();
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(text)
+    ? text
+    : randomUUID();
 }
 
 function clampNumber(value: unknown, minimum: number, maximum: number, fallback: number): number {
