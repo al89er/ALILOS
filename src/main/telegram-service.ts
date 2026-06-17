@@ -32,6 +32,7 @@ export interface TelegramCommandHandlers {
   unskipToday: () => void;
   skipTomorrow: () => void;
   unskipTomorrow: () => void;
+  setLastUpdateId: (lastUpdateId: number) => void;
   persistSettings: () => void;
   broadcastSnapshot: () => void;
 }
@@ -57,6 +58,10 @@ export class TelegramService {
     }
 
     this.startPolling();
+  }
+
+  isConfigured(): boolean {
+    return isConfigured(this.getSettings());
   }
 
   stopPolling(): void {
@@ -95,7 +100,7 @@ export class TelegramService {
     const result = await this.sendMessage(TEST_MESSAGE);
 
     if (result.ok) {
-      this.logger.info(`Telegram test notification sent to chat ${maskChatId(settings.chatId)}.`);
+      this.logger.info("Telegram test notification sent to configured chat.");
       return {
         ok: true,
         message: "Telegram test notification sent.",
@@ -103,7 +108,7 @@ export class TelegramService {
       };
     }
 
-    this.logger.warn(`Telegram test notification failed for chat ${maskChatId(settings.chatId)}: ${result.message}`);
+    this.logger.warn(`Telegram test notification failed for configured chat: ${result.message}`);
     return {
       ok: false,
       message: result.message,
@@ -140,22 +145,24 @@ export class TelegramService {
     try {
       this.lastCheckedAt = new Date().toISOString();
       const updates = await this.getUpdates(settings);
+      let lastUpdateId = settings.lastUpdateId;
 
       for (const update of updates) {
         await this.processUpdate(update);
-        if (update.update_id > settings.lastUpdateId) {
-          settings.lastUpdateId = update.update_id;
+        if (update.update_id > lastUpdateId) {
+          lastUpdateId = update.update_id;
         }
       }
 
       if (updates.length > 0) {
+        this.handlers.setLastUpdateId(lastUpdateId);
         this.handlers.persistSettings();
       }
 
       this.lastError = null;
     } catch (error) {
       const rawMessage = error instanceof Error ? error.message : "Unknown Telegram polling error.";
-      this.lastError = sanitizeMessage(rawMessage, settings.botToken);
+      this.lastError = sanitizeMessage(rawMessage, settings);
       this.logger.warn(`Telegram polling failed: ${this.lastError}`);
     } finally {
       this.handlers.broadcastSnapshot();
@@ -177,7 +184,7 @@ export class TelegramService {
     const chatId = String(update.message?.chat?.id ?? "");
 
     if (chatId !== settings.chatId) {
-      this.logger.warn(`Ignored Telegram update from unauthorized chat ${maskChatId(chatId)}.`);
+      this.logger.warn("Ignored Telegram update from unauthorized chat.");
       return;
     }
 
@@ -187,7 +194,7 @@ export class TelegramService {
       return;
     }
 
-    this.logger.info(`Handling Telegram command ${command} from chat ${maskChatId(chatId)}.`);
+    this.logger.info(`Handling Telegram command ${command} from configured chat.`);
 
     switch (command) {
       case "/start":
@@ -259,7 +266,7 @@ export class TelegramService {
       if (!payload.ok) {
         return {
           ok: false,
-          message: sanitizeMessage(payload.description || "Telegram API rejected the message.", settings.botToken)
+          message: sanitizeMessage(payload.description || "Telegram API rejected the message.", settings)
         };
       }
 
@@ -268,7 +275,7 @@ export class TelegramService {
       const rawMessage = error instanceof Error ? error.message : "Unknown Telegram network error.";
       return {
         ok: false,
-        message: sanitizeMessage(rawMessage, settings.botToken)
+        message: sanitizeMessage(rawMessage, settings)
       };
     }
   }
@@ -279,7 +286,7 @@ export class TelegramService {
     const payload = await response.json() as TelegramApiResponse<T>;
 
     if (!response.ok || !payload.ok) {
-      throw new Error(sanitizeMessage(payload.description || `Telegram API returned HTTP ${response.status}.`, settings.botToken));
+      throw new Error(sanitizeMessage(payload.description || `Telegram API returned HTTP ${response.status}.`, settings));
     }
 
     return payload;
@@ -306,8 +313,8 @@ function buildStatusMessage(snapshot: ScheduleSnapshot): string {
 
   return [
     `Date: ${snapshot.today}`,
-    `Clock in: ${snapshot.schedule.clockInTime}`,
-    `Clock out: ${snapshot.schedule.clockOutTime}`,
+    `Morning action: ${snapshot.schedule.clockInTime}`,
+    `Evening action: ${snapshot.schedule.clockOutTime}`,
     `Weekend/non-working: ${snapshot.isWeekend ? "yes" : "no"}`,
     `Skipped: ${snapshot.isTodaySkipped ? "yes" : "no"}`,
     `Status: ${snapshot.summary}`,
@@ -381,22 +388,18 @@ function isConfigured(settings: TelegramSettings): boolean {
   return !validateSettings(settings);
 }
 
-function maskChatId(chatId: string): string {
-  const trimmed = chatId.trim();
+function sanitizeMessage(message: string, settings: TelegramSettings): string {
+  const trimmedToken = settings.botToken.trim();
+  const trimmedChatId = settings.chatId.trim();
+  let sanitized = message;
 
-  if (trimmed.length <= 4) {
-    return "****";
+  if (trimmedToken) {
+    sanitized = sanitized.split(trimmedToken).join("[redacted-token]");
   }
 
-  return `${"*".repeat(Math.max(trimmed.length - 4, 0))}${trimmed.slice(-4)}`;
-}
-
-function sanitizeMessage(message: string, token: string): string {
-  const trimmedToken = token.trim();
-
-  if (!trimmedToken) {
-    return message;
+  if (trimmedChatId) {
+    sanitized = sanitized.split(trimmedChatId).join("[redacted-chat-id]");
   }
 
-  return message.split(trimmedToken).join("[redacted-token]");
+  return sanitized;
 }

@@ -1,8 +1,12 @@
 const IPC_TIMEOUT_MS = 10000;
 
 const appStatus = document.querySelector<HTMLSpanElement>("#app-status");
+const executionMode = document.querySelector<HTMLSpanElement>("#execution-mode");
+const executionModeNote = document.querySelector<HTMLElement>("#execution-mode-note");
 const workerStatus = document.querySelector<HTMLSpanElement>("#worker-status");
 const workerNote = document.querySelector<HTMLElement>("#worker-note");
+const heartbeatStatus = document.querySelector<HTMLElement>("#heartbeat-status");
+const heartbeatNote = document.querySelector<HTMLElement>("#heartbeat-note");
 const localTime = document.querySelector<HTMLElement>("#local-time");
 const todaySkipped = document.querySelector<HTMLElement>("#today-skipped");
 const workingDay = document.querySelector<HTMLElement>("#working-day");
@@ -14,6 +18,15 @@ const browserStatus = document.querySelector<HTMLElement>("#browser-status");
 const browserNote = document.querySelector<HTMLElement>("#browser-note");
 const perakamStatus = document.querySelector<HTMLElement>("#perakam-status");
 const perakamNote = document.querySelector<HTMLElement>("#perakam-note");
+const tabButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("[role='tab'][data-tab-target]"));
+const tabPanels = Array.from(document.querySelectorAll<HTMLElement>("[role='tabpanel'][data-tab-panel]"));
+const overviewTodayTimes = document.querySelector<HTMLElement>("#overview-today-times");
+const overviewNextAction = document.querySelector<HTMLElement>("#overview-next-action");
+const overviewLastAction = document.querySelector<HTMLElement>("#overview-last-action");
+const overviewBrowserSite = document.querySelector<HTMLElement>("#overview-browser-site");
+const overviewNetwork = document.querySelector<HTMLElement>("#overview-network");
+const overviewCaptivePortal = document.querySelector<HTMLElement>("#overview-captive-portal");
+const overviewEventsList = document.querySelector<HTMLOListElement>("#overview-events-list");
 const networkInternetStatus = document.querySelector<HTMLElement>("#network-internet-status");
 const networkInternetReason = document.querySelector<HTMLElement>("#network-internet-reason");
 const networkPerakamStatus = document.querySelector<HTMLElement>("#network-perakam-status");
@@ -43,6 +56,14 @@ const networkCaptiveDetection = document.querySelector<HTMLInputElement>("#netwo
 const networkRetainPortalEvidence = document.querySelector<HTMLInputElement>("#network-retain-portal-evidence");
 const networkSaveSettings = document.querySelector<HTMLButtonElement>("#network-save-settings");
 const networkResult = document.querySelector<HTMLElement>("#network-result");
+const automationModeDetail = document.querySelector<HTMLElement>("#automation-mode-detail");
+const automationLastChecked = document.querySelector<HTMLElement>("#automation-last-checked");
+const automationDryRunStatus = document.querySelector<HTMLElement>("#automation-dry-run-status");
+const automationDryRunDetail = document.querySelector<HTMLElement>("#automation-dry-run-detail");
+const heartbeatEndpoint = document.querySelector<HTMLElement>("#heartbeat-endpoint");
+const heartbeatLastSuccess = document.querySelector<HTMLElement>("#heartbeat-last-success");
+const heartbeatError = document.querySelector<HTMLElement>("#heartbeat-error");
+const automationAuditList = document.querySelector<HTMLOListElement>("#automation-audit-list");
 const todayDate = document.querySelector<HTMLElement>("#today-date");
 const scheduleSummary = document.querySelector<HTMLElement>("#schedule-summary");
 const placeholderList = document.querySelector<HTMLElement>("#placeholder-list");
@@ -136,14 +157,49 @@ const telegramForm = document.querySelector<HTMLFormElement>("#telegram-form");
 const telegramEnabled = document.querySelector<HTMLInputElement>("#telegram-enabled");
 const telegramBotToken = document.querySelector<HTMLInputElement>("#telegram-bot-token");
 const telegramChatId = document.querySelector<HTMLInputElement>("#telegram-chat-id");
+const telegramBotTokenStatus = document.querySelector<HTMLElement>("#telegram-bot-token-status");
+const telegramChatIdStatus = document.querySelector<HTMLElement>("#telegram-chat-id-status");
+const telegramCommandPrefix = document.querySelector<HTMLElement>("#telegram-command-prefix");
+const telegramCommandPrefixInput = document.querySelector<HTMLInputElement>("#telegram-command-prefix-input");
 const saveTelegramSettingsButton = document.querySelector<HTMLButtonElement>("#save-telegram-settings");
 const sendTelegramTest = document.querySelector<HTMLButtonElement>("#send-telegram-test");
 const telegramResult = document.querySelector<HTMLElement>("#telegram-result");
-let currentTelegramSettings: RendererTelegramSettings | null = null;
+const settingsForm = document.querySelector<HTMLFormElement>("#settings-form");
+const settingsWorkerEnabled = document.querySelector<HTMLInputElement>("#settings-worker-enabled");
+const settingsWorkerInterval = document.querySelector<HTMLInputElement>("#settings-worker-interval");
+const settingsExecutionMode = document.querySelector<HTMLSelectElement>("#settings-execution-mode");
+const settingsAutomationInterval = document.querySelector<HTMLInputElement>("#settings-automation-interval");
+const settingsPrepareBrowser = document.querySelector<HTMLInputElement>("#settings-prepare-browser");
+const settingsMorningStart = document.querySelector<HTMLInputElement>("#settings-morning-start");
+const settingsMorningEnd = document.querySelector<HTMLInputElement>("#settings-morning-end");
+const settingsEveningStart = document.querySelector<HTMLInputElement>("#settings-evening-start");
+const settingsEveningEnd = document.querySelector<HTMLInputElement>("#settings-evening-end");
+const settingsGracePeriod = document.querySelector<HTMLInputElement>("#settings-grace-period");
+const settingsRemindersEnabled = document.querySelector<HTMLInputElement>("#settings-reminders-enabled");
+const settingsReminderApproaching = document.querySelector<HTMLInputElement>("#settings-reminder-approaching");
+const settingsSystemNotifications = document.querySelector<HTMLInputElement>("#settings-system-notifications");
+const settingsDashboardUrl = document.querySelector<HTMLInputElement>("#settings-dashboard-url");
+const settingsHeartbeatEnabled = document.querySelector<HTMLInputElement>("#settings-heartbeat-enabled");
+const settingsHeartbeatEndpoint = document.querySelector<HTMLInputElement>("#settings-heartbeat-endpoint");
+const settingsHeartbeatEndpointState = document.querySelector<HTMLElement>("#settings-heartbeat-endpoint-state");
+const settingsHeartbeatInterval = document.querySelector<HTMLInputElement>("#settings-heartbeat-interval");
+const settingsSave = document.querySelector<HTMLButtonElement>("#settings-save");
+const settingsReload = document.querySelector<HTMLButtonElement>("#settings-reload");
+const settingsResult = document.querySelector<HTMLElement>("#settings-result");
+const settingsScheduleWindow = document.querySelector<HTMLElement>("#settings-schedule-window");
+const settingsBrowserSummary = document.querySelector<HTMLElement>("#settings-browser-summary");
+const settingsNetworkSummary = document.querySelector<HTMLElement>("#settings-network-summary");
+const settingsTelegramSummary = document.querySelector<HTMLElement>("#settings-telegram-summary");
+const settingsHeartbeatSummary = document.querySelector<HTMLElement>("#settings-heartbeat-summary");
+const settingsConfigPath = document.querySelector<HTMLElement>("#settings-config-path");
+const settingsLogPath = document.querySelector<HTMLElement>("#settings-log-path");
+let currentTelegramSettings: RendererTelegramSettingsSnapshot | null = null;
 let currentPerakamLoginSettings: RendererPerakamAutoLoginSnapshot | null = null;
+let currentAppSettings: RendererAppSettingsSnapshot | null = null;
 let latestSnapshot: RendererDashboardSnapshot | null = null;
 let perakamLoginFormDirty = false;
 let networkSettingsDirty = false;
+let appSettingsDirty = false;
 
 function requireElement<T extends Element>(element: T | null, name: string): T {
   if (!element) {
@@ -155,8 +211,12 @@ function requireElement<T extends Element>(element: T | null, name: string): T {
 
 const elements = {
   appStatus: requireElement(appStatus, "app-status"),
+  executionMode: requireElement(executionMode, "execution-mode"),
+  executionModeNote: requireElement(executionModeNote, "execution-mode-note"),
   workerStatus: requireElement(workerStatus, "worker-status"),
   workerNote: requireElement(workerNote, "worker-note"),
+  heartbeatStatus: requireElement(heartbeatStatus, "heartbeat-status"),
+  heartbeatNote: requireElement(heartbeatNote, "heartbeat-note"),
   localTime: requireElement(localTime, "local-time"),
   todaySkipped: requireElement(todaySkipped, "today-skipped"),
   workingDay: requireElement(workingDay, "working-day"),
@@ -168,6 +228,13 @@ const elements = {
   browserNote: requireElement(browserNote, "browser-note"),
   perakamStatus: requireElement(perakamStatus, "perakam-status"),
   perakamNote: requireElement(perakamNote, "perakam-note"),
+  overviewTodayTimes: requireElement(overviewTodayTimes, "overview-today-times"),
+  overviewNextAction: requireElement(overviewNextAction, "overview-next-action"),
+  overviewLastAction: requireElement(overviewLastAction, "overview-last-action"),
+  overviewBrowserSite: requireElement(overviewBrowserSite, "overview-browser-site"),
+  overviewNetwork: requireElement(overviewNetwork, "overview-network"),
+  overviewCaptivePortal: requireElement(overviewCaptivePortal, "overview-captive-portal"),
+  overviewEventsList: requireElement(overviewEventsList, "overview-events-list"),
   networkInternetStatus: requireElement(networkInternetStatus, "network-internet-status"),
   networkInternetReason: requireElement(networkInternetReason, "network-internet-reason"),
   networkPerakamStatus: requireElement(networkPerakamStatus, "network-perakam-status"),
@@ -197,6 +264,14 @@ const elements = {
   networkRetainPortalEvidence: requireElement(networkRetainPortalEvidence, "network-retain-portal-evidence"),
   networkSaveSettings: requireElement(networkSaveSettings, "network-save-settings"),
   networkResult: requireElement(networkResult, "network-result"),
+  automationModeDetail: requireElement(automationModeDetail, "automation-mode-detail"),
+  automationLastChecked: requireElement(automationLastChecked, "automation-last-checked"),
+  automationDryRunStatus: requireElement(automationDryRunStatus, "automation-dry-run-status"),
+  automationDryRunDetail: requireElement(automationDryRunDetail, "automation-dry-run-detail"),
+  heartbeatEndpoint: requireElement(heartbeatEndpoint, "heartbeat-endpoint"),
+  heartbeatLastSuccess: requireElement(heartbeatLastSuccess, "heartbeat-last-success"),
+  heartbeatError: requireElement(heartbeatError, "heartbeat-error"),
+  automationAuditList: requireElement(automationAuditList, "automation-audit-list"),
   todayDate: requireElement(todayDate, "today-date"),
   scheduleSummary: requireElement(scheduleSummary, "schedule-summary"),
   placeholderList: requireElement(placeholderList, "placeholder-list"),
@@ -290,14 +365,48 @@ const elements = {
   telegramEnabled: requireElement(telegramEnabled, "telegram-enabled"),
   telegramBotToken: requireElement(telegramBotToken, "telegram-bot-token"),
   telegramChatId: requireElement(telegramChatId, "telegram-chat-id"),
+  telegramBotTokenStatus: requireElement(telegramBotTokenStatus, "telegram-bot-token-status"),
+  telegramChatIdStatus: requireElement(telegramChatIdStatus, "telegram-chat-id-status"),
+  telegramCommandPrefix: requireElement(telegramCommandPrefix, "telegram-command-prefix"),
+  telegramCommandPrefixInput: requireElement(telegramCommandPrefixInput, "telegram-command-prefix-input"),
   saveTelegramSettingsButton: requireElement(saveTelegramSettingsButton, "save-telegram-settings"),
   sendTelegramTest: requireElement(sendTelegramTest, "send-telegram-test"),
-  telegramResult: requireElement(telegramResult, "telegram-result")
+  telegramResult: requireElement(telegramResult, "telegram-result"),
+  settingsForm: requireElement(settingsForm, "settings-form"),
+  settingsWorkerEnabled: requireElement(settingsWorkerEnabled, "settings-worker-enabled"),
+  settingsWorkerInterval: requireElement(settingsWorkerInterval, "settings-worker-interval"),
+  settingsExecutionMode: requireElement(settingsExecutionMode, "settings-execution-mode"),
+  settingsAutomationInterval: requireElement(settingsAutomationInterval, "settings-automation-interval"),
+  settingsPrepareBrowser: requireElement(settingsPrepareBrowser, "settings-prepare-browser"),
+  settingsMorningStart: requireElement(settingsMorningStart, "settings-morning-start"),
+  settingsMorningEnd: requireElement(settingsMorningEnd, "settings-morning-end"),
+  settingsEveningStart: requireElement(settingsEveningStart, "settings-evening-start"),
+  settingsEveningEnd: requireElement(settingsEveningEnd, "settings-evening-end"),
+  settingsGracePeriod: requireElement(settingsGracePeriod, "settings-grace-period"),
+  settingsRemindersEnabled: requireElement(settingsRemindersEnabled, "settings-reminders-enabled"),
+  settingsReminderApproaching: requireElement(settingsReminderApproaching, "settings-reminder-approaching"),
+  settingsSystemNotifications: requireElement(settingsSystemNotifications, "settings-system-notifications"),
+  settingsDashboardUrl: requireElement(settingsDashboardUrl, "settings-dashboard-url"),
+  settingsHeartbeatEnabled: requireElement(settingsHeartbeatEnabled, "settings-heartbeat-enabled"),
+  settingsHeartbeatEndpoint: requireElement(settingsHeartbeatEndpoint, "settings-heartbeat-endpoint"),
+  settingsHeartbeatEndpointState: requireElement(settingsHeartbeatEndpointState, "settings-heartbeat-endpoint-state"),
+  settingsHeartbeatInterval: requireElement(settingsHeartbeatInterval, "settings-heartbeat-interval"),
+  settingsSave: requireElement(settingsSave, "settings-save"),
+  settingsReload: requireElement(settingsReload, "settings-reload"),
+  settingsResult: requireElement(settingsResult, "settings-result"),
+  settingsScheduleWindow: requireElement(settingsScheduleWindow, "settings-schedule-window"),
+  settingsBrowserSummary: requireElement(settingsBrowserSummary, "settings-browser-summary"),
+  settingsNetworkSummary: requireElement(settingsNetworkSummary, "settings-network-summary"),
+  settingsTelegramSummary: requireElement(settingsTelegramSummary, "settings-telegram-summary"),
+  settingsHeartbeatSummary: requireElement(settingsHeartbeatSummary, "settings-heartbeat-summary"),
+  settingsConfigPath: requireElement(settingsConfigPath, "settings-config-path"),
+  settingsLogPath: requireElement(settingsLogPath, "settings-log-path")
 };
 
 function render(snapshot: RendererDashboardSnapshot): void {
   latestSnapshot = snapshot;
   elements.appStatus.textContent = snapshot.appStatus;
+  renderAutomationTelemetry(snapshot);
   elements.workerStatus.textContent = snapshot.worker.state;
   elements.workerNote.textContent = snapshot.worker.note;
   elements.localTime.textContent = snapshot.localTime;
@@ -320,6 +429,8 @@ function render(snapshot: RendererDashboardSnapshot): void {
   renderPerakamAutoLogin(snapshot.perakamAutoLogin);
   renderConfirmations(snapshot.confirmations);
   renderTestClick(snapshot);
+  renderOverviewSummaries(snapshot);
+  renderSettingsSummaries(snapshot);
   elements.scheduleSummary.textContent = snapshot.schedule.summary;
 
   elements.placeholderList.replaceChildren(
@@ -401,17 +512,206 @@ function createEmptyLogItem(): HTMLLIElement {
   return item;
 }
 
+function renderOverviewSummaries(snapshot: RendererDashboardSnapshot): void {
+  const morning = snapshot.schedule.actions.find((action) => action.action === "clock-in");
+  const evening = snapshot.schedule.actions.find((action) => action.action === "clock-out");
+  const nextAction = getNextRelevantAction(snapshot);
+  const latestExecution = [
+    snapshot.confirmations.clockIn.latestExecution,
+    snapshot.confirmations.clockOut.latestExecution
+  ]
+    .filter((result): result is RendererAttendanceExecutionResult => Boolean(result))
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt))[0] ?? null;
+
+  elements.overviewTodayTimes.textContent = `Morning ${morning?.time ?? snapshot.schedule.schedule.clockInTime}; evening ${evening?.time ?? snapshot.schedule.schedule.clockOutTime}.`;
+  elements.overviewNextAction.textContent = nextAction
+    ? `${nextAction.label} at ${nextAction.time} - ${nextAction.statusText}.`
+    : snapshot.schedule.summary;
+  elements.overviewLastAction.textContent = latestExecution
+    ? `${executionStatusLabel(latestExecution.status)} - ${latestExecution.action ? actionLabel(latestExecution.action) : "Unknown action"}${latestExecution.mappedTargetId ? ` via ${latestExecution.mappedTargetId}` : ""}.`
+    : snapshot.automation.latestDryRun
+      ? `Simulated ${actionLabel(snapshot.automation.latestDryRun.action)} at ${new Date(snapshot.automation.latestDryRun.simulatedAt).toLocaleTimeString()}.`
+      : "No action result recorded yet.";
+  elements.overviewBrowserSite.textContent = `${snapshot.browser.state}; ${perakamStatusLabel(snapshot.perakam.status)}. Morning target ${availabilityLabel(snapshot.perakam.clockInAvailable)}, evening target ${availabilityLabel(snapshot.perakam.clockOutAvailable)}.`;
+  elements.overviewNetwork.textContent = `${networkConnectivityLabel(snapshot.networkMonitor.connectivityState)}; Perakam ${perakamReachabilityLabel(snapshot.networkMonitor.perakamReachabilityState)}.`;
+  elements.overviewCaptivePortal.textContent = `${captivePortalStateLabel(snapshot.networkMonitor.captivePortal.state)} (${snapshot.networkMonitor.captivePortal.confidence} confidence)${snapshot.networkMonitor.captivePortal.portalHost ? ` - ${snapshot.networkMonitor.captivePortal.portalHost}` : ""}.`;
+
+  const eventItems = [
+    ...snapshot.automation.auditEvents.slice(0, 4).map((event) => ({
+      createdAt: event.createdAt,
+      status: event.status,
+      text: `${event.type}${event.action ? ` ${actionLabel(event.action)}` : ""}: ${event.message}`
+    })),
+    ...snapshot.logs.slice(0, 4).map((entry) => ({
+      createdAt: entry.timestamp,
+      status: entry.level === "error" ? "failed" : entry.level === "warn" ? "blocked" : "info",
+      text: `${entry.level.toUpperCase()}: ${entry.message}`
+    }))
+  ]
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+    .slice(0, 6)
+    .map((event) => {
+      const item = document.createElement("li");
+      item.dataset.status = event.status;
+      item.textContent = `${new Date(event.createdAt).toLocaleTimeString()} - ${event.text}`;
+      return item;
+    });
+
+  elements.overviewEventsList.replaceChildren(
+    ...(eventItems.length > 0 ? eventItems : [createEmptyListItem("No recent events yet.")])
+  );
+}
+
+function renderSettingsSummaries(snapshot: RendererDashboardSnapshot): void {
+  const settings = currentAppSettings;
+  const clockInWindow = settings?.scheduler.clockInWindow;
+  const clockOutWindow = settings?.scheduler.clockOutWindow;
+  elements.settingsScheduleWindow.textContent = `Configured windows: morning ${clockInWindow?.start ?? "07:45"}-${clockInWindow?.end ?? "07:50"}, evening ${clockOutWindow?.start ?? "17:05"}-${clockOutWindow?.end ?? "17:10"}. Today generated ${snapshot.schedule.schedule.clockInTime} / ${snapshot.schedule.schedule.clockOutTime}; grace ${snapshot.schedule.gracePeriodMinutes} min.`;
+  elements.settingsBrowserSummary.textContent = `Profile ${snapshot.browser.profilePath}. Configured site ${settings?.perakam.dashboardUrl ?? snapshot.perakam.dashboardUrl}. Auto-login ${snapshot.perakamAutoLogin.enabled ? "enabled" : "disabled"}; password ${snapshot.perakamAutoLogin.hasSavedPassword ? "saved locally" : "not saved"}.`;
+  elements.settingsNetworkSummary.textContent = `${snapshot.networkMonitor.enabled ? "Enabled" : "Disabled"}; interval ${snapshot.networkMonitor.settings.intervalSeconds}s; captive portal detection ${snapshot.networkMonitor.settings.captivePortalDetectionEnabled ? "enabled" : "disabled"}.`;
+  elements.settingsTelegramSummary.textContent = currentTelegramSettings
+    ? `${currentTelegramSettings.enabled ? "Enabled" : "Disabled"}; bot token ${telegramSecretStatusLabel(currentTelegramSettings.secretStatus.botToken)}; chat ${telegramSecretStatusLabel(currentTelegramSettings.secretStatus.chatId)}; prefix ${commandPrefixLabel(currentTelegramSettings.commandPrefix)}.`
+    : `${snapshot.telegram.enabled ? "Enabled" : "Disabled"}; settings are loaded through the secure preload bridge.`;
+  elements.settingsHeartbeatSummary.textContent = `${(settings?.heartbeat.enabled ?? snapshot.heartbeat.enabled) ? "Enabled" : "Disabled"}; ${(settings?.heartbeat.configured ?? snapshot.heartbeat.configured) ? `endpoint ${(settings?.heartbeat.endpointHost ?? snapshot.heartbeat.endpointHost) ?? "configured"}` : "no endpoint configured"}.`;
+  elements.settingsConfigPath.textContent = snapshot.configPath;
+  elements.settingsLogPath.textContent = snapshot.logPath;
+}
+
+function getNextRelevantAction(snapshot: RendererDashboardSnapshot): RendererDashboardSnapshot["schedule"]["actions"][number] | null {
+  return snapshot.schedule.actions.find((item) => item.status === "due-now" || item.status === "within-grace-period")
+    ?? snapshot.schedule.actions.find((item) => item.status === "upcoming")
+    ?? snapshot.schedule.actions.find((item) => item.status === "missed")
+    ?? null;
+}
+
+function renderAutomationTelemetry(snapshot: RendererDashboardSnapshot): void {
+  const automation = snapshot.automation;
+  const heartbeat = snapshot.heartbeat;
+  const latestDryRun = automation.latestDryRun;
+
+  elements.executionMode.textContent = executionModeLabel(automation.executionMode);
+  elements.executionModeNote.textContent = automation.executionMode === "dry-run"
+    ? "Due actions are simulated only."
+    : automation.executionMode === "notify-only"
+      ? "Monitoring and notifications only."
+      : "Real clicks require confirmation.";
+
+  elements.heartbeatStatus.textContent = heartbeat.enabled ? heartbeat.configured ? "Enabled" : "Needs endpoint" : "Disabled";
+  elements.heartbeatNote.textContent = heartbeat.lastError
+    ?? (heartbeat.lastSuccessAt ? `Last sent ${new Date(heartbeat.lastSuccessAt).toLocaleTimeString()}` : "No heartbeat sent.");
+
+  elements.automationModeDetail.textContent = `${executionModeLabel(automation.executionMode)} - checked every ${automation.monitorIntervalSeconds}s`;
+  elements.automationLastChecked.textContent = formatOptionalTime(automation.lastCheckedAt);
+  elements.automationDryRunStatus.textContent = latestDryRun
+    ? `${simulationStatusLabel(latestDryRun.status)} ${latestDryRun.action} at ${new Date(latestDryRun.simulatedAt).toLocaleTimeString()}`
+    : "No simulated action recorded.";
+  elements.automationDryRunStatus.dataset.status = latestDryRun?.status === "simulated" ? "passed" : latestDryRun?.status ?? "not-started";
+  elements.automationDryRunDetail.textContent = latestDryRun
+    ? `${latestDryRun.reason} Perakam: ${statusLabel(latestDryRun.perakamStatus)}. Control: ${availabilityLabel(latestDryRun.controlAvailability)}.`
+    : "Dry-run mode records due actions without submitting a real configured action.";
+
+  elements.heartbeatEndpoint.textContent = heartbeat.enabled
+    ? heartbeat.endpointHost ?? "Configured endpoint is invalid or missing."
+    : "Disabled.";
+  elements.heartbeatLastSuccess.textContent = formatOptionalTime(heartbeat.lastSuccessAt);
+  elements.heartbeatError.textContent = heartbeat.lastError ?? "--";
+
+  const auditItems = automation.auditEvents.length > 0
+    ? automation.auditEvents.map((event) => {
+      const item = document.createElement("li");
+      item.dataset.status = event.status;
+      const time = new Date(event.createdAt).toLocaleTimeString();
+      const action = event.action ? ` ${event.action}` : "";
+      item.textContent = `${time} - ${event.type}${action}: ${event.message}`;
+      return item;
+    })
+    : [createEmptyListItem("No automation audit events yet.")];
+
+  elements.automationAuditList.replaceChildren(...auditItems);
+}
+
+function executionModeLabel(mode: string): string {
+  switch (mode) {
+    case "notify-only":
+      return "Notify only";
+    case "dry-run":
+      return "Dry run";
+    default:
+      return "Manual confirm";
+  }
+}
+
+function simulationStatusLabel(status: string): string {
+  switch (status) {
+    case "simulated":
+      return "Simulated";
+    case "blocked":
+      return "Blocked";
+    case "failed":
+      return "Failed";
+    default:
+      return status;
+  }
+}
+
 function reminderStageLabel(stage: string): string {
   const labels = new Map<string, string>([
-    ["clockInApproaching", "Clock-in approaching"],
-    ["clockInDueNow", "Clock-in due now"],
-    ["clockInGrace", "Clock-in grace period"],
-    ["clockOutApproaching", "Clock-out approaching"],
-    ["clockOutDueNow", "Clock-out due now"],
-    ["clockOutGrace", "Clock-out grace period"]
+    ["clockInApproaching", "Morning action approaching"],
+    ["clockInDueNow", "Morning action due now"],
+    ["clockInGrace", "Morning action grace period"],
+    ["clockOutApproaching", "Evening action approaching"],
+    ["clockOutDueNow", "Evening action due now"],
+    ["clockOutGrace", "Evening action grace period"]
   ]);
 
   return labels.get(stage) ?? stage;
+}
+
+function setupTabNavigation(): void {
+  if (tabButtons.length === 0 || tabPanels.length === 0) {
+    return;
+  }
+
+  const activateTab = (target: string, focusTab = false): void => {
+    for (const button of tabButtons) {
+      const isActive = button.dataset.tabTarget === target;
+      button.setAttribute("aria-selected", String(isActive));
+      button.tabIndex = isActive ? 0 : -1;
+      if (isActive && focusTab) {
+        button.focus();
+      }
+    }
+
+    for (const panel of tabPanels) {
+      panel.hidden = panel.dataset.tabPanel !== target;
+    }
+  };
+
+  for (const button of tabButtons) {
+    button.addEventListener("click", () => {
+      activateTab(button.dataset.tabTarget ?? "overview");
+    });
+
+    button.addEventListener("keydown", (event) => {
+      if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) {
+        return;
+      }
+
+      event.preventDefault();
+      const currentIndex = tabButtons.indexOf(button);
+      const lastIndex = tabButtons.length - 1;
+      const nextIndex = event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? lastIndex
+          : event.key === "ArrowRight"
+            ? (currentIndex + 1) % tabButtons.length
+            : (currentIndex - 1 + tabButtons.length) % tabButtons.length;
+      activateTab(tabButtons[nextIndex].dataset.tabTarget ?? "overview", true);
+    });
+  }
+
+  activateTab(tabButtons.find((button) => button.getAttribute("aria-selected") === "true")?.dataset.tabTarget ?? "overview");
 }
 
 async function refresh(): Promise<void> {
@@ -554,6 +854,37 @@ elements.saveTelegramSettingsButton.addEventListener("click", () => {
 });
 elements.sendTelegramTest.addEventListener("click", () => {
   void sendTelegramTestNotification();
+});
+elements.settingsForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+});
+[
+  elements.settingsWorkerEnabled,
+  elements.settingsWorkerInterval,
+  elements.settingsExecutionMode,
+  elements.settingsAutomationInterval,
+  elements.settingsPrepareBrowser,
+  elements.settingsMorningStart,
+  elements.settingsMorningEnd,
+  elements.settingsEveningStart,
+  elements.settingsEveningEnd,
+  elements.settingsGracePeriod,
+  elements.settingsRemindersEnabled,
+  elements.settingsReminderApproaching,
+  elements.settingsSystemNotifications,
+  elements.settingsDashboardUrl,
+  elements.settingsHeartbeatEnabled,
+  elements.settingsHeartbeatEndpoint,
+  elements.settingsHeartbeatInterval
+].forEach((input) => {
+  input.addEventListener("change", markAppSettingsDirty);
+  input.addEventListener("input", markAppSettingsDirty);
+});
+elements.settingsSave.addEventListener("click", () => {
+  void saveAppSettings();
+});
+elements.settingsReload.addEventListener("click", () => {
+  void loadAppSettings({ force: true });
 });
 
 function runScheduleAction(action: () => Promise<RendererDashboardSnapshot>): void {
@@ -814,7 +1145,7 @@ function renderExecutionResult(
 }
 
 function actionLabel(action: RendererAttendanceActionType): string {
-  return action === "clock-in" ? "Clock-in" : "Clock-out";
+  return action === "clock-in" ? "Morning action" : "Evening action";
 }
 
 function dryRunStatusLabel(status: string): string {
@@ -863,11 +1194,11 @@ function confirmationReasonText(readiness: RendererConfirmationDashboardSnapshot
   }
 
   if (request?.status === "cancelled") {
-    return "Confirmation cancelled. No attendance action was performed.";
+    return "Confirmation cancelled. No configured action was performed.";
   }
 
   if (request?.status === "accepted") {
-    return "Confirmation accepted. You may run dry-run, then perform one real attendance click if checks pass.";
+    return "Confirmation accepted. You may run dry-run, then perform one real configured-target click if checks pass.";
   }
 
   if (request?.status === "in-flight") {
@@ -875,7 +1206,7 @@ function confirmationReasonText(readiness: RendererConfirmationDashboardSnapshot
   }
 
   if (request?.status === "used") {
-    return "Attendance action completed. This confirmation cannot be reused.";
+    return "Configured action completed. This confirmation cannot be reused.";
   }
 
   if (request?.status === "failed") {
@@ -890,9 +1221,9 @@ function confirmationStatusText(status: string): string {
     ["pending", "Pending confirmation."],
     ["accepted", "Accepted. Ready for dry-run and guarded execution."],
     ["in-flight", "In flight. Duplicate execution is blocked."],
-    ["used", "Used. Attendance action completed."],
+    ["used", "Used. Configured action completed."],
     ["failed", "Failed. Fresh confirmation required."],
-    ["cancelled", "Cancelled. No attendance action was performed."],
+    ["cancelled", "Cancelled. No configured action was performed."],
     ["expired", "Expired. Fresh readiness check required."]
   ]);
 
@@ -1483,6 +1814,197 @@ function markPerakamLoginFormDirty(): void {
   setPerakamLoginResult("Unsaved Perakam auto-login changes.", "neutral");
 }
 
+async function loadAppSettings(options: { force?: boolean } = {}): Promise<void> {
+  if (appSettingsDirty && !options.force) {
+    return;
+  }
+
+  setAppSettingsControlsDisabled(true);
+  setSettingsResult("Loading app settings.", "neutral");
+
+  try {
+    const settings = await withTimeout(window.alilos.getAppSettings(), "Loading app settings timed out.");
+    appSettingsDirty = false;
+    renderAppSettings(settings, { force: true });
+    setSettingsResult("Settings loaded.", "success");
+  } catch (error) {
+    setSettingsResult(error instanceof Error ? error.message : "Unable to load app settings.", "error");
+  } finally {
+    setAppSettingsControlsDisabled(false);
+  }
+}
+
+async function saveAppSettings(): Promise<void> {
+  setAppSettingsControlsDisabled(true);
+  setSettingsResult("Saving app settings.", "neutral");
+
+  try {
+    const settings = await withTimeout(window.alilos.saveAppSettings(readAppSettings()), "Saving app settings timed out.");
+    appSettingsDirty = false;
+    renderAppSettings(settings, { force: true });
+    render(await window.alilos.getSnapshot());
+    setSettingsResult(`Settings saved at ${new Date().toLocaleTimeString()}.`, "success");
+  } catch (error) {
+    setSettingsResult(error instanceof Error ? error.message : "Unable to save app settings.", "error");
+  } finally {
+    setAppSettingsControlsDisabled(false);
+  }
+}
+
+function renderAppSettings(settings: RendererAppSettingsSnapshot, options: { force?: boolean } = {}): void {
+  currentAppSettings = settings;
+
+  if (!appSettingsDirty || options.force) {
+    elements.settingsWorkerEnabled.checked = settings.worker.enabled;
+    elements.settingsWorkerInterval.value = String(settings.worker.pollIntervalSeconds);
+    elements.settingsExecutionMode.value = settings.automation.executionMode;
+    elements.settingsAutomationInterval.value = String(settings.automation.monitorIntervalSeconds);
+    elements.settingsPrepareBrowser.checked = settings.automation.prepareBrowserInDryRun;
+    elements.settingsMorningStart.value = settings.scheduler.clockInWindow.start;
+    elements.settingsMorningEnd.value = settings.scheduler.clockInWindow.end;
+    elements.settingsEveningStart.value = settings.scheduler.clockOutWindow.start;
+    elements.settingsEveningEnd.value = settings.scheduler.clockOutWindow.end;
+    elements.settingsGracePeriod.value = String(settings.scheduler.gracePeriodMinutes);
+    elements.settingsRemindersEnabled.checked = settings.scheduler.reminders.enabled;
+    elements.settingsReminderApproaching.value = String(settings.scheduler.reminders.approachingMinutes);
+    elements.settingsSystemNotifications.checked = settings.scheduler.reminders.systemNotificationsEnabled;
+    elements.settingsDashboardUrl.value = settings.perakam.dashboardUrl;
+    elements.settingsHeartbeatEnabled.checked = settings.heartbeat.enabled;
+    elements.settingsHeartbeatEndpoint.value = "";
+    elements.settingsHeartbeatEndpoint.placeholder = settings.heartbeat.configured
+      ? "Configured - leave blank to keep"
+      : "Not configured";
+    elements.settingsHeartbeatInterval.value = String(settings.heartbeat.intervalSeconds);
+  }
+
+  elements.settingsHeartbeatEndpointState.textContent = settings.heartbeat.configured
+    ? `Configured for ${settings.heartbeat.endpointHost ?? "backend endpoint"}; leave blank to keep the current URL.`
+    : "No backend endpoint configured.";
+
+  if (latestSnapshot) {
+    renderSettingsSummaries(latestSnapshot);
+  }
+}
+
+function readAppSettings(): RendererAppSettingsInput {
+  validateTimePair(elements.settingsMorningStart.value, elements.settingsMorningEnd.value, "morning window");
+  validateTimePair(elements.settingsEveningStart.value, elements.settingsEveningEnd.value, "evening window");
+
+  const endpointUrl = elements.settingsHeartbeatEndpoint.value.trim();
+  const heartbeat: RendererAppSettingsInput["heartbeat"] = {
+    enabled: elements.settingsHeartbeatEnabled.checked,
+    intervalSeconds: readPositiveNumber(elements.settingsHeartbeatInterval.value, "Heartbeat interval")
+  };
+
+  if (endpointUrl.length > 0) {
+    heartbeat.endpointUrl = endpointUrl;
+  }
+
+  return {
+    worker: {
+      enabled: elements.settingsWorkerEnabled.checked,
+      pollIntervalSeconds: readPositiveNumber(elements.settingsWorkerInterval.value, "Worker interval")
+    },
+    automation: {
+      executionMode: readExecutionMode(elements.settingsExecutionMode.value),
+      monitorIntervalSeconds: readPositiveNumber(elements.settingsAutomationInterval.value, "Automation interval"),
+      prepareBrowserInDryRun: elements.settingsPrepareBrowser.checked
+    },
+    scheduler: {
+      clockInWindow: {
+        start: elements.settingsMorningStart.value,
+        end: elements.settingsMorningEnd.value
+      },
+      clockOutWindow: {
+        start: elements.settingsEveningStart.value,
+        end: elements.settingsEveningEnd.value
+      },
+      gracePeriodMinutes: readPositiveNumber(elements.settingsGracePeriod.value, "Grace period"),
+      reminders: {
+        enabled: elements.settingsRemindersEnabled.checked,
+        approachingMinutes: readPositiveNumber(elements.settingsReminderApproaching.value, "Reminder lead time"),
+        systemNotificationsEnabled: elements.settingsSystemNotifications.checked
+      }
+    },
+    perakam: {
+      dashboardUrl: elements.settingsDashboardUrl.value.trim()
+    },
+    heartbeat
+  };
+}
+
+function setAppSettingsControlsDisabled(disabled: boolean): void {
+  elements.settingsWorkerEnabled.disabled = disabled;
+  elements.settingsWorkerInterval.disabled = disabled;
+  elements.settingsExecutionMode.disabled = disabled;
+  elements.settingsAutomationInterval.disabled = disabled;
+  elements.settingsPrepareBrowser.disabled = disabled;
+  elements.settingsMorningStart.disabled = disabled;
+  elements.settingsMorningEnd.disabled = disabled;
+  elements.settingsEveningStart.disabled = disabled;
+  elements.settingsEveningEnd.disabled = disabled;
+  elements.settingsGracePeriod.disabled = disabled;
+  elements.settingsRemindersEnabled.disabled = disabled;
+  elements.settingsReminderApproaching.disabled = disabled;
+  elements.settingsSystemNotifications.disabled = disabled;
+  elements.settingsDashboardUrl.disabled = disabled;
+  elements.settingsHeartbeatEnabled.disabled = disabled;
+  elements.settingsHeartbeatEndpoint.disabled = disabled;
+  elements.settingsHeartbeatInterval.disabled = disabled;
+  elements.settingsSave.disabled = disabled;
+  elements.settingsReload.disabled = disabled;
+}
+
+function markAppSettingsDirty(): void {
+  if (elements.settingsSave.disabled) {
+    return;
+  }
+
+  appSettingsDirty = true;
+  setSettingsResult("Unsaved app settings changes.", "neutral");
+}
+
+function setSettingsResult(message: string, tone: "neutral" | "success" | "error"): void {
+  elements.settingsResult.textContent = message;
+  elements.settingsResult.dataset.tone = tone;
+}
+
+function readExecutionMode(value: string): RendererAppSettingsInput["automation"]["executionMode"] {
+  if (value === "notify-only" || value === "dry-run" || value === "manual-confirm") {
+    return value;
+  }
+
+  throw new Error("Choose a valid execution mode.");
+}
+
+function readPositiveNumber(value: string, label: string): number {
+  const parsed = Number(value);
+
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new Error(`${label} must be a positive number.`);
+  }
+
+  return Math.round(parsed);
+}
+
+function validateTimePair(start: string, end: string, label: string): void {
+  if (minutesFromTimeInput(start) >= minutesFromTimeInput(end)) {
+    throw new Error(`The ${label} start time must be before its end time.`);
+  }
+}
+
+function minutesFromTimeInput(value: string): number {
+  const [hourText, minuteText] = value.split(":");
+  const hour = Number(hourText);
+  const minute = Number(minuteText);
+
+  if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+    throw new Error("Time values must use HH:MM format.");
+  }
+
+  return hour * 60 + minute;
+}
+
 async function loadTelegramSettings(): Promise<void> {
   const settings = await window.alilos.getTelegramSettings();
   renderTelegramSettings(settings);
@@ -1518,21 +2040,42 @@ async function sendTelegramTestNotification(): Promise<void> {
   }
 }
 
-function readTelegramSettings(): RendererTelegramSettings {
-  return {
+function readTelegramSettings(): RendererTelegramSettingsInput {
+  const botToken = elements.telegramBotToken.value.trim();
+  const chatId = elements.telegramChatId.value.trim();
+  const commandPrefix = elements.telegramCommandPrefixInput.value.trim() || currentTelegramSettings?.commandPrefix || "alilos";
+
+  const settings: RendererTelegramSettingsInput = {
     enabled: elements.telegramEnabled.checked,
-    botToken: elements.telegramBotToken.value,
-    chatId: elements.telegramChatId.value,
-    commandPrefix: currentTelegramSettings?.commandPrefix ?? "alilos",
-    lastUpdateId: currentTelegramSettings?.lastUpdateId ?? 0
+    commandPrefix
   };
+
+  if (botToken) {
+    settings.botToken = botToken;
+  }
+
+  if (chatId) {
+    settings.chatId = chatId;
+  }
+
+  return settings;
 }
 
-function renderTelegramSettings(settings: RendererTelegramSettings): void {
+function renderTelegramSettings(settings: RendererTelegramSettingsSnapshot): void {
   currentTelegramSettings = settings;
   elements.telegramEnabled.checked = settings.enabled;
-  elements.telegramBotToken.value = settings.botToken;
-  elements.telegramChatId.value = settings.chatId;
+  elements.telegramBotToken.value = "";
+  elements.telegramBotToken.placeholder = `${telegramSecretStatusLabel(settings.secretStatus.botToken)} - leave blank to keep`;
+  elements.telegramChatId.value = "";
+  elements.telegramChatId.placeholder = `${telegramSecretStatusLabel(settings.secretStatus.chatId)} - leave blank to keep`;
+  elements.telegramBotTokenStatus.textContent = telegramSecretStatusLabel(settings.secretStatus.botToken);
+  elements.telegramChatIdStatus.textContent = telegramSecretStatusLabel(settings.secretStatus.chatId);
+  elements.telegramCommandPrefixInput.value = settings.commandPrefix;
+  elements.telegramCommandPrefix.textContent = commandPrefixLabel(settings.commandPrefix);
+
+  if (latestSnapshot) {
+    renderSettingsSummaries(latestSnapshot);
+  }
 }
 
 function renderTelegramTestResult(result: RendererTelegramTestResult): void {
@@ -1543,6 +2086,7 @@ function setTelegramControlsDisabled(disabled: boolean): void {
   elements.telegramEnabled.disabled = disabled;
   elements.telegramBotToken.disabled = disabled;
   elements.telegramChatId.disabled = disabled;
+  elements.telegramCommandPrefixInput.disabled = disabled;
   elements.saveTelegramSettingsButton.disabled = disabled;
   elements.sendTelegramTest.disabled = disabled;
 }
@@ -1550,6 +2094,22 @@ function setTelegramControlsDisabled(disabled: boolean): void {
 function setTelegramResult(message: string, tone: "neutral" | "success" | "error"): void {
   elements.telegramResult.textContent = message;
   elements.telegramResult.dataset.tone = tone;
+}
+
+function commandPrefixLabel(prefix: string | undefined): string {
+  const trimmed = prefix?.trim() || "alilos";
+  return `/${trimmed}`;
+}
+
+function telegramSecretStatusLabel(status: RendererTelegramSettingsSnapshot["secretStatus"]["botToken"]): string {
+  switch (status) {
+    case "configured":
+      return "configured";
+    case "env-local":
+      return "available from .env.local";
+    default:
+      return "not configured";
+  }
 }
 
 function withTimeout<T>(promise: Promise<T>, message: string): Promise<T> {
@@ -1563,7 +2123,9 @@ function withTimeout<T>(promise: Promise<T>, message: string): Promise<T> {
   });
 }
 
+setupTabNavigation();
 window.alilos.onSnapshotUpdated(render);
 setInterval(refresh, 1000);
 void refresh();
+void loadAppSettings();
 void loadTelegramSettings();

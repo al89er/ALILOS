@@ -205,7 +205,7 @@ export class TestClickService {
           safetyChecks: evaluation.checks,
           rejectionReasons: [],
           status: "succeeded",
-          summary: "Manual test click completed once on the selected non-attendance target.",
+          summary: "Manual test click completed once on the selected non-primary target.",
           createdAt: now.toISOString()
         };
       }
@@ -424,7 +424,7 @@ function buildSharedSafetyChecks(input: {
 
   if (request) {
     addCheck(checks, rejectionReasons, "confirmation exists", true, "Confirmation exists.", "missing-confirmation");
-    addCheck(checks, rejectionReasons, "target ID is allowed", isTestClickTarget(request.targetId), "Target is a permitted non-attendance test target.", "invalid-target");
+    addCheck(checks, rejectionReasons, "target ID is allowed", isTestClickTarget(request.targetId), "Target is a permitted non-primary test target.", "invalid-target");
     addCheck(checks, rejectionReasons, "confirmation is not expired", !isExpired(request, input.now), "Confirmation has not expired.", "confirmation-expired");
     addCheck(checks, rejectionReasons, "confirmation is not already used", request.status !== "used", "Confirmation has not been used.", "confirmation-used");
 
@@ -516,7 +516,7 @@ function buildDryRunResult(
     rejectionReasons,
     status,
     summary: status === "passed"
-      ? "Manual test-click dry-run passed. One future guarded click on the selected non-attendance target would be eligible."
+      ? "Manual test-click dry-run passed. One future guarded click on the selected non-primary target would be eligible."
       : `Manual test-click dry-run rejected. ${rejectionReasons.length} safety check(s) did not pass.`,
     createdAt: now.toISOString()
   };

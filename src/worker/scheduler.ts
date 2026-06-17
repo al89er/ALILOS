@@ -65,7 +65,7 @@ export class Scheduler {
     if (existing) {
       if (!this.reusedDates.has(dateKey)) {
         this.reusedDates.add(dateKey);
-        this.logger.info(`Reused existing attendance schedule for ${dateKey}.`);
+        this.logger.info(`Reused existing action schedule for ${dateKey}.`);
       }
 
       return existing;
@@ -81,7 +81,7 @@ export class Scheduler {
     this.config.scheduler.schedulesByDate[dateKey] = schedule;
     this.configStore.save(this.config);
     this.logger.info(
-      `Generated attendance schedule for ${dateKey}: in ${schedule.clockInTime}, out ${schedule.clockOutTime}.`
+      `Generated action schedule for ${dateKey}: morning ${schedule.clockInTime}, evening ${schedule.clockOutTime}.`
     );
 
     return schedule;
@@ -95,19 +95,19 @@ export class Scheduler {
   ): ScheduleActionSnapshot[] {
     const actions: Array<{
       action: ScheduleAction;
-      label: "Clock In" | "Clock Out";
+      label: "Morning Action" | "Evening Action";
       time: string;
       status: ScheduleActionStatus;
     }> = [
       {
         action: "clock-in",
-        label: "Clock In",
+        label: "Morning Action",
         time: schedule.clockInTime,
         status: getActionStatus(schedule.date, schedule.clockInTime, now, isWeekend, isTodaySkipped, this.config.scheduler.gracePeriodMinutes)
       },
       {
         action: "clock-out",
-        label: "Clock Out",
+        label: "Evening Action",
         time: schedule.clockOutTime,
         status: getActionStatus(schedule.date, schedule.clockOutTime, now, isWeekend, isTodaySkipped, this.config.scheduler.gracePeriodMinutes)
       }
@@ -128,7 +128,7 @@ export class Scheduler {
     this.config.scheduler.skippedDates.push(dateKey);
     this.config.scheduler.skippedDates.sort();
     this.configStore.save(this.config);
-    this.logger.info(`Skipped attendance schedule for ${dateKey}.`);
+    this.logger.info(`Skipped action schedule for ${dateKey}.`);
   }
 
   private unskipDate(dateKey: string): void {
@@ -141,7 +141,7 @@ export class Scheduler {
 
     this.config.scheduler.skippedDates = nextSkippedDates;
     this.configStore.save(this.config);
-    this.logger.info(`Unskipped attendance schedule for ${dateKey}.`);
+    this.logger.info(`Unskipped action schedule for ${dateKey}.`);
   }
 
   private logStatusTransitions(dateKey: string, actions: ScheduleActionSnapshot[]): void {
@@ -197,11 +197,11 @@ function getActionStatus(
 
 function buildSummary(isWeekend: boolean, isSkipped: boolean, actions: ScheduleActionSnapshot[]): string {
   if (isWeekend) {
-    return "Weekend / non-working day. No attendance action is due.";
+    return "Weekend / non-working day. No configured action is due.";
   }
 
   if (isSkipped) {
-    return "Today is skipped. No attendance action is due.";
+    return "Today is skipped. No configured action is due.";
   }
 
   const activeAction = actions.find((action) => action.status === "due-now" || action.status === "within-grace-period");
@@ -214,7 +214,7 @@ function buildSummary(isWeekend: boolean, isSkipped: boolean, actions: ScheduleA
     return `${missedAction.label} is missed. No automatic action will be taken.`;
   }
 
-  return "Next attendance reminder is upcoming. Manual confirmation only.";
+  return "Next action reminder is upcoming. Manual confirmation only.";
 }
 
 function randomTimeInWindow(dateKey: string, window: TimeWindow): string {

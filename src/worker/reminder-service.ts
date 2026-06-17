@@ -129,7 +129,7 @@ export class ReminderService {
     try {
       this.sendSystemNotification(candidate.title, candidate.message);
 
-      if (isTelegramConfigured(this.config)) {
+      if (this.telegramService.isConfigured()) {
         const telegramResult = await this.telegramService.sendNotification(text);
 
         if (!telegramResult.ok) {
@@ -313,8 +313,4 @@ function formatDateKey(date: Date): string {
 
 function startOfLocalDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
-}
-
-function isTelegramConfigured(config: AppConfig): boolean {
-  return config.telegram.enabled && Boolean(config.telegram.botToken.trim()) && Boolean(config.telegram.chatId.trim());
 }

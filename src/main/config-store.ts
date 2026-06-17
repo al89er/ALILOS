@@ -1,11 +1,27 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { AppConfig, AttendanceCompletionRecord } from "../shared/types";
+import type { AppConfig, AttendanceCompletionRecord, AutomationAuditEvent, ExecutionMode } from "../shared/types";
+
+export interface EnvLocalTelegramSecrets {
+  botToken: string;
+  chatId: string;
+}
 
 const defaultConfig: AppConfig = {
   worker: {
     enabled: true,
     pollIntervalSeconds: 60
+  },
+  automation: {
+    executionMode: "manual-confirm",
+    monitorIntervalSeconds: 30,
+    prepareBrowserInDryRun: true,
+    auditEvents: []
+  },
+  heartbeat: {
+    enabled: false,
+    endpointUrl: "",
+    intervalSeconds: 60
   },
   attendance: {
     clockInPlaceholder: "08:00",
@@ -72,13 +88,21 @@ const defaultConfig: AppConfig = {
 
 export class ConfigStore {
   private readonly filePath: string;
+  private readonly envLocalPath: string;
+  private readonly envLocalTelegramSecrets: EnvLocalTelegramSecrets;
 
-  constructor(userDataPath: string) {
+  constructor(userDataPath: string, appRootPath = process.cwd()) {
     this.filePath = path.join(userDataPath, "config.json");
+    this.envLocalPath = path.join(appRootPath, ".env.local");
+    this.envLocalTelegramSecrets = readEnvLocalTelegramSecrets(this.envLocalPath);
   }
 
   get path(): string {
     return this.filePath;
+  }
+
+  get telegramEnvLocal(): EnvLocalTelegramSecrets {
+    return this.envLocalTelegramSecrets;
   }
 
   load(): AppConfig {
@@ -113,6 +137,21 @@ export class ConfigStore {
       worker: {
         ...defaultConfig.worker,
         ...parsed.worker
+      },
+      automation: {
+        ...defaultConfig.automation,
+        ...parsed.automation,
+        executionMode: normalizeExecutionMode(parsed.automation?.executionMode),
+        monitorIntervalSeconds: clampNumber(parsed.automation?.monitorIntervalSeconds, 15, 24 * 60 * 60, defaultConfig.automation.monitorIntervalSeconds),
+        prepareBrowserInDryRun: parsed.automation?.prepareBrowserInDryRun !== false,
+        auditEvents: normalizeAuditEvents(parsed.automation?.auditEvents)
+      },
+      heartbeat: {
+        ...defaultConfig.heartbeat,
+        ...parsed.heartbeat,
+        enabled: Boolean(parsed.heartbeat?.enabled),
+        endpointUrl: sanitizeUrlText(parsed.heartbeat?.endpointUrl),
+        intervalSeconds: clampNumber(parsed.heartbeat?.intervalSeconds, 30, 24 * 60 * 60, defaultConfig.heartbeat.intervalSeconds)
       },
       attendance: {
         ...defaultConfig.attendance,
@@ -176,6 +215,72 @@ export class ConfigStore {
   }
 }
 
+function readEnvLocalTelegramSecrets(filePath: string): EnvLocalTelegramSecrets {
+  const values = readEnvLocalFile(filePath);
+
+  return {
+    botToken: sanitizeEnvSecret(values.TELEGRAM_BOT_TOKEN),
+    chatId: sanitizeEnvSecret(values.TELEGRAM_CHAT_ID)
+  };
+}
+
+function readEnvLocalFile(filePath: string): Record<string, string> {
+  if (!fs.existsSync(filePath)) {
+    return {};
+  }
+
+  const values: Record<string, string> = {};
+  const raw = fs.readFileSync(filePath, "utf8");
+
+  for (const line of raw.split(/\r?\n/)) {
+    const parsed = parseEnvLine(line);
+    if (parsed) {
+      values[parsed.key] = parsed.value;
+    }
+  }
+
+  return values;
+}
+
+function parseEnvLine(line: string): { key: string; value: string } | null {
+  const trimmed = line.trim();
+
+  if (!trimmed || trimmed.startsWith("#")) {
+    return null;
+  }
+
+  const separatorIndex = trimmed.indexOf("=");
+  if (separatorIndex <= 0) {
+    return null;
+  }
+
+  const key = trimmed.slice(0, separatorIndex).trim();
+  const value = stripEnvValueComment(trimmed.slice(separatorIndex + 1).trim());
+
+  return { key, value: unwrapEnvValue(value) };
+}
+
+function stripEnvValueComment(value: string): string {
+  if (value.startsWith("\"") || value.startsWith("'")) {
+    return value;
+  }
+
+  const commentIndex = value.indexOf(" #");
+  return commentIndex >= 0 ? value.slice(0, commentIndex).trim() : value;
+}
+
+function unwrapEnvValue(value: string): string {
+  if (value.length >= 2 && ((value.startsWith("\"") && value.endsWith("\"")) || (value.startsWith("'") && value.endsWith("'")))) {
+    return value.slice(1, -1);
+  }
+
+  return value;
+}
+
+function sanitizeEnvSecret(value: unknown): string {
+  return String(value ?? "").trim();
+}
+
 function clampNumber(value: unknown, minimum: number, maximum: number, fallback: number): number {
   const numeric = Number(value);
 
@@ -184,6 +289,48 @@ function clampNumber(value: unknown, minimum: number, maximum: number, fallback:
   }
 
   return Math.min(maximum, Math.max(minimum, Math.round(numeric)));
+}
+
+function normalizeExecutionMode(value: unknown): ExecutionMode {
+  if (value === "notify-only" || value === "manual-confirm" || value === "dry-run") {
+    return value;
+  }
+
+  return defaultConfig.automation.executionMode;
+}
+
+function sanitizeUrlText(value: unknown): string {
+  return String(value ?? "").trim().slice(0, 500);
+}
+
+function normalizeAuditEvents(value: AutomationAuditEvent[] | undefined): AutomationAuditEvent[] {
+  return (Array.isArray(value) ? value : [])
+    .filter((event): event is AutomationAuditEvent => Boolean(event?.id && event.type && event.createdAt && event.message))
+    .slice(-200)
+    .map((event) => ({
+      id: String(event.id),
+      type: event.type,
+      action: event.action === "clock-in" || event.action === "clock-out" ? event.action : null,
+      dateKey: typeof event.dateKey === "string" ? event.dateKey.slice(0, 20) : null,
+      status: event.status === "passed" || event.status === "blocked" || event.status === "failed" ? event.status : "info",
+      message: String(event.message).replace(/[?#][^\s]*/g, "?[redacted]").slice(0, 240),
+      createdAt: String(event.createdAt),
+      details: normalizeAuditDetails(event.details)
+    }));
+}
+
+function normalizeAuditDetails(value: AutomationAuditEvent["details"] | undefined): AutomationAuditEvent["details"] {
+  const normalized: AutomationAuditEvent["details"] = {};
+
+  for (const [key, detail] of Object.entries(value ?? {}).slice(0, 20)) {
+    if (typeof detail === "string") {
+      normalized[key] = detail.replace(/[?#][^\s]*/g, "?[redacted]").slice(0, 160);
+    } else if (typeof detail === "number" || typeof detail === "boolean" || detail === null) {
+      normalized[key] = detail;
+    }
+  }
+
+  return normalized;
 }
 
 function normalizeCompletionsByDate(

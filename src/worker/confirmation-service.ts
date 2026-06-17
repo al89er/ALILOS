@@ -138,7 +138,7 @@ export class ConfirmationService {
     }
 
     request.status = "accepted";
-    this.logger.info(`Confirmation accepted for ${request.action} on ${request.dateKey}. ID: ${shortId(request.id)}. No attendance action performed.`);
+    this.logger.info(`Confirmation accepted for ${request.action} on ${request.dateKey}. ID: ${shortId(request.id)}. No configured action performed.`);
     return request;
   }
 
@@ -177,7 +177,7 @@ export class ConfirmationService {
       dateKey: completion.dateKey,
       localClickResult: "click-succeeded-local",
       status: "manually-verified",
-      reason: "User visually confirmed the attendance result in the Perakam browser.",
+      reason: "User visually confirmed the configured-action result in the Perakam browser.",
       sanitizedUrlAfterClick: completion.sanitizedUrlAfterClick,
       evidenceSnippets: [],
       checkedAt: now.toISOString()
@@ -225,7 +225,7 @@ export class ConfirmationService {
 
   async runGuardedAttendanceClick(confirmationId: string, now = new Date()): Promise<AttendanceExecutionResult> {
     this.expirePendingConfirmations(now);
-    this.logger.info(`Attendance execution requested. Confirmation ID: ${shortId(confirmationId)}.`);
+    this.logger.info(`Configured action execution requested. Confirmation ID: ${shortId(confirmationId)}.`);
 
     let request: ConfirmationRequest | null = null;
     let result: AttendanceExecutionResult;
@@ -249,7 +249,7 @@ export class ConfirmationService {
         this.releaseConfirmationClaim(request.id, dryRun.rejectionReasons.join(", ") || "safety-check-rejected", now);
         result = this.buildRejectedExecutionResult(request, dryRun, now);
       } else {
-        this.logger.info(`Attendance click started for ${request.action} on ${request.dateKey}. ID: ${shortId(request.id)}.`);
+        this.logger.info(`Configured-target click started for ${request.action} on ${request.dateKey}. ID: ${shortId(request.id)}.`);
         clickAttemptStarted = true;
         const clickResult = await this.sources.clickVisibleAttendanceControl(request.action);
         let completion = this.markConfirmationUsedAndCompleted(request, clickResult, now);
@@ -449,8 +449,8 @@ export class ConfirmationService {
       rejectionReasons: uniqueReasons,
       status,
       summary: status === "passed"
-        ? "Dry-run passed. A future guarded execution would be eligible. No attendance action was performed."
-        : `Dry-run rejected. ${uniqueReasons.length} safety check(s) did not pass. No attendance action was performed.`,
+        ? "Dry-run passed. A future guarded execution would be eligible. No configured action was performed."
+        : `Dry-run rejected. ${uniqueReasons.length} safety check(s) did not pass. No configured action was performed.`,
       createdAt: input.now.toISOString()
     };
   }
@@ -490,7 +490,7 @@ export class ConfirmationService {
       ],
       rejectionReasons: ["unknown"],
       status: "failed",
-      summary: `Dry-run failed unexpectedly: ${message}. No attendance action was performed.`,
+      summary: `Dry-run failed unexpectedly: ${message}. No configured action was performed.`,
       createdAt: now.toISOString()
     };
   }
@@ -499,35 +499,35 @@ export class ConfirmationService {
     request: ConfirmationRequest | null;
     rejectionReasons: DryRunRejectionReason[];
   } {
-    this.logger.info(`Attendance execution claim attempted. ID: ${shortId(id)}.`);
+    this.logger.info(`Configured action execution claim attempted. ID: ${shortId(id)}.`);
     const request = this.confirmations.get(id) ?? null;
 
     if (!request) {
-      this.logger.warn(`Attendance execution claim rejected: missing confirmation. ID: ${shortId(id)}.`);
+      this.logger.warn(`Configured action execution claim rejected: missing confirmation. ID: ${shortId(id)}.`);
       return { request: null, rejectionReasons: ["missing-confirmation"] };
     }
 
     const terminalReason = claimRejectionReason(request.status);
     if (terminalReason && request.status !== "pending" && request.status !== "accepted") {
-      this.logger.warn(`Attendance execution claim rejected: ${request.status}. ID: ${shortId(request.id)}.`);
+      this.logger.warn(`Configured action execution claim rejected: ${request.status}. ID: ${shortId(request.id)}.`);
       return { request, rejectionReasons: [terminalReason] };
     }
 
     if (new Date(request.expiresAt).getTime() <= now.getTime()) {
       request.status = "expired";
-      this.logger.warn(`Attendance execution claim rejected: expired confirmation. ID: ${shortId(request.id)}.`);
+      this.logger.warn(`Configured action execution claim rejected: expired confirmation. ID: ${shortId(request.id)}.`);
       return { request, rejectionReasons: ["confirmation-expired"] };
     }
 
     if (terminalReason) {
-      this.logger.warn(`Attendance execution claim rejected: ${request.status}. ID: ${shortId(request.id)}.`);
+      this.logger.warn(`Configured action execution claim rejected: ${request.status}. ID: ${shortId(request.id)}.`);
       return { request, rejectionReasons: [terminalReason] };
     }
 
     request.status = "in-flight";
     request.claimedAt = now.toISOString();
     request.failureReason = null;
-    this.logger.info(`Attendance execution claim accepted for ${request.action} on ${request.dateKey}. ID: ${shortId(request.id)}.`);
+    this.logger.info(`Configured action execution claim accepted for ${request.action} on ${request.dateKey}. ID: ${shortId(request.id)}.`);
     return { request, rejectionReasons: [] };
   }
 
@@ -540,7 +540,7 @@ export class ConfirmationService {
     request.status = "accepted";
     request.failedAt = now.toISOString();
     request.failureReason = reason;
-    this.logger.warn(`Attendance execution claim released for ${request.action} on ${request.dateKey}. ID: ${shortId(request.id)}. Reason: ${reason}.`);
+    this.logger.warn(`Configured action execution claim released for ${request.action} on ${request.dateKey}. ID: ${shortId(request.id)}. Reason: ${reason}.`);
   }
 
   private markConfirmationFailed(id: string, reason: string, now: Date): void {
@@ -552,7 +552,7 @@ export class ConfirmationService {
     request.status = "failed";
     request.failedAt = now.toISOString();
     request.failureReason = reason;
-    this.logger.error(`Attendance execution finalized as failed for ${request.action} on ${request.dateKey}. ID: ${shortId(request.id)}. Reason: ${reason}.`);
+    this.logger.error(`Configured action execution finalized as failed for ${request.action} on ${request.dateKey}. ID: ${shortId(request.id)}. Reason: ${reason}.`);
   }
 
   private markConfirmationUsedAndCompleted(
@@ -562,7 +562,7 @@ export class ConfirmationService {
   ): AttendanceCompletionRecord {
     request.status = "used";
     request.usedAt = now.toISOString();
-    this.logger.info(`Attendance confirmation marked used for ${request.action} on ${request.dateKey}. ID: ${shortId(request.id)}.`);
+    this.logger.info(`Configured action confirmation marked used for ${request.action} on ${request.dateKey}. ID: ${shortId(request.id)}.`);
 
     const completion: AttendanceCompletionRecord = {
       dateKey: request.dateKey,
@@ -588,7 +588,7 @@ export class ConfirmationService {
 
     this.completedActions.set(completedKey(request.dateKey, request.action), completion);
     this.sources.persistCompletion(completion);
-    this.logger.info(`Attendance ${request.action} marked completed on ${request.dateKey}. ID: ${shortId(request.id)}.`);
+    this.logger.info(`Configured action ${request.action} marked completed on ${request.dateKey}. ID: ${shortId(request.id)}.`);
     return completion;
   }
 
@@ -617,7 +617,7 @@ export class ConfirmationService {
 
     this.completedActions.set(completedKey(request.dateKey, request.action), completion);
     this.sources.persistCompletion(completion);
-    this.logger.warn(`Attendance ${request.action} marked attempted on ${request.dateKey}; repeat execution blocked. ID: ${shortId(request.id)}.`);
+    this.logger.warn(`Configured action ${request.action} marked attempted on ${request.dateKey}; repeat execution blocked. ID: ${shortId(request.id)}.`);
     return completion;
   }
 
@@ -711,7 +711,7 @@ export class ConfirmationService {
       status: "rejected",
       completionState: null,
       verification: null,
-      summary: `Attendance execution rejected before click. Claim failed: ${claimRejectionText(reasons[0] ?? "unknown")}`,
+      summary: `Configured action execution rejected before click. Claim failed: ${claimRejectionText(reasons[0] ?? "unknown")}`,
       createdAt: now.toISOString()
     };
   }
@@ -738,7 +738,7 @@ export class ConfirmationService {
       status: "rejected",
       completionState: null,
       verification: null,
-      summary: `Attendance execution rejected. ${dryRun.rejectionReasons.length} safety check(s) did not pass. No click was performed.`,
+      summary: `Configured action execution rejected. ${dryRun.rejectionReasons.length} safety check(s) did not pass. No click was performed.`,
       createdAt: now.toISOString()
     };
   }
@@ -798,30 +798,30 @@ export class ConfirmationService {
       perakamStatus: perakam,
       controlAvailability: action ? controlSnapshot(action, perakam) : unknownControlSnapshot("Execution failed before an action could be verified.", perakam),
       safetyChecks: [
-        safetyCheck("attendance click completed without unexpected error", false, message)
+        safetyCheck("configured-target click completed without unexpected error", false, message)
       ],
       rejectionReasons: ["unknown"],
       status: "failed",
       completionState: null,
       verification: null,
-      summary: `Attendance execution failed unexpectedly: ${message}. Start a fresh readiness and confirmation flow before retrying.`,
+      summary: `Configured action execution failed unexpectedly: ${message}. Start a fresh readiness and confirmation flow before retrying.`,
       createdAt: now.toISOString()
     };
   }
 
   private logExecutionResult(result: AttendanceExecutionResult): void {
     if (result.status === "succeeded") {
-      this.logger.info(`Attendance click succeeded for ${result.action} on ${result.dateKey}. Confirmation ID: ${shortId(result.confirmationId)}.`);
+      this.logger.info(`Configured-target click succeeded for ${result.action} on ${result.dateKey}. Confirmation ID: ${shortId(result.confirmationId)}.`);
       return;
     }
 
     const reason = result.rejectionReasons.join(", ") || result.summary;
     if (result.status === "rejected") {
-      this.logger.warn(`Attendance execution rejected. ID: ${shortId(result.confirmationId)}. Reason: ${reason}.`);
+      this.logger.warn(`Configured action execution rejected. ID: ${shortId(result.confirmationId)}. Reason: ${reason}.`);
       return;
     }
 
-    this.logger.error(`Attendance execution failed. ID: ${shortId(result.confirmationId)}. Reason: ${reason}.`);
+    this.logger.error(`Configured action execution failed. ID: ${shortId(result.confirmationId)}. Reason: ${reason}.`);
   }
 
   private logDryRunResult(result: DryRunExecutionResult): void {
@@ -1011,7 +1011,7 @@ function claimRejectionText(reason: DryRunRejectionReason): string {
     case "confirmation-failed":
       return "confirmation already failed.";
     case "already-completed":
-      return "attendance action was already completed for this date.";
+      return "configured action was already completed for this date.";
     default:
       return "confirmation could not be claimed.";
   }
@@ -1034,6 +1034,10 @@ function attendanceTargetId(action: AttendanceActionType): "a50" | "a51" {
   return action === "clock-in" ? "a50" : "a51";
 }
 
+function actionLabel(action: AttendanceActionType): string {
+  return action === "clock-in" ? "morning action" : "evening action";
+}
+
 function unknownControlSnapshot(reason: string, perakam: PerakamStatusSnapshot): AttendanceControlSnapshot {
   return {
     availability: "unknown",
@@ -1047,25 +1051,25 @@ function executionSummaryForCompletion(action: AttendanceActionType, completion:
 
   switch (completion.state) {
     case "verified-success":
-      return `The app clicked the visible Perakam ${action} control once at ${timeText}. Read-only verification suggests Perakam accepted it.`;
+      return `The app clicked the visible Perakam target control for ${actionLabel(action)} once at ${timeText}. Read-only verification suggests Perakam accepted it.`;
     case "verification-failed":
-      return `The app clicked the visible Perakam ${action} control once at ${timeText}, but read-only verification found possible failure evidence. Please visually confirm in the Perakam browser. The app will not automatically retry.`;
+      return `The app clicked the visible Perakam target control for ${actionLabel(action)} once at ${timeText}, but read-only verification found possible failure evidence. Please visually confirm in the Perakam browser. The app will not automatically retry.`;
     case "verification-unknown":
     case "click-succeeded-local":
     case "verification-pending":
-      return `The app clicked the visible Perakam ${action} control once at ${timeText}. Verification is read-only and could not confirm acceptance. Please visually confirm in the Perakam browser. The app will not automatically retry.`;
+      return `The app clicked the visible Perakam target control for ${actionLabel(action)} once at ${timeText}. Verification is read-only and could not confirm acceptance. Please visually confirm in the Perakam browser. The app will not automatically retry.`;
     case "manually-verified":
-      return `The app clicked the visible Perakam ${action} control once at ${timeText}. You marked the result visually confirmed.`;
+      return `The app clicked the visible Perakam target control for ${actionLabel(action)} once at ${timeText}. You marked the result visually confirmed.`;
     case "click-attempted":
     case "not-attempted":
-      return `Attendance ${action} state is ${completion.state}.`;
+      return `Configured action ${actionLabel(action)} state is ${completion.state}.`;
   }
 }
 
 function readyText(action: AttendanceActionType): string {
   return action === "clock-in"
-    ? "Clock-in is ready for confirmation. Perakam shows the Masa Hadir control, and the current schedule is within the allowed window."
-    : "Clock-out is ready for confirmation. Perakam shows the Masa Keluar control, and the current schedule is within the allowed window.";
+    ? "Morning action is ready for confirmation. Perakam shows the Masa Hadir control, and the current schedule is within the allowed window."
+    : "Evening action is ready for confirmation. Perakam shows the Masa Keluar control, and the current schedule is within the allowed window.";
 }
 
 function reasonText(reasons: NotReadyReason[], autoLogin: PerakamAutoLoginSnapshot): string {
@@ -1142,7 +1146,7 @@ function reasonText(reasons: NotReadyReason[], autoLogin: PerakamAutoLoginSnapsh
   }
 
   if (reasons.includes("already-completed")) {
-    return "Attendance action completed for this date and action.";
+    return "Configured action completed for this date and action.";
   }
 
   if (reasons.includes("outside-schedule-window")) {

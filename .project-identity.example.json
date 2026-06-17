@@ -1,0 +1,10 @@
+{
+  "projectType": "personal",
+  "githubHostAlias": "github-personal",
+  "gitUserName": "Al",
+  "gitUserEmail": "afif89@gmail.com",
+  "supabaseAccountType": "personal",
+  "supabaseProjectRef": "TODO_SUPABASE_PROJECT_REF",
+  "supabaseProjectUrl": "https://TODO_SUPABASE_PROJECT_REF.supabase.co",
+  "notes": "This project must only use personal GitHub and personal Supabase."
+}

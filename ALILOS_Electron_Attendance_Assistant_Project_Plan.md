@@ -1,4 +1,4 @@
-# A.L.I.L.O.S. Electron Attendance Assistant — Project Plan and Handoff Notes
+# A.L.I.L.O.S. Electron Authorized Website Action Assistant — Project Plan and Handoff Notes
 
 **Prepared for:** Al  
 **Context:** Continuation document for future ChatGPT sessions  
@@ -21,9 +21,9 @@ The current uploaded source is a Tampermonkey userscript for `https://perakamwak
 
 The script currently provides:
 
-1. **Automatic scheduled clock-in and clock-out**
-   - Clock-in random window: **7:45 AM – 7:50 AM**
-   - Clock-out random window: **5:05 PM – 5:10 PM**
+1. **Automatic scheduled morning and evening actions**
+   - Morning action random window: **7:45 AM – 7:50 AM**
+   - Evening action random window: **5:05 PM – 5:10 PM**
    - Same generated times are reused for the day via `localStorage`.
 
 2. **Weekend exclusion**
@@ -78,7 +78,7 @@ The script currently provides:
 - Telegram bot token and chat ID are hardcoded directly inside the script.
 - The script depends on the browser tab being open, logged in, awake, and not suspended.
 - It may fail if the Perakam Waktu site changes its layout, IDs, or login/session behavior.
-- Attendance automation must remain within user authorization and relevant institutional rules.
+- Website action automation must remain within user authorization and relevant institutional rules.
 
 ---
 
@@ -104,7 +104,7 @@ Python was acknowledged as potentially simpler for background reliability, but E
 
 ## 4. Safety and Compliance Boundary
 
-The app should be designed as a **Windows attendance assistant**, not an unauthorized silent attendance bot.
+The app should be designed as a **Windows authorized website action assistant**, not an unauthorized background submitter.
 
 The safer default mode should be:
 
@@ -114,7 +114,7 @@ Detect → Prepare → Notify → Require confirmation → Execute
 
 Recommended default behavior:
 
-- Remind the user when clock-in/out time approaches.
+- Remind the user when the configured morning/evening action time approaches.
 - Open or prepare the Perakam Waktu page.
 - Detect the correct clock button.
 - Ask for user confirmation through GUI, Windows notification, Telegram, or phone webapp.
@@ -134,7 +134,7 @@ Possible modes:
 4. **Admin/debug mode**
    - Shows internal button detection, browser state, scheduler state, logs, and command status.
 
-Any fully unattended attendance action should only be considered if explicitly authorized and compliant with the relevant policy.
+Any fully unattended configured action should only be considered if explicitly authorized and compliant with the relevant policy.
 
 ---
 
@@ -430,7 +430,7 @@ The phone webapp should show different warnings based on Electron status.
 ✅ Desktop online
 Internet OK
 Perakam reachable
-Next action: Clock-in reminder at 7:47 AM
+Next action: Morning action reminder at 7:47 AM
 ```
 
 ### Captive portal detected
@@ -747,10 +747,10 @@ These can be added later.
 Use the following prompt in a new chat if continuation is needed:
 
 ```text
-We are continuing the A.L.I.L.O.S. Electron Attendance Assistant project.
+We are continuing the A.L.I.L.O.S. Electron Authorized Website Action Assistant project.
 
 Relevant project source: Tampermonkey Script - Perakam Waktu.txt.
-Also refer to this planning document: A.L.I.L.O.S. Electron Attendance Assistant — Project Plan and Handoff Notes.
+Also refer to this planning document: A.L.I.L.O.S. Electron Authorized Website Action Assistant — Project Plan and Handoff Notes.
 
 The goal is to convert the existing personal Tampermonkey script into a standalone Windows Electron + TypeScript + Playwright app with GUI, tray mode, background worker, Telegram integration, phone webapp heartbeat, internet/captive portal monitoring, and safe manual-confirm attendance assistance.
 
@@ -758,7 +758,7 @@ Important agreed decisions:
 - Prefer Electron + TypeScript + Playwright.
 - Start without React if possible.
 - Use Electron GUI + separate background worker.
-- Default to safe manual-confirm mode for attendance actions.
+- Default to safe manual-confirm mode for configured actions.
 - Add captive portal detection/login helper for authorized network account.
 - Integrate with existing phone webapp using heartbeat/status payload.
 - Phone webapp should distinguish captive portal login attempts from full desktop unreachable state.

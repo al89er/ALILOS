@@ -4,7 +4,7 @@ export function createAppTray(mainWindow: BrowserWindow): Tray {
   const icon = nativeImage.createEmpty();
   const tray = new Tray(icon);
 
-  tray.setToolTip("A.L.I.L.O.S. Attendance Assistant");
+  tray.setToolTip("A.L.I.L.O.S. Web Action Assistant");
   tray.setContextMenu(Menu.buildFromTemplate([
     {
       label: "Show",

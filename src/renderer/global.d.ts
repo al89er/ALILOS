@@ -1,5 +1,7 @@
 import type {
   AlilosApi,
+  AppSettingsInput,
+  AppSettingsSnapshot,
   AttendanceExecutionResult,
   AttendanceActionType,
   BrowserStatusSnapshot,
@@ -11,7 +13,8 @@ import type {
   PerakamStatusSnapshot,
   PerakamAutoLoginInput,
   PerakamAutoLoginSnapshot,
-  TelegramSettings,
+  TelegramSettingsInput,
+  TelegramSettingsSnapshot,
   TelegramTestResult,
   TestClickTargetId
 } from "../shared/types";
@@ -22,6 +25,8 @@ declare global {
   }
 
   type RendererDashboardSnapshot = DashboardSnapshot;
+  type RendererAppSettingsInput = AppSettingsInput;
+  type RendererAppSettingsSnapshot = AppSettingsSnapshot;
   type RendererAttendanceActionType = AttendanceActionType;
   type RendererBrowserStatusSnapshot = BrowserStatusSnapshot;
   type RendererConfirmationDashboardSnapshot = ConfirmationDashboardSnapshot;
@@ -32,7 +37,8 @@ declare global {
   type RendererPerakamStatusSnapshot = PerakamStatusSnapshot;
   type RendererPerakamAutoLoginInput = PerakamAutoLoginInput;
   type RendererPerakamAutoLoginSnapshot = PerakamAutoLoginSnapshot;
-  type RendererTelegramSettings = TelegramSettings;
+  type RendererTelegramSettingsInput = TelegramSettingsInput;
+  type RendererTelegramSettingsSnapshot = TelegramSettingsSnapshot;
   type RendererTelegramTestResult = TelegramTestResult;
   type RendererTestClickTargetId = TestClickTargetId;
 }

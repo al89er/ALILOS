@@ -1,17 +1,20 @@
 {
   "name": "alilos",
   "version": "0.1.0",
-  "description": "A.L.I.L.O.S. Electron Attendance Assistant",
+  "description": "A.L.I.L.O.S. Electron Authorized Website Action Assistant",
   "main": "dist/main/main.js",
   "private": true,
   "scripts": {
     "dev": "npm run build && electron .",
     "build": "node scripts/clean-dist.cjs && tsc && node scripts/copy-renderer-assets.cjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --test test/*.test.js",
+    "check:identity": "node scripts/check-project-identity.js",
+    "check:supabase": "node scripts/check-supabase-identity.js"
   },
   "keywords": [
     "electron",
-    "attendance",
+    "web-action",
     "assistant"
   ],
   "author": "",

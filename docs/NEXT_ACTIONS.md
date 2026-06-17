@@ -1,0 +1,93 @@
+# Next Actions
+
+## Immediate Next Safe Steps
+
+- Run `npm run typecheck` after any future TypeScript code change.
+- Run `npm run build` before manual app testing or packaging work.
+- Manually smoke test dashboard startup with `npm run dev`.
+- Manually smoke test tab switching across Overview, Schedule, Actions, Browser / Site, Network, Telegram, Logs, and Settings.
+- Verify configured-site detection manually on the intended workplace network when access is available, without creating a real-action confirmation unless intentionally testing during the correct real action window.
+- Keep live Perakam target-detection smoke testing marked pending while only home/outside-workplace network access is available.
+- Keep `docs/PHASE_4D_MANUAL_CONFIRM_DESIGN.md` as historical design context, but update or supersede stale sections before relying on it for current behavior.
+- For Phase 6A dry-run testing, set `automation.executionMode` to `dry-run` only in local config and confirm that due actions are simulated, not clicked.
+
+## Suggested Next Implementation Phase
+
+- Add focused tests or test harnesses around pure logic first: scheduler status, app settings normalization, command prefix parsing, heartbeat payload shaping, automation audit deduplication, URL sanitization, and captive portal classification.
+- Add field-level validation polish to the Settings editor if manual testing shows users need inline messages beyond the current save-result errors.
+- Add backend/phone-webapp receiver integration only after the sanitized heartbeat payload contract is confirmed.
+- Keep Supabase/webapp work phased: S0 architecture documentation, S1 schema and identity planning, S2 status-only heartbeat, S3 durable schedule/completion backup ledger, S4 phone webapp/PWA status dashboard, S5 command queue/control only after explicit approval, and S6 Telegram reduced to fallback.
+- Treat the old Tampermonkey script and old webapp as fallback/backup references while the Electron desktop agent remains Windows/desktop-only.
+- Plan Android/mobile access through a hosted webapp/PWA, not Electron. A future webapp may live under `webapp/` in this repo after explicit approval.
+- Improve dashboard wording where old "scaffold" or "detection only" text conflicts with current guarded execution capabilities.
+- Add a real tray icon and packaging metadata when preparing a Windows build.
+- Consider a small diagnostics/export flow for sanitized logs and status snapshots to make future Perakam detection debugging easier.
+- Extend detector fixture checks only if they remain independent from runtime fixture reads, including future zero-rect anchor plus visible dashboard descendant cases.
+- Do not add selector support for home/outside-workplace Perakam page variants unless explicitly requested later.
+- Add explicit documentation or UI affordances for the Perakam auto-login safety model and where encrypted credentials are stored.
+
+## Testing / Smoke-Test Checklist
+
+- `npm install` completes from `package-lock.json`.
+- `npm run typecheck` passes.
+- `npm run build` passes and copies renderer assets.
+- `npm test` passes fixture structure/redaction checks.
+- `npm run dev` opens the Electron dashboard.
+- Window close hides to tray; tray Show/Hide/Quit works.
+- Schedule appears for today and skip/unskip today/tomorrow updates state.
+- Tabs switch correctly and preserve live status updates.
+- Overview shows app, worker, generated action times, next action, last result, browser/site, network, captive portal, Telegram, and recent events.
+- Schedule tab shows generated times, reminders, skip/unskip controls, and skipped dates.
+- Actions tab shows guarded manual-confirm controls and `a56`/`a57` manual test-click diagnostics.
+- Browser / Site tab shows browser controls, Perakam page state, target detection, and Perakam auto-login controls.
+- Network tab shows reachability/captive portal status, check/retry actions, and network monitor settings.
+- Telegram tab keeps token/chat fields masked and shows the configured command prefix.
+- Logs tab shows recent logs plus automation/heartbeat audit details.
+- Settings tab shows current execution mode, edits safe operational settings, masks heartbeat/Telegram secrets, and preserves existing secrets when blank fields are saved.
+- Telegram settings save with placeholder/test values only; real bot token is never committed or printed.
+- Telegram test notification works only with owner-provided local credentials.
+- Browser starts and stops.
+- Open Perakam navigates to the configured URL.
+- Site status refresh classifies login/dashboard/stale-session on the intended workplace site profile without exposing query secrets.
+- Workplace-network target-detection smoke test remains pending for the latest dashboard descendant visibility bugfix.
+- Action readiness remains not-ready outside valid windows or when controls are unavailable.
+- Dry-run performs checks without clicking.
+- Guarded target execution is tested only when the user intentionally wants the real action and all safety conditions are satisfied.
+- Manual test-click uses only `a56`/`a57` and never primary targets `a50`/`a51`.
+- Network check updates internet/Perakam/captive portal status without logging secrets.
+- In `dry-run` mode, due configured actions create `schedule-due`, `page-prepared`, `candidate-detected` when available, `dry-run-action-simulated`, and `confirmation-required` audit events.
+- Confirm no simulated dry-run calls `attendance:execute` or `clickVisibleAttendanceControl`.
+- In Settings, switch execution mode between `notify-only`, `manual-confirm`, and `dry-run`, save, reload, and confirm the summary reflects the saved value.
+- In Settings, leave the heartbeat endpoint blank and save other heartbeat fields; confirm the endpoint remains configured when one already exists.
+- In Telegram, leave token/chat blank while changing command prefix; confirm configured or `.env.local` token/chat are preserved and not displayed.
+- With local config Telegram secrets blank and `.env.local` containing `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID`, confirm the UI shows available-from-env-local status and Telegram test notification works after enabling Telegram.
+
+## Supabase / Webapp Roadmap
+
+- S0: Architecture documentation.
+- S1: Schema and identity planning.
+- S2: Status-only heartbeat.
+- S3: Durable schedule/completion backup ledger.
+- S4: Phone webapp/PWA status dashboard.
+- S5: Command queue/control only after explicit approval.
+- S6: Telegram reduced to fallback.
+
+Do not implement Supabase runtime features, schema migrations, remote command/control, or `webapp/` scaffolding until the relevant phase is explicitly requested. Future Supabase records must exclude configured-site credentials, cookies/session data, raw page HTML, screenshots, staff ID/name, Telegram token/chat ID, and full tokenized URLs or opaque query strings.
+
+## Documentation Maintenance Tasks
+
+- Update `docs/CURRENT_STATUS.md` after meaningful implementation milestones.
+- Update `docs/APP_STRUCTURE.md` when files, IPC channels, storage patterns, scripts, or dependencies change.
+- Update `docs/DECISIONS.md` when a project decision is confirmed or reversed.
+- Keep `CODEX.md` as the first-read onboarding file for future Codex sessions.
+- Avoid duplicating private machine-specific values in docs.
+
+## Items Needing Owner Confirmation
+
+- Whether to keep the `BackgroundWorker` heartbeat scaffold or rename/reframe its dashboard status to avoid confusion.
+- Whether Perakam auto-login should remain enabled as a user-controlled feature in production builds.
+- Whether to add Telegram confirmation commands later; current Telegram commands do not execute real configured actions.
+- Whether heartbeat should post only on events or also on a recurring interval when enabled.
+- Whether to package with `electron-builder`, another installer tool, or no installer for now.
+- Whether to introduce automated tests before further feature work.
+- Whether keep-alive behavior is obsolete now that auto-login/session recovery exists.

@@ -126,9 +126,19 @@ export type PerakamReachabilityState =
 export type CaptivePortalState = "not-detected" | "suspected" | "detected" | "unknown";
 export type CaptivePortalConfidence = "low" | "medium" | "high";
 export type CaptivePortalOpenTarget = "playwright" | "external";
+export type ExecutionMode = "notify-only" | "manual-confirm" | "dry-run";
+export type TelegramSecretStatus = "configured" | "env-local" | "missing";
+export type AutomationAuditEventType =
+  | "schedule-due"
+  | "page-prepared"
+  | "candidate-detected"
+  | "dry-run-action-simulated"
+  | "confirmation-required"
+  | "real-action-attempted-after-confirmation"
+  | "verification-result";
 
 export interface AttendancePlaceholder {
-  label: "Clock In" | "Clock Out";
+  label: "Morning Action" | "Evening Action";
   targetTime: string;
   status: ScheduleActionStatus;
 }
@@ -138,6 +148,8 @@ export interface AppConfig {
     enabled: boolean;
     pollIntervalSeconds: number;
   };
+  automation: AutomationSettings;
+  heartbeat: HeartbeatSettings;
   attendance: {
     clockInPlaceholder: string;
     clockOutPlaceholder: string;
@@ -164,6 +176,99 @@ export interface ReminderSettings {
   systemNotificationsEnabled: boolean;
 }
 
+export interface AutomationSettings {
+  executionMode: ExecutionMode;
+  monitorIntervalSeconds: number;
+  prepareBrowserInDryRun: boolean;
+  auditEvents: AutomationAuditEvent[];
+}
+
+export interface AutomationAuditEvent {
+  id: string;
+  type: AutomationAuditEventType;
+  action: AttendanceActionType | null;
+  dateKey: string | null;
+  status: "info" | "passed" | "blocked" | "failed";
+  message: string;
+  createdAt: string;
+  details: Record<string, string | number | boolean | null>;
+}
+
+export interface AutomationDryRunRecord {
+  action: AttendanceActionType;
+  dateKey: string;
+  scheduledTime: string;
+  status: "simulated" | "blocked" | "failed";
+  perakamStatus: PerakamPageStatus;
+  controlAvailability: AttendanceControlAvailability;
+  reason: string;
+  simulatedAt: string;
+  auditEventId: string;
+}
+
+export interface AutomationSnapshot {
+  executionMode: ExecutionMode;
+  active: boolean;
+  monitorIntervalSeconds: number;
+  prepareBrowserInDryRun: boolean;
+  lastCheckedAt: string | null;
+  latestDryRun: AutomationDryRunRecord | null;
+  auditEvents: AutomationAuditEvent[];
+}
+
+export interface HeartbeatSettings {
+  enabled: boolean;
+  endpointUrl: string;
+  intervalSeconds: number;
+}
+
+export interface HeartbeatPayload {
+  appStatus: string;
+  workerState: WorkerState;
+  executionMode: ExecutionMode;
+  network: {
+    connectivityState: NetworkConnectivityState;
+    perakamReachabilityState: PerakamReachabilityState;
+    captivePortalState: CaptivePortalState;
+  };
+  perakam: {
+    status: PerakamPageStatus;
+    clockInAvailable: AttendanceControlAvailability;
+    clockOutAvailable: AttendanceControlAvailability;
+  };
+  schedule: {
+    today: string;
+    clockInTime: string;
+    clockOutTime: string;
+    nextAction: ScheduleAction | null;
+    nextActionTime: string | null;
+  };
+  confirmation: {
+    clockInState: ReadinessState;
+    clockOutState: ReadinessState;
+    hasPendingConfirmation: boolean;
+  };
+  automation: {
+    lastDryRunStatus: AutomationDryRunRecord["status"] | null;
+    lastDryRunAction: AttendanceActionType | null;
+    lastRealActionStatus: AttendanceExecutionStatus | null;
+  };
+  lastSanitizedErrorSummary: string | null;
+  timestamp: string;
+}
+
+export interface HeartbeatSnapshot {
+  enabled: boolean;
+  configured: boolean;
+  active: boolean;
+  intervalSeconds: number;
+  endpointHost: string | null;
+  lastAttemptAt: string | null;
+  lastSuccessAt: string | null;
+  lastError: string | null;
+  lastPayload: HeartbeatPayload | null;
+}
+
 export interface ReminderDateState {
   sentStages: ReminderStage[];
   loggedSuppressions: ReminderSuppressionReason[];
@@ -176,6 +281,22 @@ export interface TelegramSettings {
   chatId: string;
   commandPrefix: string;
   lastUpdateId: number;
+}
+
+export interface TelegramSettingsSnapshot {
+  enabled: boolean;
+  commandPrefix: string;
+  secretStatus: {
+    botToken: TelegramSecretStatus;
+    chatId: TelegramSecretStatus;
+  };
+}
+
+export interface TelegramSettingsInput {
+  enabled: boolean;
+  botToken?: string;
+  chatId?: string;
+  commandPrefix: string;
 }
 
 export interface PerakamSettings {
@@ -200,6 +321,59 @@ export interface NetworkMonitorSettings {
   captivePortalDetectionEnabled: boolean;
   openDetectedPortalIn: CaptivePortalOpenTarget;
   retainPortalEvidenceMinutes: number;
+}
+
+export interface AppSettingsSnapshot {
+  worker: {
+    enabled: boolean;
+    pollIntervalSeconds: number;
+  };
+  automation: {
+    executionMode: ExecutionMode;
+    monitorIntervalSeconds: number;
+    prepareBrowserInDryRun: boolean;
+  };
+  scheduler: {
+    clockInWindow: TimeWindow;
+    clockOutWindow: TimeWindow;
+    gracePeriodMinutes: number;
+    reminders: ReminderSettings;
+  };
+  perakam: {
+    dashboardUrl: string;
+  };
+  heartbeat: {
+    enabled: boolean;
+    configured: boolean;
+    endpointHost: string | null;
+    intervalSeconds: number;
+  };
+}
+
+export interface AppSettingsInput {
+  worker: {
+    enabled: boolean;
+    pollIntervalSeconds: number;
+  };
+  automation: {
+    executionMode: ExecutionMode;
+    monitorIntervalSeconds: number;
+    prepareBrowserInDryRun: boolean;
+  };
+  scheduler: {
+    clockInWindow: TimeWindow;
+    clockOutWindow: TimeWindow;
+    gracePeriodMinutes: number;
+    reminders: ReminderSettings;
+  };
+  perakam: {
+    dashboardUrl: string;
+  };
+  heartbeat: {
+    enabled: boolean;
+    endpointUrl?: string;
+    intervalSeconds: number;
+  };
 }
 
 export interface CaptivePortalSnapshot {
@@ -589,7 +763,7 @@ export interface DailySchedule {
 
 export interface ScheduleActionSnapshot {
   action: ScheduleAction;
-  label: "Clock In" | "Clock Out";
+  label: "Morning Action" | "Evening Action";
   time: string;
   status: ScheduleActionStatus;
   statusText: string;
@@ -633,6 +807,8 @@ export interface DashboardSnapshot {
   perakamAutoLogin: PerakamAutoLoginSnapshot;
   confirmations: ConfirmationDashboardSnapshot;
   testClick: TestClickDashboardSnapshot;
+  automation: AutomationSnapshot;
+  heartbeat: HeartbeatSnapshot;
   logs: AppLogEntry[];
   configPath: string;
   logPath: string;
@@ -646,8 +822,10 @@ export interface AlilosApi {
   unskipToday: () => Promise<DashboardSnapshot>;
   skipTomorrow: () => Promise<DashboardSnapshot>;
   unskipTomorrow: () => Promise<DashboardSnapshot>;
-  getTelegramSettings: () => Promise<TelegramSettings>;
-  saveTelegramSettings: (settings: TelegramSettings) => Promise<TelegramSettings>;
+  getAppSettings: () => Promise<AppSettingsSnapshot>;
+  saveAppSettings: (settings: AppSettingsInput) => Promise<AppSettingsSnapshot>;
+  getTelegramSettings: () => Promise<TelegramSettingsSnapshot>;
+  saveTelegramSettings: (settings: TelegramSettingsInput) => Promise<TelegramSettingsSnapshot>;
   sendTelegramTestNotification: () => Promise<TelegramTestResult>;
   getNetworkMonitorSettings: () => Promise<NetworkMonitorSettings>;
   saveNetworkMonitorSettings: (settings: Partial<NetworkMonitorSettings>) => Promise<NetworkMonitorSettings>;

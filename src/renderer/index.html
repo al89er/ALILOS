@@ -10,526 +10,625 @@
     <main class="app-shell">
       <section class="topbar" aria-labelledby="app-title">
         <div>
-          <p class="eyebrow">Attendance Assistant</p>
+          <p class="eyebrow">Web Action Assistant</p>
           <h1 id="app-title">A.L.I.L.O.S.</h1>
         </div>
-        <div class="time-panel" aria-label="Current local time">
-          <span class="label">Local time</span>
-          <strong id="local-time">--</strong>
-        </div>
-      </section>
-
-      <section class="status-grid" aria-label="Status overview">
-        <article class="status-card">
-          <span class="label">App status</span>
-          <strong id="app-status">Loading</strong>
-        </article>
-        <article class="status-card">
-          <span class="label">Worker status</span>
-          <strong id="worker-status">Loading</strong>
-          <small id="worker-note">--</small>
-        </article>
-        <article class="status-card">
-          <span class="label">Today skipped</span>
-          <strong id="today-skipped">--</strong>
-        </article>
-        <article class="status-card">
-          <span class="label">Working day</span>
-          <strong id="working-day">--</strong>
-        </article>
-        <article class="status-card">
-          <span class="label">Telegram polling</span>
-          <strong id="telegram-polling">--</strong>
-          <small id="telegram-polling-note">--</small>
-        </article>
-        <article class="status-card">
-          <span class="label">Reminders</span>
-          <strong id="reminder-status">--</strong>
-          <small id="reminder-note">--</small>
-        </article>
-        <article class="status-card">
-          <span class="label">Browser</span>
-          <strong id="browser-status">--</strong>
-          <small id="browser-note">--</small>
-        </article>
-        <article class="status-card">
-          <span class="label">Perakam page</span>
-          <strong id="perakam-status">--</strong>
-          <small id="perakam-note">--</small>
-        </article>
-      </section>
-
-      <section class="panel" aria-labelledby="network-title">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Notify-only health</p>
-            <h2 id="network-title">Network / Reachability</h2>
-          </div>
-          <button id="network-check-now" type="button">Check now</button>
-        </div>
-        <p class="summary-text">Detection only - A.L.I.L.O.S. will not log in to the captive portal in this phase and does not perform attendance actions.</p>
-        <dl class="detail-list">
-          <div>
-            <dt>Internet status</dt>
-            <dd>
-              <span id="network-internet-status">--</span>
-              <small id="network-internet-reason" class="detail-note"></small>
-            </dd>
-          </div>
-          <div>
-            <dt>Perakam reachability</dt>
-            <dd>
-              <span id="network-perakam-status">--</span>
-              <small id="network-perakam-reason" class="detail-note"></small>
-            </dd>
-          </div>
-          <div>
-            <dt>Last checked</dt>
-            <dd id="network-last-checked">--</dd>
-          </div>
-          <div>
-            <dt>Last successful internet</dt>
-            <dd id="network-last-internet">--</dd>
-          </div>
-          <div>
-            <dt>Last successful Perakam</dt>
-            <dd id="network-last-perakam">--</dd>
-          </div>
-          <div>
-            <dt>Consecutive failures</dt>
-            <dd id="network-failures">--</dd>
-          </div>
-          <div>
-            <dt>Last error</dt>
-            <dd id="network-error">--</dd>
-          </div>
-          <div>
-            <dt>Captive portal</dt>
-            <dd>
-              <span id="portal-state">--</span>
-              <small id="portal-confidence" class="detail-note"></small>
-            </dd>
-          </div>
-          <div>
-            <dt>Portal host</dt>
-            <dd id="portal-host">--</dd>
-          </div>
-          <div>
-            <dt>Portal URL</dt>
-            <dd id="portal-url">--</dd>
-          </div>
-          <div>
-            <dt>Portal title</dt>
-            <dd id="portal-title">--</dd>
-          </div>
-          <div>
-            <dt>Portal evidence</dt>
-            <dd>
-              <ol id="portal-evidence" class="compact-list"></ol>
-            </dd>
-          </div>
-        </dl>
-        <div class="button-group form-actions">
-          <button id="portal-open" class="secondary-button" type="button">Open detected portal page</button>
-          <button id="portal-copy" class="secondary-button" type="button">Copy portal URL</button>
-        </div>
-        <form id="network-form" class="settings-form">
-          <label class="checkbox-field">
-            <input id="network-enabled" type="checkbox" />
-            <span>Enable network monitor</span>
-          </label>
-          <label class="field">
-            <span>Interval seconds</span>
-            <input id="network-interval" type="number" min="30" step="1" />
-          </label>
-          <label class="field">
-            <span>Failure threshold</span>
-            <input id="network-failure-threshold" type="number" min="1" max="20" step="1" />
-          </label>
-          <label class="checkbox-field">
-            <input id="network-notify-internet" type="checkbox" />
-            <span>Notify when internet is down</span>
-          </label>
-          <label class="checkbox-field">
-            <input id="network-notify-perakam" type="checkbox" />
-            <span>Notify when Perakam is down</span>
-          </label>
-          <label class="checkbox-field">
-            <input id="network-notify-recovery" type="checkbox" />
-            <span>Notify on recovery</span>
-          </label>
-          <label class="checkbox-field">
-            <input id="network-captive-detection" type="checkbox" />
-            <span>Enable captive portal detection</span>
-          </label>
-          <label class="field">
-            <span>Retain portal evidence minutes</span>
-            <input id="network-retain-portal-evidence" type="number" min="5" max="1440" step="1" />
-          </label>
-          <div class="button-group form-actions">
-            <button id="network-save-settings" class="secondary-button" type="button">Save monitor settings</button>
-          </div>
-          <p id="network-result" class="result-text" aria-live="polite">Network monitor settings are stored locally.</p>
-        </form>
-      </section>
-
-      <section class="panel" aria-labelledby="today-title">
-        <div class="section-heading">
-          <div>
-            <p id="today-date" class="eyebrow">Today</p>
-            <h2 id="today-title">Manual Confirmation Schedule</h2>
-          </div>
-          <div class="button-group" aria-label="Schedule controls">
-            <button id="skip-today" type="button">Skip today</button>
-            <button id="unskip-today" class="secondary-button" type="button">Unskip today</button>
-            <button id="skip-tomorrow" class="secondary-button" type="button">Skip tomorrow</button>
-            <button id="unskip-tomorrow" class="secondary-button" type="button">Unskip tomorrow</button>
-          </div>
-        </div>
-        <p id="schedule-summary" class="summary-text">Loading schedule status.</p>
-        <div id="placeholder-list" class="placeholder-list"></div>
-      </section>
-
-      <section class="panel" aria-labelledby="skips-title">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Manual overrides</p>
-            <h2 id="skips-title">Skipped Dates</h2>
+        <div class="topbar-actions">
+          <div class="time-panel" aria-label="Current local time">
+            <span class="label">Local time</span>
+            <strong id="local-time">--</strong>
           </div>
           <button id="hide-window" class="secondary-button" type="button">Hide to tray</button>
         </div>
-        <ol id="skipped-list" class="compact-list" aria-live="polite"></ol>
       </section>
 
-      <section class="panel" aria-labelledby="confirmation-title">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Manual approval</p>
-            <h2 id="confirmation-title">Readiness & Confirmation</h2>
-          </div>
-        </div>
-        <p class="summary-text">GUI confirmation only. Dry-run performs safety checks only. Execution performs one real attendance click after confirmation. Use only when you intend to clock in or clock out now. This does not run automatically.</p>
-        <div class="confirmation-grid">
-          <article class="confirmation-card" data-action="clock-in">
-            <div>
-              <span class="label">Clock-in</span>
-              <strong id="clock-in-readiness">--</strong>
-            </div>
-            <p id="clock-in-reason" class="summary-text">Loading readiness.</p>
-            <dl class="mini-detail-list">
-              <div>
-                <dt>Schedule</dt>
-                <dd id="clock-in-schedule">--</dd>
-              </div>
-              <div>
-                <dt>Control</dt>
-                <dd id="clock-in-control">--</dd>
-              </div>
-              <div>
-                <dt>Confirmation</dt>
-                <dd id="clock-in-confirmation">--</dd>
-              </div>
-              <div>
-                <dt>Expires</dt>
-                <dd id="clock-in-expires">--</dd>
-              </div>
-              <div>
-                <dt>Dry-run</dt>
-                <dd id="clock-in-dry-run">--</dd>
-              </div>
-              <div>
-                <dt>Execution</dt>
-                <dd id="clock-in-execution">--</dd>
-              </div>
-              <div>
-                <dt>Completed</dt>
-                <dd id="clock-in-completed">--</dd>
-              </div>
-            </dl>
-            <div class="button-group form-actions">
-              <button id="clock-in-request-confirmation" type="button">Request confirmation</button>
-              <button id="clock-in-accept-confirmation" class="secondary-button" type="button">Confirm</button>
-              <button id="clock-in-cancel-confirmation" class="secondary-button" type="button">Cancel</button>
-              <button id="clock-in-run-dry-run" class="secondary-button" type="button">Run dry-run</button>
-              <button id="clock-in-execute" class="danger-button" type="button">Perform clock-in</button>
-              <button id="clock-in-manual-verify" class="secondary-button" type="button">I visually confirmed this attendance</button>
-            </div>
-            <ol id="clock-in-dry-run-checks" class="compact-list"></ol>
+      <nav class="tab-list" role="tablist" aria-label="Dashboard sections">
+        <button id="tab-overview" class="tab-button" role="tab" aria-selected="true" aria-controls="panel-overview" data-tab-target="overview" type="button">Overview</button>
+        <button id="tab-schedule" class="tab-button" role="tab" aria-selected="false" aria-controls="panel-schedule" data-tab-target="schedule" type="button">Schedule</button>
+        <button id="tab-actions" class="tab-button" role="tab" aria-selected="false" aria-controls="panel-actions" data-tab-target="actions" type="button">Actions</button>
+        <button id="tab-browser" class="tab-button" role="tab" aria-selected="false" aria-controls="panel-browser" data-tab-target="browser" type="button">Browser / Site</button>
+        <button id="tab-network" class="tab-button" role="tab" aria-selected="false" aria-controls="panel-network" data-tab-target="network" type="button">Network</button>
+        <button id="tab-telegram" class="tab-button" role="tab" aria-selected="false" aria-controls="panel-telegram" data-tab-target="telegram" type="button">Telegram</button>
+        <button id="tab-logs" class="tab-button" role="tab" aria-selected="false" aria-controls="panel-logs" data-tab-target="logs" type="button">Logs</button>
+        <button id="tab-settings" class="tab-button" role="tab" aria-selected="false" aria-controls="panel-settings" data-tab-target="settings" type="button">Settings</button>
+      </nav>
+
+      <section id="panel-overview" class="tab-panel" role="tabpanel" aria-labelledby="tab-overview" data-tab-panel="overview">
+        <section class="status-grid" aria-label="Status overview">
+          <article class="status-card">
+            <span class="label">App status</span>
+            <strong id="app-status">Loading</strong>
           </article>
-          <article class="confirmation-card" data-action="clock-out">
-            <div>
-              <span class="label">Clock-out</span>
-              <strong id="clock-out-readiness">--</strong>
-            </div>
-            <p id="clock-out-reason" class="summary-text">Loading readiness.</p>
-            <dl class="mini-detail-list">
-              <div>
-                <dt>Schedule</dt>
-                <dd id="clock-out-schedule">--</dd>
-              </div>
-              <div>
-                <dt>Control</dt>
-                <dd id="clock-out-control">--</dd>
-              </div>
-              <div>
-                <dt>Confirmation</dt>
-                <dd id="clock-out-confirmation">--</dd>
-              </div>
-              <div>
-                <dt>Expires</dt>
-                <dd id="clock-out-expires">--</dd>
-              </div>
-              <div>
-                <dt>Dry-run</dt>
-                <dd id="clock-out-dry-run">--</dd>
-              </div>
-              <div>
-                <dt>Execution</dt>
-                <dd id="clock-out-execution">--</dd>
-              </div>
-              <div>
-                <dt>Completed</dt>
-                <dd id="clock-out-completed">--</dd>
-              </div>
-            </dl>
-            <div class="button-group form-actions">
-              <button id="clock-out-request-confirmation" type="button">Request confirmation</button>
-              <button id="clock-out-accept-confirmation" class="secondary-button" type="button">Confirm</button>
-              <button id="clock-out-cancel-confirmation" class="secondary-button" type="button">Cancel</button>
-              <button id="clock-out-run-dry-run" class="secondary-button" type="button">Run dry-run</button>
-              <button id="clock-out-execute" class="danger-button" type="button">Perform clock-out</button>
-              <button id="clock-out-manual-verify" class="secondary-button" type="button">I visually confirmed this attendance</button>
-            </div>
-            <ol id="clock-out-dry-run-checks" class="compact-list"></ol>
+          <article class="status-card">
+            <span class="label">Execution mode</span>
+            <strong id="execution-mode">Loading</strong>
+            <small id="execution-mode-note">--</small>
           </article>
-        </div>
-      </section>
+          <article class="status-card">
+            <span class="label">Worker status</span>
+            <strong id="worker-status">Loading</strong>
+            <small id="worker-note">--</small>
+          </article>
+          <article class="status-card">
+            <span class="label">Heartbeat</span>
+            <strong id="heartbeat-status">--</strong>
+            <small id="heartbeat-note">--</small>
+          </article>
+          <article class="status-card">
+            <span class="label">Today skipped</span>
+            <strong id="today-skipped">--</strong>
+          </article>
+          <article class="status-card">
+            <span class="label">Working day</span>
+            <strong id="working-day">--</strong>
+          </article>
+          <article class="status-card">
+            <span class="label">Telegram polling</span>
+            <strong id="telegram-polling">--</strong>
+            <small id="telegram-polling-note">--</small>
+          </article>
+          <article class="status-card">
+            <span class="label">Reminders</span>
+            <strong id="reminder-status">--</strong>
+            <small id="reminder-note">--</small>
+          </article>
+          <article class="status-card">
+            <span class="label">Browser</span>
+            <strong id="browser-status">--</strong>
+            <small id="browser-note">--</small>
+          </article>
+          <article class="status-card">
+            <span class="label">Perakam page</span>
+            <strong id="perakam-status">--</strong>
+            <small id="perakam-note">--</small>
+          </article>
+        </section>
 
-      <section class="panel" aria-labelledby="reminders-title">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Notifications</p>
-            <h2 id="reminders-title">Reminder State</h2>
-          </div>
-        </div>
-        <ol id="reminder-stage-list" class="compact-list" aria-live="polite"></ol>
-      </section>
+        <section class="overview-grid" aria-label="Daily overview">
+          <article class="panel compact-panel">
+            <p class="eyebrow">Today</p>
+            <h2>Generated Action Times</h2>
+            <p id="overview-today-times" class="summary-value">--</p>
+          </article>
+          <article class="panel compact-panel">
+            <p class="eyebrow">Next</p>
+            <h2>Scheduled Action</h2>
+            <p id="overview-next-action" class="summary-value">--</p>
+          </article>
+          <article class="panel compact-panel">
+            <p class="eyebrow">Last Result</p>
+            <h2>Action State</h2>
+            <p id="overview-last-action" class="summary-value">--</p>
+          </article>
+          <article class="panel compact-panel">
+            <p class="eyebrow">Page</p>
+            <h2>Browser / Site</h2>
+            <p id="overview-browser-site" class="summary-value">--</p>
+          </article>
+          <article class="panel compact-panel">
+            <p class="eyebrow">Network</p>
+            <h2>Connectivity</h2>
+            <p id="overview-network" class="summary-value">--</p>
+          </article>
+          <article class="panel compact-panel">
+            <p class="eyebrow">Portal</p>
+            <h2>Captive Portal</h2>
+            <p id="overview-captive-portal" class="summary-value">--</p>
+          </article>
+        </section>
 
-      <section class="panel" aria-labelledby="browser-title">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Browser Controller</p>
-            <h2 id="browser-title">Manual Browser Scaffold</h2>
-          </div>
-          <div class="button-group" aria-label="Browser controls">
-            <button id="start-browser" type="button">Start browser</button>
-            <button id="stop-browser" class="secondary-button" type="button">Stop browser</button>
-          </div>
-        </div>
-        <p id="browser-profile" class="summary-text">Browser profile path not loaded.</p>
-      </section>
-
-      <section class="panel" aria-labelledby="perakam-title">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Read-only page status</p>
-            <h2 id="perakam-title">Perakam Dashboard</h2>
-          </div>
-          <div class="button-group" aria-label="Perakam controls">
-            <button id="open-perakam" type="button">Open Perakam</button>
-            <button id="refresh-perakam" class="secondary-button" type="button">Refresh status</button>
-          </div>
-        </div>
-        <p class="summary-text">Detection only. No attendance action is performed.</p>
-        <dl class="detail-list">
-          <div>
-            <dt>Configured URL</dt>
-            <dd>
-              <span id="perakam-configured-url">--</span>
-              <small id="perakam-url-note" class="detail-note"></small>
-            </dd>
-          </div>
-          <div>
-            <dt>Status</dt>
-            <dd id="perakam-detail-status">--</dd>
-          </div>
-          <div>
-            <dt>Clock-in control</dt>
-            <dd>
-              <span id="perakam-clock-in-availability">--</span>
-              <small id="perakam-clock-in-reason" class="detail-note"></small>
-            </dd>
-          </div>
-          <div>
-            <dt>Clock-out control</dt>
-            <dd>
-              <span id="perakam-clock-out-availability">--</span>
-              <small id="perakam-clock-out-reason" class="detail-note"></small>
-            </dd>
-          </div>
-          <div>
-            <dt>Last button check</dt>
-            <dd id="perakam-last-button-check">--</dd>
-          </div>
-          <div>
-            <dt>Current URL</dt>
-            <dd id="perakam-current-url">--</dd>
-          </div>
-          <div>
-            <dt>Page title</dt>
-            <dd id="perakam-page-title">--</dd>
-          </div>
-          <div>
-            <dt>Last navigation</dt>
-            <dd id="perakam-last-navigation">--</dd>
-          </div>
-          <div>
-            <dt>Last checked</dt>
-            <dd id="perakam-last-checked">--</dd>
-          </div>
-          <div>
-            <dt>Last error</dt>
-            <dd id="perakam-last-error">--</dd>
-          </div>
-        </dl>
-      </section>
-
-      <section class="panel" aria-labelledby="perakam-login-title">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Shared UPM credentials</p>
-            <h2 id="perakam-login-title">Perakam Auto-login</h2>
-          </div>
-        </div>
-        <p class="summary-text">UPM credentials used for Perakam login are stored locally on this Windows user profile. The same UPM credentials may be reused later for approved captive portal login, but captive portal login is not enabled in this phase.</p>
-        <form id="perakam-login-form" class="settings-form">
-          <label class="checkbox-field">
-            <input id="perakam-login-enabled" type="checkbox" />
-            <span>Enable Perakam auto-login</span>
-          </label>
-          <label class="field">
-            <span>UPM-ID / username</span>
-            <input id="perakam-login-username" type="text" autocomplete="username" spellcheck="false" />
-          </label>
-          <label class="field">
-            <span>Password</span>
-            <input id="perakam-login-password" type="password" autocomplete="current-password" spellcheck="false" />
-          </label>
-          <dl class="mini-detail-list">
+        <section class="panel" aria-labelledby="overview-events-title">
+          <div class="section-heading">
             <div>
-              <dt>Password</dt>
-              <dd id="perakam-login-password-state">--</dd>
+              <p class="eyebrow">Recent activity</p>
+              <h2 id="overview-events-title">Events Summary</h2>
             </div>
-            <div>
-              <dt>Last login</dt>
-              <dd id="perakam-login-last-result">--</dd>
-            </div>
-          </dl>
-          <div class="button-group form-actions">
-            <button id="save-perakam-login" type="button">Save UPM credentials</button>
-            <button id="clear-perakam-login" class="secondary-button" type="button">Clear saved UPM credentials</button>
-            <button id="test-perakam-login" class="secondary-button" type="button">Test Perakam login</button>
           </div>
-          <p id="perakam-login-result" class="result-text" aria-live="polite">Password is never displayed after save. Captive portal login is detection-only in this phase.</p>
-        </form>
+          <ol id="overview-events-list" class="compact-list"></ol>
+        </section>
       </section>
 
-      <section class="panel" aria-labelledby="test-click-title">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Guarded pipeline test</p>
-            <h2 id="test-click-title">Manual Test Click</h2>
+      <section id="panel-schedule" class="tab-panel" role="tabpanel" aria-labelledby="tab-schedule" data-tab-panel="schedule" hidden>
+        <section class="panel" aria-labelledby="today-title">
+          <div class="section-heading">
+            <div>
+              <p id="today-date" class="eyebrow">Today</p>
+              <h2 id="today-title">Manual Confirmation Schedule</h2>
+            </div>
+            <div class="button-group" aria-label="Schedule controls">
+              <button id="skip-today" type="button">Skip today</button>
+              <button id="unskip-today" class="secondary-button" type="button">Unskip today</button>
+              <button id="skip-tomorrow" class="secondary-button" type="button">Skip tomorrow</button>
+              <button id="unskip-tomorrow" class="secondary-button" type="button">Unskip tomorrow</button>
+            </div>
           </div>
-        </div>
-        <p class="summary-text">This test uses legacy non-attendance targets a56/a57. It is not clock-in or clock-out. It is single-use after confirmation and does not run automatically.</p>
-        <form id="test-click-form" class="settings-form">
-          <label class="field">
-            <span>Test click target</span>
-            <select id="test-click-target">
-              <option value="a56">a56</option>
-              <option value="a57">a57</option>
-            </select>
-          </label>
+          <p id="schedule-summary" class="summary-text">Loading schedule status.</p>
+          <div id="placeholder-list" class="placeholder-list"></div>
+        </section>
+
+        <section class="panel-grid two-column-grid" aria-label="Schedule details">
+          <article class="panel" aria-labelledby="skips-title">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Manual overrides</p>
+                <h2 id="skips-title">Skipped Dates</h2>
+              </div>
+            </div>
+            <ol id="skipped-list" class="compact-list" aria-live="polite"></ol>
+          </article>
+
+          <article class="panel" aria-labelledby="reminders-title">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Notifications</p>
+                <h2 id="reminders-title">Reminder State</h2>
+              </div>
+            </div>
+            <ol id="reminder-stage-list" class="compact-list" aria-live="polite"></ol>
+          </article>
+        </section>
+      </section>
+
+      <section id="panel-actions" class="tab-panel" role="tabpanel" aria-labelledby="tab-actions" data-tab-panel="actions" hidden>
+        <section class="panel" aria-labelledby="confirmation-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Manual approval</p>
+              <h2 id="confirmation-title">Readiness & Confirmation</h2>
+            </div>
+          </div>
+          <p class="summary-text">GUI confirmation only. Dry-run performs safety checks only. Execution performs one real configured-target click after confirmation. Use only when you intend to perform the configured action now. This does not run automatically.</p>
+          <div class="confirmation-grid">
+            <article class="confirmation-card" data-action="clock-in">
+              <div>
+                <span class="label">Morning action</span>
+                <strong id="clock-in-readiness">--</strong>
+              </div>
+              <p id="clock-in-reason" class="summary-text">Loading readiness.</p>
+              <dl class="mini-detail-list">
+                <div><dt>Schedule</dt><dd id="clock-in-schedule">--</dd></div>
+                <div><dt>Control</dt><dd id="clock-in-control">--</dd></div>
+                <div><dt>Confirmation</dt><dd id="clock-in-confirmation">--</dd></div>
+                <div><dt>Expires</dt><dd id="clock-in-expires">--</dd></div>
+                <div><dt>Dry-run</dt><dd id="clock-in-dry-run">--</dd></div>
+                <div><dt>Execution</dt><dd id="clock-in-execution">--</dd></div>
+                <div><dt>Completed</dt><dd id="clock-in-completed">--</dd></div>
+              </dl>
+              <div class="button-group form-actions">
+                <button id="clock-in-request-confirmation" type="button">Request confirmation</button>
+                <button id="clock-in-accept-confirmation" class="secondary-button" type="button">Confirm</button>
+                <button id="clock-in-cancel-confirmation" class="secondary-button" type="button">Cancel</button>
+                <button id="clock-in-run-dry-run" class="secondary-button" type="button">Run dry-run</button>
+                <button id="clock-in-execute" class="danger-button" type="button">Perform morning action</button>
+                <button id="clock-in-manual-verify" class="secondary-button" type="button">I visually confirmed this action</button>
+              </div>
+              <ol id="clock-in-dry-run-checks" class="compact-list"></ol>
+            </article>
+            <article class="confirmation-card" data-action="clock-out">
+              <div>
+                <span class="label">Evening action</span>
+                <strong id="clock-out-readiness">--</strong>
+              </div>
+              <p id="clock-out-reason" class="summary-text">Loading readiness.</p>
+              <dl class="mini-detail-list">
+                <div><dt>Schedule</dt><dd id="clock-out-schedule">--</dd></div>
+                <div><dt>Control</dt><dd id="clock-out-control">--</dd></div>
+                <div><dt>Confirmation</dt><dd id="clock-out-confirmation">--</dd></div>
+                <div><dt>Expires</dt><dd id="clock-out-expires">--</dd></div>
+                <div><dt>Dry-run</dt><dd id="clock-out-dry-run">--</dd></div>
+                <div><dt>Execution</dt><dd id="clock-out-execution">--</dd></div>
+                <div><dt>Completed</dt><dd id="clock-out-completed">--</dd></div>
+              </dl>
+              <div class="button-group form-actions">
+                <button id="clock-out-request-confirmation" type="button">Request confirmation</button>
+                <button id="clock-out-accept-confirmation" class="secondary-button" type="button">Confirm</button>
+                <button id="clock-out-cancel-confirmation" class="secondary-button" type="button">Cancel</button>
+                <button id="clock-out-run-dry-run" class="secondary-button" type="button">Run dry-run</button>
+                <button id="clock-out-execute" class="danger-button" type="button">Perform evening action</button>
+                <button id="clock-out-manual-verify" class="secondary-button" type="button">I visually confirmed this action</button>
+              </div>
+              <ol id="clock-out-dry-run-checks" class="compact-list"></ol>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="test-click-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Guarded pipeline test</p>
+              <h2 id="test-click-title">Manual Test Click</h2>
+            </div>
+          </div>
+          <p class="summary-text">This test uses legacy non-primary targets a56/a57. It is not the configured morning or evening action. It is single-use after confirmation and does not run automatically.</p>
+          <form id="test-click-form" class="settings-form">
+            <label class="field">
+              <span>Test click target</span>
+              <select id="test-click-target">
+                <option value="a56">a56</option>
+                <option value="a57">a57</option>
+              </select>
+            </label>
+            <dl class="detail-list">
+              <div><dt>Readiness</dt><dd id="test-click-readiness">--</dd></div>
+              <div><dt>Target</dt><dd id="test-click-target-status">--</dd></div>
+              <div><dt>Confirmation</dt><dd id="test-click-confirmation">--</dd></div>
+              <div><dt>Expires</dt><dd id="test-click-expires">--</dd></div>
+              <div><dt>Dry-run</dt><dd id="test-click-dry-run">--</dd></div>
+              <div><dt>Execution</dt><dd id="test-click-execution">--</dd></div>
+            </dl>
+            <p id="test-click-reason" class="summary-text">Check readiness before requesting confirmation.</p>
+            <div class="button-group form-actions">
+              <button id="test-click-inspect" class="secondary-button" type="button">Inspect test targets</button>
+              <button id="test-click-check" type="button">Check readiness</button>
+              <button id="test-click-request" class="secondary-button" type="button">Request confirmation</button>
+              <button id="test-click-accept" class="secondary-button" type="button">Confirm</button>
+              <button id="test-click-cancel" class="secondary-button" type="button">Cancel</button>
+              <button id="test-click-dry-run-button" class="secondary-button" type="button">Run dry-run</button>
+              <button id="test-click-run" class="secondary-button" type="button">Perform one test click</button>
+            </div>
+            <ol id="test-click-checks" class="compact-list"></ol>
+            <div class="diagnostic-box">
+              <p class="summary-text">Diagnostics are read-only. They do not click Perakam.</p>
+              <ol id="test-click-diagnostics" class="compact-list"></ol>
+            </div>
+          </form>
+        </section>
+      </section>
+
+      <section id="panel-browser" class="tab-panel" role="tabpanel" aria-labelledby="tab-browser" data-tab-panel="browser" hidden>
+        <section class="panel" aria-labelledby="browser-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Browser Controller</p>
+              <h2 id="browser-title">Manual Browser Controls</h2>
+            </div>
+            <div class="button-group" aria-label="Browser controls">
+              <button id="start-browser" type="button">Start browser</button>
+              <button id="stop-browser" class="secondary-button" type="button">Stop browser</button>
+            </div>
+          </div>
+          <p id="browser-profile" class="summary-text">Browser profile path not loaded.</p>
+        </section>
+
+        <section class="panel" aria-labelledby="perakam-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Read-only page status</p>
+              <h2 id="perakam-title">Perakam Dashboard</h2>
+            </div>
+            <div class="button-group" aria-label="Perakam controls">
+              <button id="open-perakam" type="button">Open Perakam</button>
+              <button id="refresh-perakam" class="secondary-button" type="button">Refresh status</button>
+            </div>
+          </div>
+          <p class="summary-text">Detection only. No configured action is performed.</p>
           <dl class="detail-list">
-            <div>
-              <dt>Readiness</dt>
-              <dd id="test-click-readiness">--</dd>
-            </div>
-            <div>
-              <dt>Target</dt>
-              <dd id="test-click-target-status">--</dd>
-            </div>
-            <div>
-              <dt>Confirmation</dt>
-              <dd id="test-click-confirmation">--</dd>
-            </div>
-            <div>
-              <dt>Expires</dt>
-              <dd id="test-click-expires">--</dd>
-            </div>
-            <div>
-              <dt>Dry-run</dt>
-              <dd id="test-click-dry-run">--</dd>
-            </div>
-            <div>
-              <dt>Execution</dt>
-              <dd id="test-click-execution">--</dd>
-            </div>
+            <div><dt>Configured URL</dt><dd><span id="perakam-configured-url">--</span><small id="perakam-url-note" class="detail-note"></small></dd></div>
+            <div><dt>Status</dt><dd id="perakam-detail-status">--</dd></div>
+            <div><dt>Morning target</dt><dd><span id="perakam-clock-in-availability">--</span><small id="perakam-clock-in-reason" class="detail-note"></small></dd></div>
+            <div><dt>Evening target</dt><dd><span id="perakam-clock-out-availability">--</span><small id="perakam-clock-out-reason" class="detail-note"></small></dd></div>
+            <div><dt>Last button check</dt><dd id="perakam-last-button-check">--</dd></div>
+            <div><dt>Current URL</dt><dd id="perakam-current-url">--</dd></div>
+            <div><dt>Page title</dt><dd id="perakam-page-title">--</dd></div>
+            <div><dt>Last navigation</dt><dd id="perakam-last-navigation">--</dd></div>
+            <div><dt>Last checked</dt><dd id="perakam-last-checked">--</dd></div>
+            <div><dt>Last error</dt><dd id="perakam-last-error">--</dd></div>
           </dl>
-          <p id="test-click-reason" class="summary-text">Check readiness before requesting confirmation.</p>
-          <div class="button-group form-actions">
-            <button id="test-click-inspect" class="secondary-button" type="button">Inspect test targets</button>
-            <button id="test-click-check" type="button">Check readiness</button>
-            <button id="test-click-request" class="secondary-button" type="button">Request confirmation</button>
-            <button id="test-click-accept" class="secondary-button" type="button">Confirm</button>
-            <button id="test-click-cancel" class="secondary-button" type="button">Cancel</button>
-            <button id="test-click-dry-run-button" class="secondary-button" type="button">Run dry-run</button>
-            <button id="test-click-run" class="secondary-button" type="button">Perform one test click</button>
+        </section>
+
+        <section class="panel" aria-labelledby="perakam-login-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Shared UPM credentials</p>
+              <h2 id="perakam-login-title">Perakam Auto-login</h2>
+            </div>
           </div>
-          <ol id="test-click-checks" class="compact-list"></ol>
-          <div class="diagnostic-box">
-            <p class="summary-text">Diagnostics are read-only. They do not click Perakam.</p>
-            <ol id="test-click-diagnostics" class="compact-list"></ol>
-          </div>
-        </form>
+          <p class="summary-text">UPM credentials used for Perakam login are stored locally on this Windows user profile. The same UPM credentials may be reused later for approved captive portal login, but captive portal login is not enabled in this phase.</p>
+          <form id="perakam-login-form" class="settings-form">
+            <label class="checkbox-field">
+              <input id="perakam-login-enabled" type="checkbox" />
+              <span>Enable Perakam auto-login</span>
+            </label>
+            <label class="field">
+              <span>UPM-ID / username</span>
+              <input id="perakam-login-username" type="text" autocomplete="username" spellcheck="false" />
+            </label>
+            <label class="field">
+              <span>Password</span>
+              <input id="perakam-login-password" type="password" autocomplete="current-password" spellcheck="false" />
+            </label>
+            <dl class="mini-detail-list">
+              <div><dt>Password</dt><dd id="perakam-login-password-state">--</dd></div>
+              <div><dt>Last login</dt><dd id="perakam-login-last-result">--</dd></div>
+            </dl>
+            <div class="button-group form-actions">
+              <button id="save-perakam-login" type="button">Save UPM credentials</button>
+              <button id="clear-perakam-login" class="secondary-button" type="button">Clear saved UPM credentials</button>
+              <button id="test-perakam-login" class="secondary-button" type="button">Test Perakam login</button>
+            </div>
+            <p id="perakam-login-result" class="result-text" aria-live="polite">Password is never displayed after save. Captive portal login is detection-only in this phase.</p>
+          </form>
+        </section>
       </section>
 
-      <section class="panel" aria-labelledby="telegram-title">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Notifications</p>
-            <h2 id="telegram-title">Telegram Settings</h2>
+      <section id="panel-network" class="tab-panel" role="tabpanel" aria-labelledby="tab-network" data-tab-panel="network" hidden>
+        <section class="panel" aria-labelledby="network-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Notify-only health</p>
+              <h2 id="network-title">Network / Reachability</h2>
+            </div>
+            <button id="network-check-now" type="button">Check now</button>
           </div>
-        </div>
-        <form id="telegram-form" class="settings-form">
-          <label class="checkbox-field">
-            <input id="telegram-enabled" type="checkbox" />
-            <span>Enable Telegram test notifications</span>
-          </label>
-          <label class="field">
-            <span>Bot token</span>
-            <input id="telegram-bot-token" type="password" autocomplete="off" spellcheck="false" />
-          </label>
-          <label class="field">
-            <span>Chat ID</span>
-            <input id="telegram-chat-id" type="text" autocomplete="off" spellcheck="false" />
-          </label>
+          <p class="summary-text">Detection only - A.L.I.L.O.S. will not log in to the captive portal in this phase and does not perform configured actions.</p>
+          <dl class="detail-list">
+            <div><dt>Internet status</dt><dd><span id="network-internet-status">--</span><small id="network-internet-reason" class="detail-note"></small></dd></div>
+            <div><dt>Perakam reachability</dt><dd><span id="network-perakam-status">--</span><small id="network-perakam-reason" class="detail-note"></small></dd></div>
+            <div><dt>Last checked</dt><dd id="network-last-checked">--</dd></div>
+            <div><dt>Last successful internet</dt><dd id="network-last-internet">--</dd></div>
+            <div><dt>Last successful Perakam</dt><dd id="network-last-perakam">--</dd></div>
+            <div><dt>Consecutive failures</dt><dd id="network-failures">--</dd></div>
+            <div><dt>Last error</dt><dd id="network-error">--</dd></div>
+            <div><dt>Captive portal</dt><dd><span id="portal-state">--</span><small id="portal-confidence" class="detail-note"></small></dd></div>
+            <div><dt>Portal host</dt><dd id="portal-host">--</dd></div>
+            <div><dt>Portal URL</dt><dd id="portal-url">--</dd></div>
+            <div><dt>Portal title</dt><dd id="portal-title">--</dd></div>
+            <div><dt>Portal evidence</dt><dd><ol id="portal-evidence" class="compact-list"></ol></dd></div>
+          </dl>
           <div class="button-group form-actions">
-            <button id="save-telegram-settings" type="button">Save settings</button>
-            <button id="send-telegram-test" class="secondary-button" type="button">Send test notification</button>
+            <button id="portal-open" class="secondary-button" type="button">Open detected portal page</button>
+            <button id="portal-copy" class="secondary-button" type="button">Copy portal URL</button>
           </div>
-          <p id="telegram-result" class="result-text" aria-live="polite">Telegram settings are stored locally in app config.</p>
-        </form>
+          <form id="network-form" class="settings-form">
+            <fieldset class="settings-group">
+              <legend>Network monitor settings</legend>
+              <label class="checkbox-field">
+                <input id="network-enabled" type="checkbox" />
+                <span>Enable network monitor</span>
+              </label>
+              <label class="field">
+                <span>Interval seconds</span>
+                <input id="network-interval" type="number" min="30" step="1" />
+              </label>
+              <label class="field">
+                <span>Failure threshold</span>
+                <input id="network-failure-threshold" type="number" min="1" max="20" step="1" />
+              </label>
+              <label class="checkbox-field">
+                <input id="network-notify-internet" type="checkbox" />
+                <span>Notify when internet is down</span>
+              </label>
+              <label class="checkbox-field">
+                <input id="network-notify-perakam" type="checkbox" />
+                <span>Notify when Perakam is down</span>
+              </label>
+              <label class="checkbox-field">
+                <input id="network-notify-recovery" type="checkbox" />
+                <span>Notify on recovery</span>
+              </label>
+              <label class="checkbox-field">
+                <input id="network-captive-detection" type="checkbox" />
+                <span>Enable captive portal detection</span>
+              </label>
+              <label class="field">
+                <span>Retain portal evidence minutes</span>
+                <input id="network-retain-portal-evidence" type="number" min="5" max="1440" step="1" />
+              </label>
+            </fieldset>
+            <div class="button-group form-actions">
+              <button id="network-save-settings" class="secondary-button" type="button">Save monitor settings</button>
+            </div>
+            <p id="network-result" class="result-text" aria-live="polite">Network monitor settings are stored locally.</p>
+          </form>
+        </section>
       </section>
 
-      <section class="panel" aria-labelledby="logs-title">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Activity</p>
-            <h2 id="logs-title">Recent Logs</h2>
+      <section id="panel-telegram" class="tab-panel" role="tabpanel" aria-labelledby="tab-telegram" data-tab-panel="telegram" hidden>
+        <section class="panel" aria-labelledby="telegram-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Notifications</p>
+              <h2 id="telegram-title">Telegram Settings</h2>
+            </div>
           </div>
-        </div>
-        <ol id="log-list" class="log-list" aria-live="polite"></ol>
+          <dl class="detail-list">
+            <div><dt>Bot token</dt><dd id="telegram-bot-token-status">--</dd></div>
+            <div><dt>Chat ID</dt><dd id="telegram-chat-id-status">--</dd></div>
+            <div><dt>Command prefix</dt><dd id="telegram-command-prefix">--</dd></div>
+            <div><dt>Supported commands</dt><dd>/status, /skip, /unskip, /skipnext, /unskipnext, /skips, /help with the configured prefix.</dd></div>
+          </dl>
+          <form id="telegram-form" class="settings-form">
+            <label class="checkbox-field">
+              <input id="telegram-enabled" type="checkbox" />
+              <span>Enable Telegram test notifications</span>
+            </label>
+            <label class="field">
+              <span>Bot token</span>
+              <input id="telegram-bot-token" type="password" autocomplete="off" spellcheck="false" />
+            </label>
+            <label class="field">
+              <span>Chat ID</span>
+              <input id="telegram-chat-id" type="password" autocomplete="off" spellcheck="false" />
+            </label>
+            <label class="field">
+              <span>Command prefix</span>
+              <input id="telegram-command-prefix-input" type="text" autocomplete="off" spellcheck="false" />
+            </label>
+            <div class="button-group form-actions">
+              <button id="save-telegram-settings" type="button">Save settings</button>
+              <button id="send-telegram-test" class="secondary-button" type="button">Send test notification</button>
+            </div>
+            <p id="telegram-result" class="result-text" aria-live="polite">Telegram settings are stored locally in app config.</p>
+          </form>
+        </section>
+      </section>
+
+      <section id="panel-logs" class="tab-panel" role="tabpanel" aria-labelledby="tab-logs" data-tab-panel="logs" hidden>
+        <section class="panel" aria-labelledby="logs-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Activity</p>
+              <h2 id="logs-title">Recent Logs</h2>
+            </div>
+          </div>
+          <ol id="log-list" class="log-list" aria-live="polite"></ol>
+        </section>
+
+        <section class="panel" aria-labelledby="automation-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Research telemetry</p>
+              <h2 id="automation-title">Automation / Heartbeat</h2>
+            </div>
+          </div>
+          <p class="summary-text">Dry-run mode simulates due configured actions and records what would have happened. It does not click real Perakam target controls.</p>
+          <dl class="detail-list">
+            <div><dt>Mode</dt><dd id="automation-mode-detail">--</dd></div>
+            <div><dt>Last monitor check</dt><dd id="automation-last-checked">--</dd></div>
+            <div><dt>Latest simulated action</dt><dd id="automation-dry-run-status">--</dd></div>
+            <div><dt>Simulation detail</dt><dd id="automation-dry-run-detail">--</dd></div>
+            <div><dt>Heartbeat endpoint</dt><dd id="heartbeat-endpoint">--</dd></div>
+            <div><dt>Last heartbeat success</dt><dd id="heartbeat-last-success">--</dd></div>
+            <div><dt>Heartbeat error</dt><dd id="heartbeat-error">--</dd></div>
+          </dl>
+          <h3 class="subheading">Recent automation audit</h3>
+          <ol id="automation-audit-list" class="compact-list"></ol>
+        </section>
+      </section>
+
+      <section id="panel-settings" class="tab-panel" role="tabpanel" aria-labelledby="tab-settings" data-tab-panel="settings" hidden>
+        <section class="panel" aria-labelledby="settings-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Configuration</p>
+              <h2 id="settings-title">Safe Settings Editor</h2>
+            </div>
+          </div>
+          <p class="summary-text">This editor updates existing local config only. Secret-like values are masked; leaving the heartbeat endpoint blank keeps the saved endpoint.</p>
+          <form id="settings-form" class="settings-form">
+            <div class="settings-editor-grid">
+              <fieldset class="settings-group">
+                <legend>General / Automation</legend>
+                <label class="checkbox-field">
+                  <input id="settings-worker-enabled" type="checkbox" />
+                  <span>Enable background worker scaffold</span>
+                </label>
+                <label class="field">
+                  <span>Worker poll interval seconds</span>
+                  <input id="settings-worker-interval" type="number" min="15" step="1" />
+                </label>
+                <label class="field">
+                  <span>Execution mode</span>
+                  <select id="settings-execution-mode">
+                    <option value="notify-only">Notify only</option>
+                    <option value="manual-confirm">Manual confirm</option>
+                    <option value="dry-run">Dry run</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Automation monitor interval seconds</span>
+                  <input id="settings-automation-interval" type="number" min="15" step="1" />
+                </label>
+                <label class="checkbox-field">
+                  <input id="settings-prepare-browser" type="checkbox" />
+                  <span>Prepare browser during dry-run mode</span>
+                </label>
+              </fieldset>
+
+              <fieldset class="settings-group">
+                <legend>Schedule / Reminders</legend>
+                <div class="inline-fields">
+                  <label class="field">
+                    <span>Morning start</span>
+                    <input id="settings-morning-start" type="time" />
+                  </label>
+                  <label class="field">
+                    <span>Morning end</span>
+                    <input id="settings-morning-end" type="time" />
+                  </label>
+                </div>
+                <div class="inline-fields">
+                  <label class="field">
+                    <span>Evening start</span>
+                    <input id="settings-evening-start" type="time" />
+                  </label>
+                  <label class="field">
+                    <span>Evening end</span>
+                    <input id="settings-evening-end" type="time" />
+                  </label>
+                </div>
+                <label class="field">
+                  <span>Grace period minutes</span>
+                  <input id="settings-grace-period" type="number" min="1" max="120" step="1" />
+                </label>
+                <label class="checkbox-field">
+                  <input id="settings-reminders-enabled" type="checkbox" />
+                  <span>Enable reminders</span>
+                </label>
+                <label class="field">
+                  <span>Approaching window minutes</span>
+                  <input id="settings-reminder-approaching" type="number" min="1" max="120" step="1" />
+                </label>
+                <label class="checkbox-field">
+                  <input id="settings-system-notifications" type="checkbox" />
+                  <span>Enable system notifications</span>
+                </label>
+              </fieldset>
+
+              <fieldset class="settings-group">
+                <legend>Browser / Site</legend>
+                <label class="field">
+                  <span>Dashboard URL</span>
+                  <input id="settings-dashboard-url" type="url" autocomplete="off" spellcheck="false" />
+                </label>
+                <p class="summary-text">Target IDs and selector behavior are not editable here.</p>
+              </fieldset>
+
+              <fieldset class="settings-group">
+                <legend>Heartbeat</legend>
+                <label class="checkbox-field">
+                  <input id="settings-heartbeat-enabled" type="checkbox" />
+                  <span>Enable heartbeat sender</span>
+                </label>
+                <label class="field">
+                  <span>Heartbeat endpoint</span>
+                  <input id="settings-heartbeat-endpoint" type="password" autocomplete="off" spellcheck="false" />
+                </label>
+                <p id="settings-heartbeat-endpoint-state" class="summary-text">Endpoint status not loaded.</p>
+                <label class="field">
+                  <span>Heartbeat interval seconds</span>
+                  <input id="settings-heartbeat-interval" type="number" min="30" step="1" />
+                </label>
+              </fieldset>
+            </div>
+            <div class="button-group form-actions">
+              <button id="settings-save" type="button">Save settings</button>
+              <button id="settings-reload" class="secondary-button" type="button">Reload settings</button>
+            </div>
+            <p id="settings-result" class="result-text" aria-live="polite">Settings load from local app config.</p>
+          </form>
+
+          <h3 class="subheading">Current Summary</h3>
+          <dl class="detail-list">
+            <div><dt>Schedule windows</dt><dd id="settings-schedule-window">--</dd></div>
+            <div><dt>Browser/site</dt><dd id="settings-browser-summary">--</dd></div>
+            <div><dt>Network monitor</dt><dd id="settings-network-summary">--</dd></div>
+            <div><dt>Telegram</dt><dd id="settings-telegram-summary">--</dd></div>
+            <div><dt>Heartbeat</dt><dd id="settings-heartbeat-summary">--</dd></div>
+            <div><dt>Config path</dt><dd id="settings-config-path">--</dd></div>
+            <div><dt>Log path</dt><dd id="settings-log-path">--</dd></div>
+          </dl>
+          <h3 class="subheading">Manual Smoke Test Map</h3>
+          <ol class="compact-list">
+            <li>Overview: confirm local time and status cards update once per second.</li>
+            <li>Schedule: test skip/unskip controls and confirm generated times remain visible.</li>
+            <li>Actions: confirm readiness, dry-run, and guarded controls remain disabled/enabled as expected.</li>
+            <li>Browser / Site: test browser start/stop and Perakam status refresh without changing target IDs.</li>
+            <li>Network: run Check now and confirm captive portal details stay sanitized.</li>
+            <li>Telegram: verify token/chat fields show configured placeholders, not saved values.</li>
+            <li>Logs: confirm recent logs remain scrollable.</li>
+          </ol>
+        </section>
       </section>
     </main>
     <script src="./renderer.js"></script>

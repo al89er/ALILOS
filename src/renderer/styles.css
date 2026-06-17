@@ -54,6 +54,12 @@ body {
   margin-bottom: 24px;
 }
 
+.topbar-actions {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+}
+
 .eyebrow,
 .label {
   margin: 0;
@@ -77,6 +83,12 @@ h1 {
 
 h2 {
   font-size: 1.1rem;
+}
+
+.subheading {
+  margin: 16px 0 10px;
+  color: var(--text);
+  font-size: 0.95rem;
 }
 
 .time-panel,
@@ -104,6 +116,46 @@ h2 {
   margin-bottom: 16px;
 }
 
+.tab-list {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  gap: 8px;
+  margin: 0 -4px 18px;
+  padding: 8px 4px;
+  overflow-x: auto;
+  background: rgba(245, 247, 251, 0.94);
+  backdrop-filter: blur(8px);
+}
+
+.tab-button {
+  flex: 0 0 auto;
+  min-height: 40px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--primary);
+}
+
+.tab-button:hover,
+.tab-button:focus-visible {
+  background: var(--surface-muted);
+}
+
+.tab-button[aria-selected="true"] {
+  border-color: rgba(35, 91, 127, 0.34);
+  background: var(--primary);
+  color: #ffffff;
+}
+
+.tab-panel[hidden] {
+  display: none;
+}
+
+.tab-panel {
+  display: block;
+}
+
 .status-card,
 .panel {
   padding: 20px;
@@ -117,6 +169,39 @@ h2 {
 
 .panel {
   margin-top: 16px;
+}
+
+.tab-panel > .panel:first-child,
+.tab-panel > .status-grid:first-child {
+  margin-top: 0;
+}
+
+.overview-grid,
+.panel-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.overview-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.two-column-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.compact-panel {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-height: 150px;
+}
+
+.summary-value {
+  margin: 0;
+  color: var(--text);
+  font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .section-heading {
@@ -159,6 +244,11 @@ input:focus-visible {
   outline-offset: 2px;
 }
 
+select:focus-visible {
+  outline: 3px solid rgba(35, 91, 127, 0.28);
+  outline-offset: 2px;
+}
+
 button:disabled {
   cursor: not-allowed;
   opacity: 0.56;
@@ -196,6 +286,31 @@ button:disabled {
   gap: 14px;
 }
 
+.settings-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.settings-group {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.settings-group legend {
+  padding: 0 6px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
 .field,
 .checkbox-field {
   display: grid;
@@ -213,6 +328,12 @@ button:disabled {
 .checkbox-field input {
   width: 20px;
   height: 20px;
+}
+
+.inline-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .field input,
@@ -439,6 +560,13 @@ dd[data-status="failed"] {
   color: var(--danger-text);
 }
 
+.compact-list li[data-status="blocked"],
+dd[data-status="blocked"] {
+  border-color: rgba(138, 75, 0, 0.24);
+  background: var(--warning-bg);
+  color: var(--warning-text);
+}
+
 .log-list {
   display: grid;
   gap: 10px;
@@ -476,9 +604,17 @@ dd[data-status="failed"] {
   .topbar,
   .section-heading,
   .status-grid,
+  .overview-grid,
+  .panel-grid,
+  .settings-editor-grid,
+  .inline-fields,
   .placeholder-list,
   .confirmation-grid {
     grid-template-columns: 1fr;
+  }
+
+  .topbar-actions {
+    display: grid;
   }
 
   .button-group {

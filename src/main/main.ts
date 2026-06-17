@@ -1,8 +1,11 @@
 import path from "node:path";
 import { app, BrowserWindow, clipboard, ipcMain, shell, Tray } from "electron";
+import { appendAutomationAuditEvent } from "../worker/automation-audit";
+import { AutomationMonitor } from "../worker/automation-monitor";
 import { BackgroundWorker } from "../worker/background-worker";
 import { BrowserController } from "../worker/browser-controller";
 import { ConfirmationService } from "../worker/confirmation-service";
+import { HeartbeatService } from "../worker/heartbeat-service";
 import { NetworkMonitor, normalizeNetworkMonitorSettings } from "../worker/network-monitor";
 import { ReminderService } from "../worker/reminder-service";
 import { Scheduler } from "../worker/scheduler";
@@ -12,7 +15,7 @@ import { AppLogger } from "./logger";
 import { decryptSecret, encryptSecret, isSecureStorageAvailable } from "./secret-store";
 import { TelegramService } from "./telegram-service";
 import { createAppTray } from "./tray";
-import type { AppConfig, AttendanceActionType, AttendanceCompletionRecord, AttendancePlaceholder, DashboardSnapshot, NetworkMonitorSettings, PerakamAutoLoginAttemptResult, PerakamAutoLoginInput, PerakamAutoLoginSnapshot, PerakamPageStatus, PerakamStatusSnapshot, ScheduleSnapshot, TelegramSettings, TestClickTargetId } from "../shared/types";
+import type { AppConfig, AppSettingsInput, AppSettingsSnapshot, AttendanceActionType, AttendanceCompletionRecord, AttendanceExecutionResult, AttendancePlaceholder, DashboardSnapshot, ExecutionMode, HeartbeatPayload, NetworkMonitorSettings, PerakamAutoLoginAttemptResult, PerakamAutoLoginInput, PerakamAutoLoginSnapshot, PerakamPageStatus, PerakamStatusSnapshot, ReminderSettings, ScheduleActionSnapshot, ScheduleSnapshot, TelegramSecretStatus, TelegramSettings, TelegramSettingsInput, TelegramSettingsSnapshot, TestClickTargetId, TimeWindow } from "../shared/types";
 
 let mainWindow: BrowserWindow | null = null;
 let isQuitting = false;
@@ -27,6 +30,8 @@ let scheduler: Scheduler;
 let telegramService: TelegramService;
 let reminderService: ReminderService;
 let networkMonitor: NetworkMonitor;
+let heartbeatService: HeartbeatService;
+let automationMonitor: AutomationMonitor;
 let appTray: Tray | null = null;
 let perakamLoginInFlight = false;
 let lastPerakamLoginAttemptMs = 0;
@@ -75,7 +80,7 @@ async function buildSnapshot(): Promise<DashboardSnapshot> {
   const schedule = scheduler.getSnapshot();
 
   return {
-    appStatus: "Ready for manual attendance confirmation",
+    appStatus: appStatusText(),
     worker: worker.snapshot(),
     localTime: new Date().toLocaleString(),
     placeholders: buildPlaceholders(schedule),
@@ -88,6 +93,8 @@ async function buildSnapshot(): Promise<DashboardSnapshot> {
     perakamAutoLogin: buildPerakamAutoLoginSnapshot(),
     confirmations: confirmationService.snapshot(),
     testClick: testClickService.snapshot(),
+    automation: automationMonitor.snapshot(),
+    heartbeat: heartbeatService.snapshot(),
     logs: await logger.recent(20),
     configPath: configStore.path,
     logPath: logger.path
@@ -115,7 +122,7 @@ app.whenReady().then(() => {
     return;
   }
 
-  configStore = new ConfigStore(app.getPath("userData"));
+  configStore = new ConfigStore(app.getPath("userData"), app.getAppPath());
   config = configStore.load();
   logger = new AppLogger(app.getPath("userData"));
   worker = new BackgroundWorker(config, logger);
@@ -124,7 +131,7 @@ app.whenReady().then(() => {
     void broadcastSnapshot();
   });
   scheduler = new Scheduler(config, configStore, logger);
-  telegramService = new TelegramService(logger, () => config.telegram, {
+  telegramService = new TelegramService(logger, buildEffectiveTelegramSettings, {
     getScheduleSnapshot: () => scheduler.getSnapshot(),
     skipToday: () => {
       scheduler.skipToday();
@@ -143,6 +150,9 @@ app.whenReady().then(() => {
       reminderService.clearLogMarkersForDate(formatDateKey(addDays(new Date(), 1)));
     },
     persistSettings: () => configStore.save(config),
+    setLastUpdateId: (lastUpdateId) => {
+      config.telegram.lastUpdateId = lastUpdateId;
+    },
     broadcastSnapshot: () => {
       void broadcastSnapshot();
     }
@@ -192,6 +202,35 @@ app.whenReady().then(() => {
       void broadcastSnapshot();
     }
   });
+  heartbeatService = new HeartbeatService(config, logger, buildHeartbeatPayload);
+  automationMonitor = new AutomationMonitor(
+    config,
+    configStore,
+    logger,
+    telegramService,
+    {
+      getScheduleSnapshot: () => scheduler.getSnapshot(),
+      getBrowserStatus: () => browserController.status(),
+      getPerakamStatus: () => browserController.getPerakamStatus(config.perakam.dashboardUrl),
+      openPerakam: async () => {
+        const status = await browserController.openPerakam(config.perakam.dashboardUrl);
+        await maybeAttemptPerakamAutoLogin("automation-open", status);
+        return browserController.getPerakamStatus(config.perakam.dashboardUrl);
+      },
+      refreshPerakamStatus: async () => {
+        const status = await browserController.refreshPerakamStatus(config.perakam.dashboardUrl);
+        await maybeAttemptPerakamAutoLogin("automation-refresh", status);
+        return browserController.getPerakamStatus(config.perakam.dashboardUrl);
+      },
+      publishHeartbeat: async (source) => {
+        await heartbeatService.send(source);
+        await broadcastSnapshot();
+      },
+      broadcastSnapshot: () => {
+        void broadcastSnapshot();
+      }
+    }
+  );
 
   mainWindow = createWindow();
   appTray = createAppTray(mainWindow);
@@ -206,6 +245,8 @@ app.whenReady().then(() => {
   telegramService.configure();
   reminderService.start();
   networkMonitor.start();
+  heartbeatService.start();
+  automationMonitor.start();
 
   ipcMain.handle("dashboard:get-snapshot", buildSnapshot);
   ipcMain.handle("schedule:skip-today", async () => {
@@ -232,15 +273,61 @@ app.whenReady().then(() => {
     await broadcastSnapshot();
     return buildSnapshot();
   });
-  ipcMain.handle("telegram:get-settings", () => config.telegram);
-  ipcMain.handle("telegram:save-settings", (_event, settings: Partial<TelegramSettings> | null) => {
+  ipcMain.handle("settings:get", () => buildAppSettingsSnapshot());
+  ipcMain.handle("settings:save", async (_event, settings: Partial<AppSettingsInput> | null) => {
+    const previousWorkerEnabled = config.worker.enabled;
+    const previousWorkerInterval = config.worker.pollIntervalSeconds;
+    const next = normalizeAppSettings(settings);
+
+    config.worker = next.worker;
+    config.automation = {
+      ...config.automation,
+      ...next.automation
+    };
+    config.scheduler = {
+      ...config.scheduler,
+      clockInWindow: next.scheduler.clockInWindow,
+      clockOutWindow: next.scheduler.clockOutWindow,
+      gracePeriodMinutes: next.scheduler.gracePeriodMinutes,
+      reminders: next.scheduler.reminders
+    };
+    config.perakam = {
+      ...config.perakam,
+      dashboardUrl: next.perakam.dashboardUrl
+    };
+    config.heartbeat = {
+      ...config.heartbeat,
+      enabled: next.heartbeat.enabled,
+      endpointUrl: typeof next.heartbeat.endpointUrl === "string" && next.heartbeat.endpointUrl.trim()
+        ? next.heartbeat.endpointUrl.trim()
+        : config.heartbeat.endpointUrl,
+      intervalSeconds: next.heartbeat.intervalSeconds
+    };
+
+    configStore.save(config);
+
+    if (config.worker.enabled !== previousWorkerEnabled || config.worker.pollIntervalSeconds !== previousWorkerInterval) {
+      worker.stop();
+      if (config.worker.enabled) {
+        worker.start();
+      }
+    }
+    automationMonitor.configure();
+    heartbeatService.configure();
+
+    logger.info(`App settings saved. Execution mode: ${config.automation.executionMode}. Worker: ${config.worker.enabled ? "enabled" : "disabled"}.`);
+    await broadcastSnapshot();
+    return buildAppSettingsSnapshot();
+  });
+  ipcMain.handle("telegram:get-settings", () => buildTelegramSettingsSnapshot());
+  ipcMain.handle("telegram:save-settings", (_event, settings: Partial<TelegramSettingsInput> | null) => {
     config.telegram = normalizeTelegramSettings(settings);
     configStore.save(config);
     telegramService.configure();
     logger.info(`Telegram settings saved. Enabled: ${config.telegram.enabled ? "yes" : "no"}.`);
-    return config.telegram;
+    return buildTelegramSettingsSnapshot();
   });
-  ipcMain.handle("telegram:send-test-notification", () => telegramService.sendTestNotification(config.telegram));
+  ipcMain.handle("telegram:send-test-notification", () => telegramService.sendTestNotification(buildEffectiveTelegramSettings()));
   ipcMain.handle("network:get-settings", () => config.networkMonitor);
   ipcMain.handle("network:save-settings", (_event, settings: Partial<NetworkMonitorSettings> | null) => {
     config.networkMonitor = normalizeNetworkMonitorSettings({
@@ -376,7 +463,8 @@ app.whenReady().then(() => {
   });
   ipcMain.handle("dry-run:get-latest", () => confirmationService.latestDryRun());
   ipcMain.handle("attendance:execute", async (_event, confirmationId: string) => {
-    await confirmationService.runGuardedAttendanceClick(String(confirmationId ?? ""));
+    const result = await confirmationService.runGuardedAttendanceClick(String(confirmationId ?? ""));
+    recordAttendanceExecutionAudit(result);
     await broadcastSnapshot();
     return buildSnapshot();
   });
@@ -467,6 +555,8 @@ app.on("before-quit", (event) => {
   telegramService?.stopPolling();
   reminderService?.stop();
   networkMonitor?.stop();
+  heartbeatService?.stop();
+  automationMonitor?.stop();
 
   if (browserController && browserController.status().state !== "stopped") {
     event.preventDefault();
@@ -478,14 +568,214 @@ app.on("window-all-closed", () => {
   // Keep the app resident in the tray until the user chooses Quit.
 });
 
-function normalizeTelegramSettings(settings: Partial<TelegramSettings> | null): TelegramSettings {
+function normalizeTelegramSettings(settings: Partial<TelegramSettingsInput> | null): TelegramSettings {
+  const botToken = normalizeOptionalSecret(settings?.botToken, config.telegram.botToken);
+  const chatId = normalizeOptionalSecret(settings?.chatId, config.telegram.chatId);
+
   return {
-    enabled: Boolean(settings?.enabled),
-    botToken: String(settings?.botToken ?? "").trim(),
-    chatId: String(settings?.chatId ?? "").trim(),
+    enabled: settings?.enabled ?? config.telegram.enabled,
+    botToken,
+    chatId,
     commandPrefix: normalizeCommandPrefix(settings?.commandPrefix ?? config.telegram.commandPrefix ?? "alilos"),
-    lastUpdateId: Number.isFinite(settings?.lastUpdateId) ? Number(settings?.lastUpdateId) : config.telegram.lastUpdateId ?? 0
+    lastUpdateId: config.telegram.lastUpdateId ?? 0
   };
+}
+
+function buildEffectiveTelegramSettings(): TelegramSettings {
+  const envLocal = configStore.telegramEnvLocal;
+
+  return {
+    ...config.telegram,
+    botToken: config.telegram.botToken.trim() || envLocal.botToken,
+    chatId: config.telegram.chatId.trim() || envLocal.chatId
+  };
+}
+
+function buildTelegramSettingsSnapshot(): TelegramSettingsSnapshot {
+  return {
+    enabled: config.telegram.enabled,
+    commandPrefix: config.telegram.commandPrefix,
+    secretStatus: {
+      botToken: telegramSecretStatus(config.telegram.botToken, configStore.telegramEnvLocal.botToken),
+      chatId: telegramSecretStatus(config.telegram.chatId, configStore.telegramEnvLocal.chatId)
+    }
+  };
+}
+
+function telegramSecretStatus(configValue: string, envLocalValue: string): TelegramSecretStatus {
+  if (configValue.trim()) {
+    return "configured";
+  }
+
+  if (envLocalValue.trim()) {
+    return "env-local";
+  }
+
+  return "missing";
+}
+
+function normalizeOptionalSecret(value: unknown, fallback: string): string {
+  if (typeof value !== "string") {
+    return fallback;
+  }
+
+  const trimmed = value.trim();
+  return trimmed || fallback;
+}
+
+function buildAppSettingsSnapshot(): AppSettingsSnapshot {
+  return {
+    worker: {
+      enabled: config.worker.enabled,
+      pollIntervalSeconds: config.worker.pollIntervalSeconds
+    },
+    automation: {
+      executionMode: config.automation.executionMode,
+      monitorIntervalSeconds: config.automation.monitorIntervalSeconds,
+      prepareBrowserInDryRun: config.automation.prepareBrowserInDryRun
+    },
+    scheduler: {
+      clockInWindow: config.scheduler.clockInWindow,
+      clockOutWindow: config.scheduler.clockOutWindow,
+      gracePeriodMinutes: config.scheduler.gracePeriodMinutes,
+      reminders: config.scheduler.reminders
+    },
+    perakam: {
+      dashboardUrl: config.perakam.dashboardUrl
+    },
+    heartbeat: {
+      enabled: config.heartbeat.enabled,
+      configured: Boolean(parseHttpUrl(config.heartbeat.endpointUrl)),
+      endpointHost: endpointHost(config.heartbeat.endpointUrl),
+      intervalSeconds: config.heartbeat.intervalSeconds
+    }
+  };
+}
+
+function normalizeAppSettings(settings: Partial<AppSettingsInput> | null): AppSettingsInput {
+  const clockInWindow = normalizeTimeWindow(settings?.scheduler?.clockInWindow, config.scheduler.clockInWindow, "Morning action window");
+  const clockOutWindow = normalizeTimeWindow(settings?.scheduler?.clockOutWindow, config.scheduler.clockOutWindow, "Evening action window");
+  const dashboardUrl = normalizeRequiredHttpUrl(settings?.perakam?.dashboardUrl ?? config.perakam.dashboardUrl, "Perakam dashboard URL");
+  const heartbeatEndpoint = normalizeOptionalHttpUrl(settings?.heartbeat?.endpointUrl, "Heartbeat endpoint URL");
+
+  return {
+    worker: {
+      enabled: settings?.worker?.enabled ?? config.worker.enabled,
+      pollIntervalSeconds: clampSettingNumber(settings?.worker?.pollIntervalSeconds, 15, 24 * 60 * 60, config.worker.pollIntervalSeconds, "Worker poll interval")
+    },
+    automation: {
+      executionMode: normalizeSettingsExecutionMode(settings?.automation?.executionMode),
+      monitorIntervalSeconds: clampSettingNumber(settings?.automation?.monitorIntervalSeconds, 15, 24 * 60 * 60, config.automation.monitorIntervalSeconds, "Automation monitor interval"),
+      prepareBrowserInDryRun: settings?.automation?.prepareBrowserInDryRun ?? config.automation.prepareBrowserInDryRun
+    },
+    scheduler: {
+      clockInWindow,
+      clockOutWindow,
+      gracePeriodMinutes: clampSettingNumber(settings?.scheduler?.gracePeriodMinutes, 1, 120, config.scheduler.gracePeriodMinutes, "Grace period"),
+      reminders: normalizeReminderSettings(settings?.scheduler?.reminders)
+    },
+    perakam: {
+      dashboardUrl
+    },
+    heartbeat: {
+      enabled: settings?.heartbeat?.enabled ?? config.heartbeat.enabled,
+      endpointUrl: heartbeatEndpoint ?? undefined,
+      intervalSeconds: clampSettingNumber(settings?.heartbeat?.intervalSeconds, 30, 24 * 60 * 60, config.heartbeat.intervalSeconds, "Heartbeat interval")
+    }
+  };
+}
+
+function normalizeReminderSettings(settings: Partial<ReminderSettings> | undefined): ReminderSettings {
+  return {
+    enabled: settings?.enabled ?? config.scheduler.reminders.enabled,
+    approachingMinutes: clampSettingNumber(settings?.approachingMinutes, 1, 120, config.scheduler.reminders.approachingMinutes, "Reminder approaching window"),
+    systemNotificationsEnabled: settings?.systemNotificationsEnabled ?? config.scheduler.reminders.systemNotificationsEnabled
+  };
+}
+
+function normalizeTimeWindow(input: Partial<TimeWindow> | undefined, fallback: TimeWindow, label: string): TimeWindow {
+  const start = normalizeTimeText(input?.start ?? fallback.start, `${label} start`);
+  const end = normalizeTimeText(input?.end ?? fallback.end, `${label} end`);
+
+  if (minutesFromTimeText(start) > minutesFromTimeText(end)) {
+    throw new Error(`${label} start must be before or equal to the end time.`);
+  }
+
+  return { start, end };
+}
+
+function normalizeTimeText(value: unknown, label: string): string {
+  const text = String(value ?? "").trim();
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(text);
+  if (!match) {
+    throw new Error(`${label} must use HH:MM 24-hour format.`);
+  }
+
+  return text;
+}
+
+function minutesFromTimeText(value: string): number {
+  const [hours, minutes] = value.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+function normalizeSettingsExecutionMode(value: unknown): ExecutionMode {
+  if (value === "notify-only" || value === "manual-confirm" || value === "dry-run") {
+    return value;
+  }
+
+  return config.automation.executionMode;
+}
+
+function clampSettingNumber(value: unknown, minimum: number, maximum: number, fallback: number, label: string): number {
+  if (value === undefined || value === null || value === "") {
+    return fallback;
+  }
+
+  const numeric = Number(value);
+
+  if (!Number.isFinite(numeric)) {
+    throw new Error(`${label} must be a number.`);
+  }
+
+  return Math.min(maximum, Math.max(minimum, Math.round(numeric)));
+}
+
+function normalizeRequiredHttpUrl(value: unknown, label: string): string {
+  const raw = String(value ?? "").trim();
+  const parsed = parseHttpUrl(raw);
+  if (!parsed) {
+    throw new Error(`${label} must be a valid http or https URL.`);
+  }
+
+  return parsed.toString();
+}
+
+function normalizeOptionalHttpUrl(value: unknown, label: string): string | null {
+  const raw = String(value ?? "").trim();
+  if (!raw) {
+    return null;
+  }
+
+  const parsed = parseHttpUrl(raw);
+  if (!parsed) {
+    throw new Error(`${label} must be blank or a valid http/https URL.`);
+  }
+
+  return parsed.toString();
+}
+
+function parseHttpUrl(value: string): URL | null {
+  try {
+    const parsed = new URL(value.trim());
+    return parsed.protocol === "http:" || parsed.protocol === "https:" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function endpointHost(value: string): string | null {
+  return parseHttpUrl(value)?.host ?? null;
 }
 
 function normalizeCommandPrefix(prefix: unknown): string {
@@ -517,6 +807,113 @@ function buildPerakamAutoLoginSnapshot(): PerakamAutoLoginSnapshot {
     lastLoginResult: config.perakam.autoLogin.lastLoginResult,
     lastLoginReason: config.perakam.autoLogin.lastLoginReason
   };
+}
+
+function appStatusText(): string {
+  switch (config.automation.executionMode) {
+    case "notify-only":
+      return "Notify-only monitoring active";
+    case "dry-run":
+      return "Dry-run automation monitoring active";
+    default:
+      return "Ready for manual action confirmation";
+  }
+}
+
+function buildHeartbeatPayload(): HeartbeatPayload {
+  const schedule = scheduler.getSnapshot();
+  const workerSnapshot = worker.snapshot();
+  const network = networkMonitor.snapshot();
+  const perakam = browserController.getPerakamStatus(config.perakam.dashboardUrl);
+  const confirmations = confirmationService.snapshot();
+  const latestDryRun = automationMonitor.snapshot().latestDryRun;
+  const latestExecution = confirmationService.latestExecution();
+  const nextAction = nextRelevantAction(schedule.actions);
+
+  return {
+    appStatus: appStatusText(),
+    workerState: workerSnapshot.state,
+    executionMode: config.automation.executionMode,
+    network: {
+      connectivityState: network.connectivityState,
+      perakamReachabilityState: network.perakamReachabilityState,
+      captivePortalState: network.captivePortal.state
+    },
+    perakam: {
+      status: perakam.status,
+      clockInAvailable: perakam.clockInAvailable,
+      clockOutAvailable: perakam.clockOutAvailable
+    },
+    schedule: {
+      today: schedule.today,
+      clockInTime: schedule.schedule.clockInTime,
+      clockOutTime: schedule.schedule.clockOutTime,
+      nextAction: nextAction?.action ?? null,
+      nextActionTime: nextAction?.time ?? null
+    },
+    confirmation: {
+      clockInState: confirmations.clockIn.state,
+      clockOutState: confirmations.clockOut.state,
+      hasPendingConfirmation: confirmations.clockIn.activeConfirmation?.status === "pending"
+        || confirmations.clockOut.activeConfirmation?.status === "pending"
+    },
+    automation: {
+      lastDryRunStatus: latestDryRun?.status ?? null,
+      lastDryRunAction: latestDryRun?.action ?? null,
+      lastRealActionStatus: latestExecution?.status ?? null
+    },
+    lastSanitizedErrorSummary: lastSanitizedErrorSummary(network.sanitizedError, perakam.lastError, browserController.status().lastError, telegramService.snapshot().lastError, reminderService.snapshot().lastError),
+    timestamp: new Date().toISOString()
+  };
+}
+
+function nextRelevantAction(actions: ScheduleActionSnapshot[]): ScheduleActionSnapshot | null {
+  return actions.find((action) => action.status === "due-now" || action.status === "within-grace-period")
+    ?? actions.find((action) => action.status === "upcoming")
+    ?? null;
+}
+
+function lastSanitizedErrorSummary(...messages: Array<string | null>): string | null {
+  const message = messages.find((item) => item && item.trim());
+  return message ? sanitizeLoginReason(message) : null;
+}
+
+function recordAttendanceExecutionAudit(result: AttendanceExecutionResult): void {
+  if (!result.action || !result.dateKey) {
+    return;
+  }
+
+  if (result.status === "succeeded" || result.status === "failed") {
+    appendAutomationAuditEvent(config, configStore, logger, {
+      type: "real-action-attempted-after-confirmation",
+      action: result.action,
+      dateKey: result.dateKey,
+      status: result.status === "succeeded" ? "passed" : "failed",
+      message: result.status === "succeeded"
+        ? `Confirmed real ${result.action} action attempted through guarded execution.`
+        : `Confirmed real ${result.action} action failed through guarded execution.`,
+      details: {
+        mappedTargetId: result.mappedTargetId,
+        executionStatus: result.status,
+        completionState: result.completionState,
+        confirmationRequired: true
+      }
+    });
+  }
+
+  if (result.verification) {
+    appendAutomationAuditEvent(config, configStore, logger, {
+      type: "verification-result",
+      action: result.action,
+      dateKey: result.dateKey,
+      status: result.verification.status === "verified-success" || result.verification.status === "manually-verified" ? "passed" : "blocked",
+      message: result.verification.reason,
+      details: {
+        verificationStatus: result.verification.status,
+        localClickResult: result.verification.localClickResult
+      }
+    });
+  }
 }
 
 function savePerakamAutoLoginSettings(settings: Partial<PerakamAutoLoginInput> | null): void {

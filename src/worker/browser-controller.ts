@@ -246,9 +246,12 @@ export class BrowserController {
         page.evaluate(readPerakamPageMarkersFromDocument).catch(() => null)
       ]);
       const buttonCheckAt = new Date().toISOString();
-      const attendanceControls = readyState === "loading"
+      const firstAttendanceControls = readyState === "loading"
         ? unknownAttendanceControls("Page is still loading.", buttonCheckAt)
         : await detectAttendanceControls(page, buttonCheckAt);
+      const attendanceControls = readyState === "loading"
+        ? firstAttendanceControls
+        : await retryAttendanceControlsIfDashboardMarkersExist(page, markers, firstAttendanceControls);
       const classification = classifyPerakamPage(
         sanitizeUrlForDisplay(page.url()),
         title,
@@ -622,7 +625,7 @@ export class BrowserController {
       }
     }
 
-    throw new Error(`${mappedTargetId} attendance control is not visibly available.`);
+    throw new Error(`${mappedTargetId} target control is not visibly available.`);
   }
 
   async verifyAttendanceAfterClick(
@@ -654,7 +657,7 @@ export class BrowserController {
       page.evaluate((maxLength) => document.body?.innerText.slice(0, maxLength) ?? "", MAX_BODY_TEXT_FOR_STATUS).catch(() => ""),
       page.evaluate(readPerakamPageMarkersFromDocument).catch(() => null)
     ]);
-    const controls = await detectAttendanceControls(page, checkedAt).catch(() => unknownAttendanceControls("Unable to inspect attendance controls during verification.", checkedAt));
+    const controls = await detectAttendanceControls(page, checkedAt).catch(() => unknownAttendanceControls("Unable to inspect target controls during verification.", checkedAt));
     const classification = classifyPerakamPage(
       sanitizedUrlAfterClick ?? "",
       title,
@@ -721,8 +724,8 @@ export class BrowserController {
         localClickResult,
         status: "verified-success",
         reason: classification.status === "dashboard"
-          ? "Dashboard detected after click. Read-only page evidence suggests Perakam accepted the attendance action."
-          : "Read-only page evidence suggests Perakam accepted the attendance action.",
+          ? "Dashboard detected after click. Read-only page evidence suggests Perakam accepted the configured action."
+          : "Read-only page evidence suggests Perakam accepted the configured action.",
         sanitizedUrlAfterClick,
         evidenceSnippets,
         checkedAt
@@ -935,7 +938,7 @@ export class BrowserController {
       && nextControlsSignature !== this.lastLoggedAttendanceControlsSignature
     ) {
       this.logger.info(
-        `Perakam attendance controls: clock-in ${snapshot.clockInAvailable}; clock-out ${snapshot.clockOutAvailable}.`
+        `Perakam target controls: morning ${snapshot.clockInAvailable}; evening ${snapshot.clockOutAvailable}.`
       );
       this.lastLoggedAttendanceControlsSignature = nextControlsSignature;
     }
@@ -1120,7 +1123,7 @@ function classifyPerakamPage(
   if (dashboardSignals >= 1) {
     return {
       status: "likely-logged-in",
-      reason: "Perakam dashboard markers detected, but attendance controls were not confirmed.",
+      reason: "Perakam dashboard markers detected, but target controls were not confirmed.",
       evidenceSnippets: evidence
     };
   }
@@ -1274,6 +1277,34 @@ async function detectAttendanceControls(page: Page, checkedAt: string): Promise<
   };
 }
 
+async function retryAttendanceControlsIfDashboardMarkersExist(
+  page: Page,
+  markers: PerakamPageMarkers | null,
+  firstResult: AttendanceControlDetection
+): Promise<AttendanceControlDetection> {
+  if (
+    !markers?.hasDashboardAncestry
+    || firstResult.clockInAvailable === "available"
+    || firstResult.clockOutAvailable === "available"
+  ) {
+    return firstResult;
+  }
+
+  const delays = [500, 1000, 2000];
+  let latest = firstResult;
+
+  for (const delay of delays) {
+    await page.waitForTimeout(delay);
+    latest = await detectAttendanceControls(page, new Date().toISOString());
+
+    if (latest.clockInAvailable === "available" || latest.clockOutAvailable === "available") {
+      return latest;
+    }
+  }
+
+  return latest;
+}
+
 function readAttendanceControlsFromDocument(): AttendanceControlDetection {
   const checkedAt = new Date().toISOString();
 
@@ -1285,17 +1316,22 @@ function readAttendanceControlsFromDocument(): AttendanceControlDetection {
       const label = controlText(element);
       return options.labels.some((expected) => label.includes(expected));
     });
-    const candidates = uniqueElements([...idCandidates, ...labelCandidates]);
+    const fallbackCandidates = dashboardFallbackCandidates(options.labels);
+    const candidates = uniqueElements([...idCandidates, ...labelCandidates, ...fallbackCandidates]);
 
     if (candidates.length === 0) {
       return {
         availability: "unknown",
-        reason: `${options.id} not found and no clear label fallback was found.`
+        reason: `${options.id} not found and no clear label/dashboard fallback was found.`
       };
     }
 
     const probes = candidates.map((candidate) => {
-      const source = idCandidates.includes(candidate) ? `${options.id} candidate` : "label fallback candidate";
+      const source = idCandidates.includes(candidate)
+        ? `${options.id} candidate`
+        : fallbackCandidates.includes(candidate)
+          ? "dashboard text fallback candidate"
+          : "label fallback candidate";
       return {
         ...describeControl(candidate, source),
         isExplicitId: idCandidates.includes(candidate)
@@ -1308,16 +1344,19 @@ function readAttendanceControlsFromDocument(): AttendanceControlDetection {
     const visibleActionable = probes.filter((probe) => probe.visible && probe.enabled && probe.actionable);
     const dashboardAvailable = probes.filter((probe) => probe.dashboardCandidate && probe.availability === "available");
     const hiddenOrDisabled = probes.filter(
-      (probe) => probe.availability === "unavailable" && (!probe.visible || !probe.enabled)
+      (probe) => probe.availability === "unavailable" && (probe.hiddenSidebar || !probe.visible || !probe.enabled)
     );
 
     if (available.length > 0) {
       const hasHiddenSidebar = probes.some((probe) => probe.hiddenSidebar);
       const hasDescendantTile = probes.some((probe) => probe.descendantVisible && probe.availability === "available");
+      const hasFallbackAvailable = probes.some((probe) => probe.reason.includes("dashboard text fallback candidate") && probe.availability === "available");
       const detail = hasHiddenSidebar && dashboardAvailable.length > 0
         ? "hidden sidebar candidate ignored; visible dashboard candidate found"
+        : hasFallbackAvailable
+          ? "dashboard text fallback accepted visible dashboard descendant"
         : hasDescendantTile
-          ? "descendant tile visible; dashboard tile candidate found"
+          ? "candidate element hidden/zero-sized but visible descendant found; dashboard tile candidate found"
         : "visible/actionable candidate found";
 
       return {
@@ -1327,15 +1366,25 @@ function readAttendanceControlsFromDocument(): AttendanceControlDetection {
     }
 
     if (hiddenOrDisabled.length === candidates.length) {
+      const sidebarCount = probes.filter((probe) => probe.hiddenSidebar).length;
+      const dashboardCount = probes.filter((probe) => probe.dashboardCandidate).length;
+      const firstReason = probes.find((probe) => probe.reason)?.reason ?? "all hidden or disabled";
       return {
         availability: "unavailable",
-        reason: candidateSummary(candidates.length, visible.length, enabled.length, visibleActionable.length, "all hidden or disabled")
+        reason: candidateSummary(
+          candidates.length,
+          visible.length,
+          enabled.length,
+          visibleActionable.length,
+          `all hidden or disabled; ${sidebarCount} sidebar candidate(s); ${dashboardCount} dashboard-area candidate(s); ${firstReason}`
+        )
       };
     }
 
+    const firstReason = probes.find((probe) => probe.reason)?.reason ?? "availability is uncertain";
     return {
       availability: "unknown",
-      reason: candidateSummary(candidates.length, visible.length, enabled.length, visibleActionable.length, "availability is uncertain")
+      reason: candidateSummary(candidates.length, visible.length, enabled.length, visibleActionable.length, `availability is uncertain; ${firstReason}`)
     };
   }
 
@@ -1358,10 +1407,23 @@ function readAttendanceControlsFromDocument(): AttendanceControlDetection {
     const enabled = !isDisabled(element);
     const actionable = isLikelyActionable(element);
 
+    if (visibility.hiddenSidebar && !visibility.dashboardCandidate) {
+      return {
+        availability: "unavailable",
+        reason: `${source}; rejected hidden sidebar candidate; hidden sidebar ancestry detected.`,
+        visible: false,
+        enabled,
+        actionable,
+        hiddenSidebar: true,
+        dashboardCandidate: false,
+        descendantVisible: visibility.descendantVisible
+      };
+    }
+
     if (!visible) {
       return {
         availability: "unavailable",
-        reason: `${source}; ${visibility.reason}.`,
+        reason: `${source}; ${visibility.reason}; ${visibility.dashboardCandidate ? "dashboard tile ancestry detected" : "no dashboard tile ancestry detected"}${visibility.hiddenSidebar ? "; hidden sidebar ancestry detected" : ""}.`,
         visible,
         enabled,
         actionable,
@@ -1374,7 +1436,7 @@ function readAttendanceControlsFromDocument(): AttendanceControlDetection {
     if (!enabled) {
       return {
         availability: "unavailable",
-        reason: `${source}; element is disabled.`,
+        reason: `${source}; element is disabled; ${visibility.dashboardCandidate ? "dashboard tile ancestry detected" : "no dashboard tile ancestry detected"}.`,
         visible,
         enabled,
         actionable,
@@ -1387,7 +1449,7 @@ function readAttendanceControlsFromDocument(): AttendanceControlDetection {
     if (!actionable) {
       return {
         availability: "unknown",
-        reason: `${source}; element is visible but not clearly actionable.`,
+        reason: `${source}; element is visible but not clearly actionable; ${visibility.reason}.`,
         visible,
         enabled,
         actionable,
@@ -1399,7 +1461,7 @@ function readAttendanceControlsFromDocument(): AttendanceControlDetection {
 
     return {
       availability: "available",
-      reason: `${source}; element is visible and enabled.`,
+      reason: `${source}; element is visible and enabled; ${visibility.reason}; ${visibility.dashboardCandidate ? "dashboard tile ancestry detected" : "no dashboard tile ancestry detected"}.`,
       visible,
       enabled,
       actionable,
@@ -1471,7 +1533,7 @@ function readAttendanceControlsFromDocument(): AttendanceControlDetection {
     }
 
     const ownRectVisible = rect.width > 0 && rect.height > 0;
-    const descendantVisible = hasVisibleMeaningfulDescendant(element);
+    const descendantVisible = hasVisibleMeaningfulDescendant(element, hiddenSidebar ? [] : dashboardTextHints(element));
 
     if (ownRectVisible) {
       return {
@@ -1486,7 +1548,7 @@ function readAttendanceControlsFromDocument(): AttendanceControlDetection {
     if (descendantVisible) {
       return {
         visible: true,
-        reason: "descendant tile visible",
+        reason: "candidate rect zero; descendant rect visible; accepted visible dashboard descendant",
         hiddenSidebar,
         dashboardCandidate: true,
         descendantVisible
@@ -1495,7 +1557,7 @@ function readAttendanceControlsFromDocument(): AttendanceControlDetection {
 
     return {
       visible: false,
-      reason: hiddenSidebar ? "hidden sidebar menu candidate" : "candidate and meaningful descendants have zero bounding box",
+      reason: hiddenSidebar ? "hidden sidebar menu candidate" : "candidate rect zero; no visible meaningful descendant found",
       hiddenSidebar,
       dashboardCandidate,
       descendantVisible
@@ -1510,10 +1572,21 @@ function readAttendanceControlsFromDocument(): AttendanceControlDetection {
     return element.matches(".top_tiles, .right_col, .tile-stats") || Boolean(element.closest(".top_tiles, .right_col, .tile-stats"));
   }
 
-  function hasVisibleMeaningfulDescendant(element: HTMLElement): boolean {
-    return Array.from(element.querySelectorAll<HTMLElement>(".tile-stats, .animated, div, h3, .count"))
+  function hasVisibleMeaningfulDescendant(element: HTMLElement, textHints: string[]): boolean {
+    return Array.from(element.querySelectorAll<HTMLElement>(".tile-stats, .animated, .count, h3, div, span, p"))
       .slice(0, 20)
-      .some((descendant) => isElementBoxVisible(descendant));
+      .some((descendant) => {
+        if (!isElementBoxVisible(descendant)) {
+          return false;
+        }
+
+        if (descendant.matches(".tile-stats, .animated, .count, h3")) {
+          return true;
+        }
+
+        const text = controlText(descendant);
+        return textHints.some((hint) => text.includes(hint));
+      });
   }
 
   function isElementBoxVisible(element: HTMLElement): boolean {
@@ -1557,7 +1630,62 @@ function readAttendanceControlsFromDocument(): AttendanceControlDetection {
       return Boolean(element.getAttribute("href"));
     }
 
-    return element.getAttribute("role") === "button";
+    return (
+      element.getAttribute("role") === "button"
+      || Boolean(element.getAttribute("onclick"))
+      || Boolean(element.getAttribute("data-link"))
+    );
+  }
+
+  function dashboardFallbackCandidates(labels: string[]): HTMLElement[] {
+    const roots = Array.from(document.querySelectorAll<HTMLElement>(".right_col .top_tiles, .right_col, .top_tiles"));
+    const candidates: HTMLElement[] = [];
+
+    for (const root of roots) {
+      const clickable = Array.from(root.querySelectorAll<HTMLElement>("a,button,input,[role='button'],[data-link='link'],[onclick]"))
+        .filter((element) => labels.some((label) => controlText(element).includes(label)));
+      const textHits = Array.from(root.querySelectorAll<HTMLElement>(".tile-stats, .animated, .count, h3, div, p, span"))
+        .filter((element) => labels.some((label) => controlText(element).includes(label)))
+        .map((element) => nearestDashboardClickable(element))
+        .filter((element): element is HTMLElement => element !== null);
+
+      candidates.push(...clickable, ...textHits);
+    }
+
+    return uniqueElements(candidates).filter((element) => !isInsideHiddenSidebarArea(element));
+  }
+
+  function nearestDashboardClickable(element: HTMLElement): HTMLElement | null {
+    if (isInsideHiddenSidebarArea(element)) {
+      return null;
+    }
+
+    const nearest = element.closest<HTMLElement>("a,button,input,[role='button'],[data-link='link'],[onclick]");
+    if (nearest && nearest.closest(".right_col, .top_tiles")) {
+      return nearest;
+    }
+
+    const tile = element.closest<HTMLElement>(".tile-stats, .animated");
+    if (!tile) {
+      return null;
+    }
+
+    const tileActionable = tile.querySelector<HTMLElement>("a,button,input,[role='button'],[data-link='link'],[onclick]");
+    if (tileActionable) {
+      return tileActionable;
+    }
+
+    return isLikelyActionable(tile) ? tile : null;
+  }
+
+  function isInsideHiddenSidebarArea(element: HTMLElement): boolean {
+    return Boolean(element.closest("ul.nav.child_menu, #sidebar-menu, .left_col"));
+  }
+
+  function dashboardTextHints(element: HTMLElement): string[] {
+    const text = controlText(element);
+    const hints = ["masa hadir", "klik masuk", "masa keluar", "klik keluar"].filter((hint) => text.includes(hint));
+    return hints.length > 0 ? hints : ["masa hadir", "klik masuk", "masa keluar", "klik keluar"];
   }
 
   function controlText(element: HTMLElement): string {
@@ -2024,7 +2152,8 @@ function clickAttendanceControlInDocument(input: {
   const labels = input.action === "clock-in"
     ? ["masa hadir", "klik masuk", "clock in", "clock-in", "masuk"]
     : ["masa keluar", "klik keluar", "clock out", "clock-out", "keluar"];
-  const candidates = Array.from(document.querySelectorAll<HTMLElement>(`[id="${input.mappedTargetId}"]`));
+  const idCandidates = Array.from(document.querySelectorAll<HTMLElement>(`[id="${input.mappedTargetId}"]`));
+  const candidates = uniqueElements([...idCandidates, ...dashboardFallbackCandidates(labels)]);
   const probes = candidates.map((candidate) => ({
     candidate,
     result: describeAttendanceClickCandidate(candidate, labels)
@@ -2036,7 +2165,7 @@ function clickAttendanceControlInDocument(input: {
     const visibleCount = probes.filter((entry) => entry.result.visible).length;
     const reason = candidates.length === 0
       ? `${input.mappedTargetId} was not found.`
-      : `${candidates.length} candidates found; ${visibleCount} visible dashboard/actionable; ${hiddenCount} hidden sidebar candidate(s) ignored. No validated attendance control was clicked.`;
+      : `${candidates.length} candidates found; ${visibleCount} visible dashboard/actionable; ${hiddenCount} hidden sidebar candidate(s) ignored. No validated target control was clicked.`;
 
     return {
       clicked: false,
@@ -2069,14 +2198,14 @@ function clickAttendanceControlInDocument(input: {
   } {
     const visibility = inspectAttendanceClickVisibility(element);
     const enabled = !isDisabled(element);
-    const actionable = isLikelyActionable(element) || Boolean(element.closest("a,button,input,[role='button']"));
+    const actionable = isLikelyActionable(element) || Boolean(element.closest("a,button,input,[role='button'],[data-link='link'],[onclick]"));
     const labelText = controlText(element);
     const labelMatches = expectedLabels.some((label) => labelText.includes(label));
 
     if (visibility.hiddenSidebar) {
       return {
         availability: "unavailable",
-        reason: "Hidden sidebar attendance candidate ignored.",
+        reason: "Hidden sidebar target candidate ignored.",
         visible: false,
         hiddenSidebar: true
       };
@@ -2103,7 +2232,7 @@ function clickAttendanceControlInDocument(input: {
     if (!enabled) {
       return {
         availability: "unavailable",
-        reason: "Dashboard attendance candidate is visible but disabled.",
+        reason: "Dashboard target candidate is visible but disabled.",
         visible: true,
         hiddenSidebar: false
       };
@@ -2112,7 +2241,7 @@ function clickAttendanceControlInDocument(input: {
     if (!actionable) {
       return {
         availability: "unknown",
-        reason: "Dashboard attendance candidate is visible but not clearly actionable.",
+        reason: "Dashboard target candidate is visible but not clearly actionable.",
         visible: true,
         hiddenSidebar: false
       };
@@ -2121,7 +2250,7 @@ function clickAttendanceControlInDocument(input: {
     if (!labelMatches) {
       return {
         availability: "unknown",
-        reason: "Dashboard attendance candidate is visible but label context is ambiguous.",
+        reason: "Dashboard target candidate is visible but label context is ambiguous.",
         visible: true,
         hiddenSidebar: false
       };
@@ -2209,7 +2338,50 @@ function clickAttendanceControlInDocument(input: {
       return Boolean(element.getAttribute("href"));
     }
 
-    return element.getAttribute("role") === "button";
+    return element.getAttribute("role") === "button"
+      || Boolean(element.getAttribute("onclick"))
+      || Boolean(element.getAttribute("data-link"));
+  }
+
+  function dashboardFallbackCandidates(labels: string[]): HTMLElement[] {
+    const roots = Array.from(document.querySelectorAll<HTMLElement>(".right_col .top_tiles, .right_col, .top_tiles"));
+    const candidates: HTMLElement[] = [];
+
+    for (const root of roots) {
+      const clickable = Array.from(root.querySelectorAll<HTMLElement>("a,button,input,[role='button'],[data-link='link'],[onclick]"))
+        .filter((element) => labels.some((label) => controlText(element).includes(label)));
+      const textHits = Array.from(root.querySelectorAll<HTMLElement>(".tile-stats, .animated, .count, h3, div, p, span"))
+        .filter((element) => labels.some((label) => controlText(element).includes(label)))
+        .map((element) => nearestDashboardClickable(element))
+        .filter((element): element is HTMLElement => element !== null);
+
+      candidates.push(...clickable, ...textHits);
+    }
+
+    return uniqueElements(candidates).filter((element) => !element.closest("ul.nav.child_menu, #sidebar-menu, .left_col"));
+  }
+
+  function nearestDashboardClickable(element: HTMLElement): HTMLElement | null {
+    if (element.closest("ul.nav.child_menu, #sidebar-menu, .left_col")) {
+      return null;
+    }
+
+    const nearest = element.closest<HTMLElement>("a,button,input,[role='button'],[data-link='link'],[onclick]");
+    if (nearest && nearest.closest(".right_col, .top_tiles")) {
+      return nearest;
+    }
+
+    const tile = element.closest<HTMLElement>(".tile-stats, .animated");
+    if (!tile) {
+      return null;
+    }
+
+    const tileActionable = tile.querySelector<HTMLElement>("a,button,input,[role='button'],[data-link='link'],[onclick]");
+    if (tileActionable) {
+      return tileActionable;
+    }
+
+    return isLikelyActionable(tile) ? tile : null;
   }
 
   function controlText(element: HTMLElement): string {
@@ -2223,6 +2395,10 @@ function clickAttendanceControlInDocument(input: {
       .join(" ")
       .trim()
       .toLowerCase();
+  }
+
+  function uniqueElements(elements: HTMLElement[]): HTMLElement[] {
+    return Array.from(new Set(elements));
   }
 }
 
@@ -2384,7 +2560,7 @@ function assertTestClickTarget(targetId: TestClickTargetId): void {
 
 function assertAttendanceAction(action: AttendanceActionType): void {
   if (action !== "clock-in" && action !== "clock-out") {
-    throw new Error("Invalid attendance action.");
+    throw new Error("Invalid configured action.");
   }
 }
 

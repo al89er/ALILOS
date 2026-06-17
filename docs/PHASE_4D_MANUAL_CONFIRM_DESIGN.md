@@ -2,7 +2,7 @@
 
 ## 1. Purpose
 
-Phase 4D defines the safe manual-confirm attendance architecture before any attendance action is implemented.
+Phase 4D defines the safe manual-confirm configured-action architecture before any real action is implemented.
 
 The intended model remains:
 
@@ -10,7 +10,7 @@ The intended model remains:
 Detect -> Prepare -> Notify -> Require confirmation -> Execute
 ```
 
-This phase is design only. It does not implement execution, clicking, form filling, login automation, Telegram command handling, or any attendance action API.
+This phase is design only. It does not implement execution, clicking, form filling, login automation, Telegram command handling, or any real configured-action API.
 
 ## 2. Current State
 
@@ -19,25 +19,25 @@ The app currently supports:
 - Starting and stopping a Playwright browser manually.
 - Opening the configured Perakam dashboard manually.
 - Read-only Perakam URL, title, page-status, and navigation-status detection.
-- Read-only attendance control availability detection.
+- Read-only target control availability detection.
 - `a50` detection for clock-in / Masa Hadir.
 - `a51` detection for clock-out / Masa Keluar.
 - Duplicate `a50` / `a51` handling where hidden sidebar candidates are ignored in favor of visible dashboard tile candidates.
 
 The app currently does not support:
 
-- Attendance clicking.
+- Real target clicking.
 - Form filling.
 - Auto login.
 - Keep-alive behavior.
-- Attendance execution through IPC, Telegram, or any other channel.
+- Real configured-action execution through IPC, Telegram, or any other channel.
 
 ## 3. Non-Goals For Phase 4D
 
 Phase 4D does not include:
 
-- Playwright click or attendance action implementation.
-- Attendance execution IPC or preload API.
+- Playwright click or real configured-action implementation.
+- Real configured-action execution IPC or preload API.
 - Telegram confirmation command handling.
 - Login form filling.
 - Auto login.
@@ -50,7 +50,7 @@ Phase 4D does not include:
 
 ## 4. Manual-Confirm Concept
 
-A confirmation is a short-lived user approval for exactly one attendance action:
+A confirmation is a short-lived user approval for exactly one configured action:
 
 - `clock-in`
 - `clock-out`
@@ -83,8 +83,8 @@ The app may show a confirmation prompt only when all of these are true:
 - No unresolved browser error is present.
 - No unresolved Perakam navigation or status error is present.
 - The correct action control is available.
-- Clock-in requires a visible, enabled, actionable `a50` / Masa Hadir candidate.
-- Clock-out requires a visible, enabled, actionable `a51` / Masa Keluar candidate.
+- Morning action requires a visible, enabled, actionable `a50` / Masa Hadir candidate.
+- Evening action requires a visible, enabled, actionable `a51` / Masa Keluar candidate.
 - Hidden sidebar duplicate candidates are ignored.
 - The same date/action has not already been completed.
 - The request was created by app-owned readiness logic, not arbitrary renderer input.
@@ -137,16 +137,16 @@ No unprefixed production commands should be added. No `/clockin` or `/clockout` 
 
 ## 9. Suggested UI Wording
 
-Ready to confirm clock-in:
+Ready to confirm morning action:
 
 ```text
-Clock-in is ready for confirmation. Perakam shows the Masa Hadir control, and the current schedule is within the allowed window.
+Morning action is ready for confirmation. Perakam shows the Masa Hadir control, and the current schedule is within the allowed window.
 ```
 
-Ready to confirm clock-out:
+Ready to confirm evening action:
 
 ```text
-Clock-out is ready for confirmation. Perakam shows the Masa Keluar control, and the current schedule is within the allowed window.
+Evening action is ready for confirmation. Perakam shows the Masa Keluar control, and the current schedule is within the allowed window.
 ```
 
 Not ready because browser is not running:
@@ -182,13 +182,13 @@ Confirmation expired. Run a fresh readiness check before confirming again.
 Confirmation cancelled:
 
 ```text
-Confirmation cancelled. No attendance action was performed.
+Confirmation cancelled. No configured action was performed.
 ```
 
 Future action completed:
 
 ```text
-Attendance action completed for this date and action.
+Configured action completed for this date and action.
 ```
 
 ## 10. Audit Logging Design
@@ -224,7 +224,7 @@ Logs should not include:
 
 ## 11. Safety Checks Before Any Future Click
 
-Before any future phase performs one attendance click, it must re-check:
+Before any future phase performs one real target click, it must re-check:
 
 - Action type.
 - Local date key.
@@ -241,8 +241,8 @@ Before any future phase performs one attendance click, it must re-check:
 - No unresolved browser error exists.
 - No unresolved Perakam error exists.
 - Correct visible control candidate still exists.
-- Clock-in uses visible `a50` / Masa Hadir.
-- Clock-out uses visible `a51` / Masa Keluar.
+- Morning action uses visible `a50` / Masa Hadir.
+- Evening action uses visible `a51` / Masa Keluar.
 - Hidden sidebar duplicate is ignored.
 - No stale confirmation or already-completed state exists for the same date/action.
 
