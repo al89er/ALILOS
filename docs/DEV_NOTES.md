@@ -172,10 +172,23 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 
 - Build/package command still needs to be selected.
 - Verify tray/minimize behavior.
+- Add a real tray icon; the current tray uses an empty native image.
 - Decide whether launch at login is in scope.
 - Test behavior during a locked Windows session.
 - Test sleep/wake behavior.
+- Verify Playwright browser binaries/executable path work in the packaged app.
 - Confirm log location and any sanitized log/export flow.
+
+## Packaging / Startup Audit
+
+- Existing scripts are `dev`, `build`, `typecheck`, `test`, `check:identity`, and `check:supabase`; no package script exists yet.
+- No packaging tool or metadata is configured yet.
+- Window close hides to tray; tray Show/Hide/Quit behavior exists.
+- App lifecycle uses a single-instance lock, starts services after `app.whenReady()`, keeps the process resident on `window-all-closed`, and stops services during `before-quit`.
+- Launch-at-login is not implemented.
+- Config and logs use Electron `userData`, which is suitable for packaged app state.
+- Playwright is a runtime dependency; packaged Windows testing must confirm browser binary installation/executable resolution before relying on Perakam browser automation.
+- Recommended first implementation step: choose packaging tooling and produce a minimal packaged Windows smoke build before adding launch-at-login or startup automation.
 
 ## Perakam Fixture Safety
 

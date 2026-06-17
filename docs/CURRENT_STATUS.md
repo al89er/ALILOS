@@ -32,6 +32,7 @@
 - Post-click verification is heuristic/read-only. It can mark success, failure, or unknown and asks for visual confirmation when server-side acceptance cannot be confirmed.
 - Perakam auto-login exists for Perakam only. Captive portal login remains detection-only.
 - Packaging/distribution is not present. There is no `electron-builder` config in the inspected repo.
+- Package/startup audit found no package script or packaging metadata yet; only `dev`, `build`, `typecheck`, `test`, and identity-check scripts exist.
 - Automated coverage is limited to the Perakam sanitized fixture harness. Runtime behavior still relies on TypeScript checks/build and manual smoke tests.
 - Existing Phase 4D design docs are stale relative to current implementation because guarded execution and auto-login have since been implemented.
 - Settings can edit selected operational values only. Generated schedules, completion records, automation audit events, raw logs, target mappings, credentials, cookies/session data, screenshots, raw HTML, and personal identifiers remain outside editable settings.
@@ -80,6 +81,8 @@ The active implementation focus appears to be hardening the guarded manual-confi
 - No automated unit/integration test suite exists.
 - No app packaging/signing/install workflow exists.
 - Tray icon is currently empty.
+- Launch-at-login is not implemented.
+- Playwright browser binaries/executable handling for a packaged Windows app is not decided yet.
 - `BackgroundWorker` status text may understate implemented services because it says the worker scaffold performs no configured-site clicking, while the separate confirmation/browser services do implement guarded clicking.
 - Telegram bot token/chat ID can be stored in local config or supplied by `.env.local`; both are sensitive and must remain untracked/unlogged.
 - Perakam selectors and page-text heuristics may drift if the site changes.

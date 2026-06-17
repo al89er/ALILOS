@@ -35,6 +35,10 @@ Before packaging/startup work:
 - Keep scheduled testing in `dry-run` or `manual-confirm`; do not perform real unattended actions.
 - Choose the Windows build/package command and verify tray/minimize, launch-at-login, locked-session, sleep/wake, and log/export behavior.
 
+Recommended first packaging/startup step:
+
+- Choose the packaging tool and add a minimal Windows packaging proof that starts the app, preserves userData config/log paths, shows a real tray icon, and confirms Playwright browser launch strategy before adding launch-at-login.
+
 ## Suggested Next Implementation Phase
 
 - Add focused tests or test harnesses around pure logic first: scheduler status, app settings normalization, command prefix parsing, heartbeat payload shaping, automation audit deduplication, URL sanitization, and captive portal classification.
@@ -110,9 +114,11 @@ Before packaging/startup work:
 
 - Select the build/package command.
 - Verify tray/minimize behavior.
+- Add a real tray icon.
 - Decide whether launch at login is in scope.
 - Test behavior during a locked Windows session.
 - Test sleep/wake behavior.
+- Verify Playwright browser binaries/executable path work in the packaged app.
 - Confirm log location and any sanitized log/export flow.
 
 ## Supabase / Webapp Roadmap
