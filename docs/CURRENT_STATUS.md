@@ -32,7 +32,7 @@
 - Post-click verification is heuristic/read-only. It can mark success, failure, or unknown and asks for visual confirmation when server-side acceptance cannot be confirmed.
 - Perakam auto-login exists for Perakam only. Captive portal login remains detection-only.
 - Packaging/distribution is not present. There is no `electron-builder` config in the inspected repo.
-- Package/startup audit found no package script or packaging metadata yet; only `dev`, `build`, `typecheck`, `test`, and identity-check scripts exist.
+- P1 added minimal `electron-builder` metadata and `npm run package:win` for a Windows unpacked directory package proof.
 - Automated coverage is limited to the Perakam sanitized fixture harness. Runtime behavior still relies on TypeScript checks/build and manual smoke tests.
 - Existing Phase 4D design docs are stale relative to current implementation because guarded execution and auto-login have since been implemented.
 - Settings can edit selected operational values only. Generated schedules, completion records, automation audit events, raw logs, target mappings, credentials, cookies/session data, screenshots, raw HTML, and personal identifiers remain outside editable settings.
@@ -79,7 +79,7 @@ The active implementation focus appears to be hardening the guarded manual-confi
 ## Known Issues And Gaps
 
 - No automated unit/integration test suite exists.
-- No app packaging/signing/install workflow exists.
+- No signed installer, auto-update, or launch-at-login workflow exists.
 - Tray icon is currently empty.
 - Launch-at-login is not implemented.
 - Playwright browser binaries/executable handling for a packaged Windows app is not decided yet.

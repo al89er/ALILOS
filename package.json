@@ -1,12 +1,14 @@
 {
   "name": "alilos",
   "version": "0.1.0",
+  "productName": "A.L.I.L.O.S.",
   "description": "A.L.I.L.O.S. Electron Authorized Website Action Assistant",
   "main": "dist/main/main.js",
   "private": true,
   "scripts": {
     "dev": "npm run build && electron .",
     "build": "node scripts/clean-dist.cjs && tsc && node scripts/copy-renderer-assets.cjs",
+    "package:win": "npm run build && electron-builder --win --x64 --dir",
     "typecheck": "tsc --noEmit",
     "test": "node --test test/*.test.js",
     "check:identity": "node scripts/check-project-identity.js",
@@ -19,9 +21,28 @@
   ],
   "author": "",
   "license": "UNLICENSED",
+  "build": {
+    "appId": "com.afif.alilos",
+    "productName": "A.L.I.L.O.S.",
+    "asar": true,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": [
+        "dir"
+      ]
+    }
+  },
   "devDependencies": {
     "@types/node": "^22.10.2",
     "electron": "^33.2.1",
+    "electron-builder": "^26.15.3",
     "typescript": "^5.7.2"
   },
   "dependencies": {
