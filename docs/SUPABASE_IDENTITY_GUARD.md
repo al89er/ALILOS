@@ -227,6 +227,59 @@ Runtime defaults:
 - Service-role-looking JWT keys are rejected by the sender.
 - Outbound rows are limited to `devices` and latest-row `heartbeats` status metadata.
 
+## S2C/S2D Review Status
+
+S2B safety review found no required code changes. S2D local dry-run checked the user-facing disabled path:
+
+- The app started normally.
+- Disabled heartbeat was logged as a non-error status.
+- `.env.local` Supabase values were not persisted back into local config.
+- No Supabase key leakage was found in the inspected renderer/UI/log path.
+- Local scheduler, network monitor, Telegram polling, and automation monitor continued independently of heartbeat status.
+
+## S2E Heartbeat Write-Path Decision
+
+Before real heartbeat writes are enabled, decide how the desktop agent may upsert `devices` and `heartbeats` while keeping RLS safe. The current conservative state is: heartbeat disabled by default, direct table access effectively closed, no service role key in desktop or renderer, and no command/control.
+
+### Option 1: Direct anon/publishable key with RLS policies
+
+- Strengths: simplest runtime path; no extra server component; works with built-in `fetch`.
+- Weaknesses: hard to prove a desktop device owns only its row without a stronger pairing secret or authenticated user; exposed publishable key plus permissive policies can accidentally allow spoofed device rows.
+- Complexity: low implementation complexity, higher RLS design risk.
+- Suitability: acceptable only for a very narrow private prototype after explicit RLS design. Not the preferred default for enabling writes.
+
+### Option 2: User-authenticated desktop agent
+
+- Strengths: can tie rows to `auth.uid()` / `devices.owner_user_id`; uses Supabase Auth patterns instead of anonymous writes.
+- Weaknesses: adds desktop login/session UX, token refresh/storage, logout/revocation handling, and risk of broadening the app beyond local-first operation.
+- Complexity: medium to high.
+- Suitability: reasonable if the phone webapp and desktop agent share a clear owner account model. Heavier than needed for first status-only heartbeat.
+
+### Option 3: Supabase Edge Function/API proxy
+
+- Strengths: keeps table writes behind a narrow server-side endpoint; can validate payload shape, sanitize again, rate-limit, and use privileged writes without exposing service role keys to desktop or renderer.
+- Weaknesses: adds deploy/config surface and requires separate function security design; the function becomes another backend component to monitor.
+- Complexity: medium.
+- Suitability: strong conservative candidate for this project, especially before any phone dashboard or multi-device ownership model is finalized.
+
+### Option 4: Pre-provisioned device token or pairing secret
+
+- Strengths: preserves local-first desktop operation; device can authenticate as a paired installation without user login; supports row ownership by hashed token/device pairing.
+- Weaknesses: requires secure issuance, local storage, rotation/revocation, and clear handling for lost/reinstalled devices.
+- Complexity: medium.
+- Suitability: strong conservative candidate for a personal desktop agent. Can be combined with an Edge Function so raw pairing secrets never become table policy inputs.
+
+### Recommended Default
+
+For the next implementation phase:
+
+- Keep heartbeat disabled by default.
+- Keep direct table access closed for now.
+- Prefer a future explicit pairing/device-token or Edge Function approach before enabling desktop writes.
+- Never place a service role key in the desktop app, renderer, local config intended for UI editing, or `.env.local` used by the desktop runtime.
+- Do not add command queue/control until separately approved.
+- Keep Supabase as monitoring/recovery support; local scheduled operation must remain independent of Supabase availability.
+
 ## Source of Truth
 
 `.project-identity.json` defines:

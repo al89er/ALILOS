@@ -117,6 +117,18 @@ S2A migration status:
 - S2B adds a disabled-by-default Electron heartbeat sender skeleton using built-in `fetch`, local config/`.env.local` bootstrap, and sanitized status-only metadata.
 - Supabase client dependencies, schedule/completion backup, and command queue remain unimplemented.
 
+S2C/S2D review status:
+
+- S2B safety review found no code changes needed.
+- Local dry-run confirmed app startup, non-error disabled heartbeat status, no `.env.local` Supabase persistence, no observed key leakage, and local operation unaffected by heartbeat status.
+
+S2E write-path recommendation:
+
+- Keep heartbeat disabled by default and keep direct table access closed until a write authorization model is approved.
+- Prefer a future explicit pairing/device-token or Edge Function/API proxy approach before enabling desktop writes.
+- Do not put service role keys in desktop, renderer, or desktop `.env.local`.
+- Do not add command queue/control until S5 is separately approved.
+
 ## Documentation Maintenance Tasks
 
 - Update `docs/CURRENT_STATUS.md` after meaningful implementation milestones.
