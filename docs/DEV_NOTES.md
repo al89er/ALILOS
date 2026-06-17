@@ -208,6 +208,16 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 - npm reports a fix only through `npm audit fix --force`, which would install `electron@42.4.1` as a breaking major upgrade. Do not apply the automatic force fix during packaging smoke-test work.
 - Treat the Electron major upgrade as a separate targeted task with release-note review, local validation, and packaged Windows smoke testing.
 
+### Targeted Electron Upgrade Plan
+
+- Current package metadata requests `electron@^33.2.1`; the lockfile currently resolves `electron@33.4.11`.
+- Current packaging metadata uses `electron-builder@26.15.3`, `@electron/rebuild@4.0.4`, and `npm run package:win` builds `dist/main/main.js` into a Windows x64 unpacked directory.
+- No explicit in-repo Node/Chromium API assumptions are documented beyond the Electron runtime, BrowserWindow/preload/tray lifecycle, safeStorage use, notifications, and packaged `userData` paths.
+- Do not use `npm audit fix --force` blindly because it proposes a breaking Electron major jump to `42.4.1` without checking app lifecycle, preload IPC, tray behavior, safeStorage, Playwright interaction, or Electron Builder packaging compatibility.
+- Proposed upgrade strategy: choose the target Electron major deliberately after release-note review; upgrade Electron only first; run full validation; run the packaged app smoke test; only then consider Electron Builder or related tooling updates if compatibility requires them.
+- Required validation after the Electron-only upgrade: `npm run typecheck`, `npm run build`, `npm test`, `npm run package:win`, launch `release/win-unpacked/A.L.I.L.O.S.exe`, verify tray close/quit behavior, verify worker startup, verify Playwright browser launch, and confirm Supabase heartbeat remains disabled by default.
+- Rollback plan: keep the Electron/package-lock upgrade isolated in one commit and revert that commit if the packaged Windows smoke test fails.
+
 ## Perakam Fixture Safety
 
 - Sanitized structural Perakam fixtures may live under `fixtures/perakam/` after review.

@@ -97,6 +97,7 @@ The active implementation focus appears to be hardening the guarded manual-confi
 - Launch-at-login is not implemented.
 - Playwright browser binaries/executable handling for a packaged Windows app remains the main package smoke-test concern.
 - The high-severity npm advisory reported during packaging setup requires separate review, not an automatic fix during packaging work.
+- A targeted Electron-only upgrade path is planned but not implemented; current lockfile Electron remains `33.4.11`.
 - `BackgroundWorker` status text may understate implemented services because it says the worker scaffold performs no configured-site clicking, while the separate confirmation/browser services do implement guarded clicking.
 - Telegram bot token/chat ID can be stored in local config or supplied by `.env.local`; both are sensitive and must remain untracked/unlogged.
 - Perakam selectors and page-text heuristics may drift if the site changes.
