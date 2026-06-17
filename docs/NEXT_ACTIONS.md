@@ -74,6 +74,48 @@
 
 Do not implement Supabase runtime features, schema migrations, remote command/control, or `webapp/` scaffolding until the relevant phase is explicitly requested. Future Supabase records must exclude configured-site credentials, cookies/session data, raw page HTML, screenshots, staff ID/name, Telegram token/chat ID, and full tokenized URLs or opaque query strings.
 
+### S1 Schema and Identity Planning Notes
+
+Proposed future tables are documented in `docs/SUPABASE_IDENTITY_GUARD.md`:
+
+- `devices`: one stable generated non-personal `device_id`, stored locally and never derived from staff ID/name or machine identity.
+- `heartbeats`: S2 status-only latest-row upsert by `device_id`, with coarse app, schedule, site, and network status.
+- `daily_schedules`: S3 durable local schedule backup rows upserted by `device_id`, `schedule_date`, and `action_key`.
+- `completion_records`: S3 durable completion/skip backup rows upserted by `device_id`, `action_date`, and `action_key`.
+- Deferred `command_queue`: S5-only control-plane table, with no table/migration/runtime consumer until separate explicit approval.
+
+Local-first schedule recovery should remain:
+
+1. Read local config and local schedule/completion state.
+2. Use valid local schedule records first.
+3. Use Supabase `daily_schedules` only as recovery backup rows when local schedule state is missing or corrupt.
+4. Regenerate locally if no usable local or Supabase schedule exists.
+5. Treat local OR Supabase completion records as sufficient to suppress duplicate execution for the same device/date/action.
+6. Continue scheduled local operation when Supabase is unavailable.
+
+S1 security baseline:
+
+- Enable RLS on all future exposed-schema tables.
+- Keep service role keys and private secrets out of desktop and webapp clients.
+- Authorize by owner/device relationships, not user-editable metadata.
+- Store only sanitized operational metadata; no credentials, cookies, raw HTML, screenshots, staff identity, Telegram secrets, or tokenized URLs.
+- Keep command/control schema and runtime consumers deferred until S5 is explicitly approved.
+- Treat RLS/security details as planning only for now; no final policies, grants, migrations, Edge Functions, or client code are part of S1B.
+
+S1B safe implementation defaults for later S2/S3:
+
+- The desktop agent remains local-first; Supabase is recovery/monitoring support, not required for scheduled local operation.
+- A latest heartbeat row keeps the future phone dashboard simple.
+- Upserted schedule rows avoid duplicate generated times after retries or regeneration.
+- Upserted completion rows make duplicate-prevention checks straightforward.
+- Append-only event history can be added later if monitoring, auditing, or diagnostics require it.
+
+S2A migration status:
+
+- `supabase/migrations/20260617125521_s2a_status_heartbeat.sql` adds only `devices` and latest-row `heartbeats`.
+- RLS is enabled, with no final row policies yet because pairing/authorization/runtime writes are still pending.
+- Runtime Electron code, Supabase client code, schedule/completion backup, and command queue remain unimplemented.
+
 ## Documentation Maintenance Tasks
 
 - Update `docs/CURRENT_STATUS.md` after meaningful implementation milestones.
