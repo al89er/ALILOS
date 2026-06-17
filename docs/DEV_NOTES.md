@@ -211,10 +211,13 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 ### Targeted Electron Upgrade Plan
 
 - Current package metadata requests `electron@^33.2.1`; the lockfile currently resolves `electron@33.4.11`.
+- Latest Electron seen from npm during P5 target-version check is `42.4.1`.
+- Recommended first upgrade target is `electron@39.8.10`, the latest Electron 39 patch seen from npm. P3's audit range flagged `electron <=39.8.4`, so `39.8.10` is past the advisory cutoff while avoiding an immediate jump to Electron 42.
 - Current packaging metadata uses `electron-builder@26.15.3`, `@electron/rebuild@4.0.4`, and `npm run package:win` builds `dist/main/main.js` into a Windows x64 unpacked directory.
+- Installed Electron Builder metadata does not show a narrow Electron peer-version constraint; `@electron/rebuild@4.0.4` lists Electron 39 in its own development metadata, so Electron 39 appears like a reasonable first compatibility target. Treat Electron Builder updates as a follow-up only if packaging validation fails.
 - No explicit in-repo Node/Chromium API assumptions are documented beyond the Electron runtime, BrowserWindow/preload/tray lifecycle, safeStorage use, notifications, and packaged `userData` paths.
 - Do not use `npm audit fix --force` blindly because it proposes a breaking Electron major jump to `42.4.1` without checking app lifecycle, preload IPC, tray behavior, safeStorage, Playwright interaction, or Electron Builder packaging compatibility.
-- Proposed upgrade strategy: choose the target Electron major deliberately after release-note review; upgrade Electron only first; run full validation; run the packaged app smoke test; only then consider Electron Builder or related tooling updates if compatibility requires them.
+- Proposed upgrade strategy: choose the target Electron major deliberately after release-note review; upgrade Electron only first with `npm install --save-dev --save-exact electron@39.8.10`; run full validation; run the packaged app smoke test; only then consider Electron Builder or related tooling updates if compatibility requires them.
 - Required validation after the Electron-only upgrade: `npm run typecheck`, `npm run build`, `npm test`, `npm run package:win`, launch `release/win-unpacked/A.L.I.L.O.S.exe`, verify tray close/quit behavior, verify worker startup, verify Playwright browser launch, and confirm Supabase heartbeat remains disabled by default.
 - Rollback plan: keep the Electron/package-lock upgrade isolated in one commit and revert that commit if the packaged Windows smoke test fails.
 

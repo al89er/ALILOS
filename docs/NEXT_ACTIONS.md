@@ -54,7 +54,9 @@ Recommended first packaging/startup step:
 - Do not add selector support for home/outside-workplace Perakam page variants unless explicitly requested later.
 - Add explicit documentation or UI affordances for the Perakam auto-login safety model and where encrypted credentials are stored.
 - Plan and run a targeted Electron-only major upgrade separately from packaging smoke testing. Full `npm audit` flags direct `electron@33.4.11` as high severity, while `npm audit --omit=dev` is clean; npm's automatic fix requires a breaking upgrade to `electron@42.4.1`.
-- For that Electron upgrade, choose the target major deliberately, upgrade Electron first without related tooling churn, run `npm run typecheck`, `npm run build`, `npm test`, `npm run package:win`, then launch the packaged app and verify tray close/quit, worker startup, Playwright browser launch, and disabled-by-default heartbeat.
+- First target for that Electron-only upgrade: `electron@39.8.10`. Latest Electron seen from npm is `42.4.1`, but Electron 39.8.10 is past the `<=39.8.4` advisory cutoff while reducing upgrade jump size.
+- Future upgrade command: `npm install --save-dev --save-exact electron@39.8.10`.
+- For that Electron upgrade, avoid related tooling churn first, run `npm run typecheck`, `npm run build`, `npm test`, `npm run package:win`, then launch the packaged app and verify tray close/quit, worker startup, Playwright browser launch, and disabled-by-default heartbeat.
 - If the packaged smoke test fails after the Electron upgrade, revert the isolated Electron/package-lock commit and reassess before changing Electron Builder or packaging behavior.
 
 ## Testing / Smoke-Test Checklist
