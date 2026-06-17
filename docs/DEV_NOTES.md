@@ -130,6 +130,53 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 - Phase 6A `automation.executionMode = "dry-run"` simulates due actions automatically and records telemetry only. It does not click primary target buttons.
 - Use the `a56`/`a57` manual test-click section for pipeline testing when appropriate; these are not primary targets.
 
+## Desktop Operational Readiness Checklist
+
+### Current Supabase Status
+
+- S2A status-only heartbeat schema is done.
+- S2B disabled-by-default heartbeat skeleton is done.
+- S2C/S2D safety review and local dry-run passed.
+- S2E heartbeat write-path options are documented.
+- Heartbeat remains disabled by default.
+- Real Supabase writes are deferred until the auth/pairing/write-path decision is made.
+
+### Desktop Operational Blockers
+
+- Workplace Perakam smoke test is pending.
+- Scheduled dry-run testing is pending.
+- Windows packaging is pending.
+- Startup/tray reliability testing is pending.
+
+### Workplace Smoke-Test Checklist
+
+- Run from the workplace/hospital network.
+- Verify login detection.
+- Verify dashboard detection.
+- Verify visible `a50` / `a51` target availability.
+- Verify hidden sidebar candidates are ignored.
+- Verify manual-confirm and dry-run behavior.
+- Verify no duplicate action after a local completion record exists.
+- Verify logs contain sanitized status only.
+
+### Scheduled Dry-Run Checklist
+
+- Keep safe mode as `dry-run` or `manual-confirm`.
+- Verify generated times persist for the day.
+- Verify weekend/skip behavior.
+- Verify missed-action grace logic.
+- Verify local completion records block repeats.
+- Do not perform a real unattended action during the test.
+
+### Packaging / Startup Checklist
+
+- Build/package command still needs to be selected.
+- Verify tray/minimize behavior.
+- Decide whether launch at login is in scope.
+- Test behavior during a locked Windows session.
+- Test sleep/wake behavior.
+- Confirm log location and any sanitized log/export flow.
+
 ## Perakam Fixture Safety
 
 - Sanitized structural Perakam fixtures may live under `fixtures/perakam/` after review.
@@ -146,7 +193,7 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 
 - Heartbeat is disabled by default.
 - Configure the Supabase heartbeat URL only through local config or the Settings tab. The renderer shows only configured state, project host, and key source after loading.
-- Heartbeat payloads include app status, worker state, execution mode, network state, captive portal state, Perakam status, schedule times, confirmation state, last dry-run state, last real action state, sanitized error summary, and timestamp.
+- Heartbeat payloads include app status, worker state, execution mode, network state, Perakam status, Telegram status, sanitized status/error text, and timestamp.
 - Heartbeat payloads must not include credentials, Telegram token, Telegram chat ID, staff name, staff number, personal identifiers, raw HTML, screenshots, cookies, session data, or full sensitive URLs.
 
 ## Avoiding Accidental Real Actions

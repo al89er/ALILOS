@@ -53,6 +53,28 @@ The active implementation focus appears to be hardening the guarded manual-confi
 - maintain local config/log safety and secret hygiene
 - keep future Supabase/webapp work phased: documentation first, schema/identity planning next, then status-only heartbeat before any durable ledger or phone dashboard work
 
+## Desktop Operational Readiness
+
+### Current Supabase Status
+
+- S2A status-only heartbeat schema is done.
+- S2B disabled-by-default heartbeat skeleton is done.
+- S2C/S2D safety review and local dry-run passed.
+- S2E heartbeat write-path options are documented.
+- Heartbeat remains disabled by default.
+- Real Supabase writes are deferred until auth/pairing/write-path authorization is decided.
+
+### Desktop Operational Blockers
+
+- Workplace Perakam smoke test is pending.
+- Scheduled dry-run testing is pending.
+- Windows packaging is pending.
+- Startup/tray reliability testing is pending.
+
+### Readiness Gate
+
+- Do not package for unattended daily use until workplace detection, scheduled dry-run, tray/startup behavior, sleep/wake behavior, and sanitized logging have been tested on the intended Windows environment.
+
 ## Known Issues And Gaps
 
 - No automated unit/integration test suite exists.

@@ -11,6 +11,30 @@
 - Keep `docs/PHASE_4D_MANUAL_CONFIRM_DESIGN.md` as historical design context, but update or supersede stale sections before relying on it for current behavior.
 - For Phase 6A dry-run testing, set `automation.executionMode` to `dry-run` only in local config and confirm that due actions are simulated, not clicked.
 
+## Desktop Operational Readiness Checklist
+
+Current Supabase status:
+
+- S2A schema done.
+- S2B heartbeat skeleton done.
+- S2C/S2D safety and local dry-run passed.
+- S2E write-path options documented.
+- Heartbeat remains disabled by default.
+- Real writes remain deferred until auth/pairing/write-path authorization is decided.
+
+Desktop operational blockers:
+
+- Workplace Perakam smoke test pending.
+- Scheduled dry-run pending.
+- Windows packaging pending.
+- Startup/tray reliability pending.
+
+Before packaging/startup work:
+
+- Run workplace smoke testing from the workplace/hospital network.
+- Keep scheduled testing in `dry-run` or `manual-confirm`; do not perform real unattended actions.
+- Choose the Windows build/package command and verify tray/minimize, launch-at-login, locked-session, sleep/wake, and log/export behavior.
+
 ## Suggested Next Implementation Phase
 
 - Add focused tests or test harnesses around pure logic first: scheduler status, app settings normalization, command prefix parsing, heartbeat payload shaping, automation audit deduplication, URL sanitization, and captive portal classification.
@@ -61,6 +85,35 @@
 - In Settings, leave the heartbeat endpoint blank and save other heartbeat fields; confirm the endpoint remains configured when one already exists.
 - In Telegram, leave token/chat blank while changing command prefix; confirm configured or `.env.local` token/chat are preserved and not displayed.
 - With local config Telegram secrets blank and `.env.local` containing `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID`, confirm the UI shows available-from-env-local status and Telegram test notification works after enabling Telegram.
+
+### Workplace Smoke-Test Checklist
+
+- Run from the workplace/hospital network.
+- Verify Perakam login detection.
+- Verify Perakam dashboard detection.
+- Verify visible `a50` / `a51` target availability.
+- Verify hidden sidebar candidates are ignored.
+- Verify manual-confirm and dry-run behavior.
+- Verify no duplicate action after a local completion record exists.
+- Verify logs contain sanitized status only.
+
+### Scheduled Dry-Run Checklist
+
+- Keep safe mode as `dry-run` or `manual-confirm`.
+- Verify generated times persist for the day.
+- Verify weekend and skip behavior.
+- Verify missed-action grace logic.
+- Verify local completion records block repeats.
+- Do not perform a real unattended action during the test.
+
+### Packaging / Startup Checklist
+
+- Select the build/package command.
+- Verify tray/minimize behavior.
+- Decide whether launch at login is in scope.
+- Test behavior during a locked Windows session.
+- Test sleep/wake behavior.
+- Confirm log location and any sanitized log/export flow.
 
 ## Supabase / Webapp Roadmap
 
