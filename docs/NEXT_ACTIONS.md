@@ -53,6 +53,7 @@ Recommended first packaging/startup step:
 - Extend detector fixture checks only if they remain independent from runtime fixture reads, including future zero-rect anchor plus visible dashboard descendant cases.
 - Do not add selector support for home/outside-workplace Perakam page variants unless explicitly requested later.
 - Add explicit documentation or UI affordances for the Perakam auto-login safety model and where encrypted credentials are stored.
+- Review and plan a targeted Electron major upgrade separately from packaging smoke testing. Full `npm audit` flags direct `electron@33.4.11` as high severity, while `npm audit --omit=dev` is clean; npm's automatic fix requires a breaking upgrade to `electron@42.4.1`.
 
 ## Testing / Smoke-Test Checklist
 

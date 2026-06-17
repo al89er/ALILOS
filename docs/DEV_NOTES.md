@@ -200,6 +200,14 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 - Playwright is a runtime dependency; packaged Windows testing must confirm browser binary installation/executable resolution before relying on Perakam browser automation.
 - Recommended next implementation step: produce and smoke test the minimal packaged Windows build before adding launch-at-login or startup automation.
 
+### npm Advisory Audit
+
+- `npm audit --omit=dev` reports zero production dependency vulnerabilities.
+- Full `npm audit` reports one high-severity advisory group against direct dev dependency `electron@33.4.11` at `node_modules/electron`, with advisories covering multiple Electron runtime issues.
+- The advisory is not introduced by Playwright or Electron Builder; Electron Builder uses the direct Electron dependency as the packaged runtime version.
+- npm reports a fix only through `npm audit fix --force`, which would install `electron@42.4.1` as a breaking major upgrade. Do not apply the automatic force fix during packaging smoke-test work.
+- Treat the Electron major upgrade as a separate targeted task with release-note review, local validation, and packaged Windows smoke testing.
+
 ## Perakam Fixture Safety
 
 - Sanitized structural Perakam fixtures may live under `fixtures/perakam/` after review.
