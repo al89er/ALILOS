@@ -6,7 +6,7 @@ The guard exists to prevent accidental migrations, database pushes, function dep
 
 ## Planned Role
 
-Supabase is planned as a shared backend for a future monitoring/control plane. It is not required for scheduled local desktop operation. This repository currently has the S2A status-only heartbeat schema migration and an S2B disabled-by-default heartbeat sender skeleton; it still has no hosted webapp/PWA, schedule/completion backup, or remote command/control queue.
+Supabase is planned as a shared backend for a future monitoring/control plane. It is not required for scheduled local desktop operation. This repository currently has the S2A status-only heartbeat schema migration, an S2B disabled-by-default heartbeat sender skeleton, and an S3B schedule/completion schema migration. It still has no hosted webapp/PWA, runtime schedule/completion sync, or remote command/control queue.
 
 The agreed roadmap is:
 
@@ -260,6 +260,28 @@ Rationale:
 - `heartbeats` as one latest sanitized heartbeat row per device.
 
 RLS is enabled on both tables. No final row policies are included yet because the device pairing, owner authorization, and runtime write path are not implemented. The migration revokes direct `anon` and `authenticated` table privileges until a later approved phase defines the access model.
+
+## S3B Migration Status
+
+`supabase/migrations/20260618215953_s3b_schedule_completion_schema.sql` adds the schema-only S3 durable backup tables:
+
+- `daily_schedules` for sanitized generated schedule backup rows, unique by `device_id`, `schedule_date`, and `action_key`.
+- `completion_records` for sanitized attempt/completion backup rows, unique by `device_id`, `action_date`, and `action_key`.
+
+The migration is schema-only. It does not add runtime desktop sync, heartbeat write enablement, Supabase client dependencies, `.env.local`, secrets, Edge Functions, command/control, or unattended real execution approval.
+
+Constraint summary:
+
+- `action_key` is limited to current app actions: `clock-in` and `clock-out`.
+- `daily_schedules.source` allows `local-generated`, `recovered-from-supabase`, and `manual-reconciled`.
+- `daily_schedules.status` allows `active`, `skipped`, `superseded`, and `archived`.
+- `completion_records.state` matches the current `AttendanceCompletionState` values.
+- `completion_records.verification_state` matches the current verification status values when present.
+- `completion_records.dedupe_key` is stored, not generated. The tuple unique constraint remains authoritative because generated date-to-text keys can be sensitive to PostgreSQL date formatting settings.
+
+RLS is enabled on both S3B tables. No broad public policies are added. Direct table privileges are revoked from `anon` and `authenticated`, matching the conservative S2A posture until device pairing/write-path authorization is approved.
+
+Write path remains unresolved. Future implementation must still decide direct RLS vs Edge Function/API proxy vs device-token pairing before any desktop schedule/completion writes are enabled.
 
 ## S2B Runtime Skeleton Status
 

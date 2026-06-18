@@ -14,7 +14,7 @@
 - O1 operational readiness checklist is documented in `docs/OPERATIONAL_READINESS.md`.
 - O3 real-machine observation passed for packaged launch, scripted hide/show, clean quit, sanitized logs, launch-at-login disabled, and completion records `0`.
 - O4 consolidated the O track as mostly complete. Current go/no-go: monitored `manual-confirm`, `dry-run`, and `notify-only` are acceptable; fully unattended real execution remains no-go.
-- Next track options: RC small real-world observation tasks when physically ready, S3B Supabase schedule/completion implementation only after explicit approval, or webapp/PWA planning only after explicit approval.
+- Next track options: RC small real-world observation tasks when physically ready, S3C Supabase schedule/completion write-path planning only after explicit approval, or webapp/PWA planning only after explicit approval.
 - Keep `docs/PHASE_4D_MANUAL_CONFIRM_DESIGN.md` as historical design context, but update or supersede stale sections before relying on it for current behavior.
 - For Phase 6A dry-run testing, set `automation.executionMode` to `dry-run` only in local config and confirm that due actions are simulated, not clicked.
 
@@ -27,6 +27,7 @@ Current Supabase status:
 - S2C/S2D safety and local dry-run passed.
 - S2E write-path options documented.
 - S3A schedule/completion sync planning documented.
+- S3B schedule/completion schema migration drafted.
 - Heartbeat remains disabled by default.
 - Real writes remain deferred until auth/pairing/write-path authorization is decided.
 
@@ -45,7 +46,7 @@ Before unattended daily use:
 
 Recommended next major track:
 
-- RC small real-world observation tasks when physically ready. S3B Supabase schedule/completion implementation and webapp/PWA planning remain later options only after explicit approval.
+- RC small real-world observation tasks when physically ready. S3C Supabase schedule/completion write-path planning and webapp/PWA planning remain later options only after explicit approval.
 
 ## Suggested Next Implementation Phase
 
@@ -255,7 +256,8 @@ S2A migration status:
 - `supabase/migrations/20260617125521_s2a_status_heartbeat.sql` adds only `devices` and latest-row `heartbeats`.
 - RLS is enabled, with no final row policies yet because pairing/authorization/runtime writes are still pending.
 - S2B adds a disabled-by-default Electron heartbeat sender skeleton using built-in `fetch`, local config/`.env.local` bootstrap, and sanitized status-only metadata.
-- Supabase client dependencies, schedule/completion backup, and command queue remain unimplemented.
+- S3B adds schema-only `daily_schedules` and `completion_records` tables for future sanitized backup/recovery.
+- Supabase client dependencies, runtime schedule/completion sync, and command queue remain unimplemented.
 
 S2C/S2D review status:
 
@@ -295,7 +297,15 @@ Duplicate prevention:
 - If local and Supabase disagree, fail safe toward no repeat until a reconciliation rule is explicitly approved.
 - Supabase absence or failure never forces an action.
 
-Open decisions before S3B implementation:
+S3B schema status:
+
+- `supabase/migrations/20260618215953_s3b_schedule_completion_schema.sql` creates `daily_schedules` and `completion_records`.
+- Both tables use per-device/date/action uniqueness for duplicate prevention.
+- `completion_records.dedupe_key` is stored rather than generated; the tuple unique constraint is the authoritative duplicate key because generated date-to-text keys can be formatting-sensitive.
+- RLS is enabled on both tables and direct `anon` / `authenticated` privileges are revoked.
+- No table policies, Edge Functions, runtime writes, dependencies, `.env.local`, secrets, command/control, or unattended real execution are added.
+
+Open decisions before S3C/write-path implementation:
 
 - Direct RLS vs Edge Function/API proxy vs device-token pairing.
 - Latest-row upsert vs append-only audit history.

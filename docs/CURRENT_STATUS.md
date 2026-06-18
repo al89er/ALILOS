@@ -26,6 +26,7 @@
 - Project identity guard files/scripts are present in the working tree.
 - Architecture direction documented for future Supabase/webapp work: local-first Windows desktop agent now, hosted phone webapp/PWA later, Supabase as a future shared monitoring/control plane, and Telegram active now with possible fallback role later.
 - S3A docs-only Supabase schedule/completion sync planning is documented for durable backup/recovery of generated daily schedules and completion records.
+- S3B schema-only Supabase migration is drafted for `daily_schedules` and `completion_records`.
 
 ## Partially Completed Work
 
@@ -38,7 +39,7 @@
 - Existing Phase 4D design docs are stale relative to current implementation because guarded execution and auto-login have since been implemented.
 - Settings can edit selected operational values only. Generated schedules, completion records, automation audit events, raw logs, target mappings, credentials, cookies/session data, screenshots, raw HTML, and personal identifiers remain outside editable settings.
 - Supabase heartbeat has a Settings-tab project URL editor and disabled-by-default sender skeleton, but the phone-webapp receiver/dashboard is still not implemented in this repository.
-- Supabase is not required for local scheduled operation. The repository has the S2A heartbeat schema migration, S2B sender skeleton, and S3A docs-only schedule/completion sync plan; schedule backup ledger, completion backup ledger, hosted webapp/PWA, and remote command/control queue are not implemented.
+- Supabase is not required for local scheduled operation. The repository has the S2A heartbeat schema migration, S2B sender skeleton, S3A docs-only schedule/completion sync plan, and S3B schema-only schedule/completion migration; runtime schedule/completion sync, hosted webapp/PWA, and remote command/control queue are not implemented.
 - The old Tampermonkey script and old webapp remain fallback/backup references only.
 - Workplace Perakam target-detection smoke testing passed in W2 on the intended network with packaged `ALILOS.exe`.
 
@@ -64,6 +65,7 @@ The active implementation focus appears to be hardening the guarded manual-confi
 - S2C/S2D safety review and local dry-run passed.
 - S2E heartbeat write-path options are documented.
 - S3A schedule/completion sync planning is documented.
+- S3B schedule/completion schema migration is drafted.
 - Heartbeat remains disabled by default.
 - Real Supabase writes are deferred until auth/pairing/write-path authorization is decided.
 
@@ -131,10 +133,11 @@ The active implementation focus appears to be hardening the guarded manual-confi
 - `dry-run` mode records simulated action results and never calls the real target click method.
 - Supabase heartbeat payloads include sanitized app/worker/execution/network/Perakam/Telegram status metadata and exclude schedules, completion records, credentials, Telegram identifiers, personal identifiers, raw HTML, screenshots, cookies, and full sensitive URLs.
 - Future Supabase payloads must continue excluding configured-site username/password, cookies/session data, raw page HTML, screenshots, staff ID/name, Telegram token/chat ID, full URLs, tokenized query strings, and opaque `link=` values.
-- S3A plans generated schedules and completion records as sanitized Supabase backup/recovery rows. They remain local-only today, and any S3B implementation still needs explicit approval.
+- S3B adds schema-only `daily_schedules` and `completion_records` tables for future sanitized backup/recovery. Generated schedules and completion records remain local-only at runtime today, and any write-path/sync implementation still needs explicit approval.
 - S3A recovery order is local-first: use valid local schedule, recover from Supabase only if local state is missing/corrupt, generate only if neither exists, save local first, then attempt Supabase backup; Supabase unavailable means local operation continues.
 - S3A duplicate prevention fails safe: local or Supabase completion/attempt evidence blocks repeat execution, local/Supabase disagreement blocks repeat until resolved, and Supabase absence/failure never forces an action.
-- S3A open decisions are direct RLS vs Edge Function/API proxy vs device-token pairing, latest-row upsert vs append-only audit history, user confirmation on local/Supabase disagreement, and whether S3 waits for heartbeat write-path approval.
+- S3B keeps RLS enabled and revokes direct `anon` / `authenticated` table privileges. No broad public policies, service role assumptions, runtime sync, or command/control are added.
+- S3 open decisions are direct RLS vs Edge Function/API proxy vs device-token pairing, latest-row upsert vs append-only audit history, user confirmation on local/Supabase disagreement, and whether schedule/completion sync waits for heartbeat write-path approval.
 - No remote command/control is implemented. Future command queue/control work is S5 and requires explicit approval before implementation.
 - Renderer tabs are UI-only; all existing DOM IDs and preload calls remain the behavior boundary.
 - The Settings tab can edit worker enable/interval, automation execution mode/interval/dry-run preparation, scheduler windows/grace/reminders, Perakam dashboard URL, and Supabase heartbeat enable/project URL/interval. Supabase URL input is blank on load and only replaces the stored URL when a new URL is entered.
@@ -142,10 +145,10 @@ The active implementation focus appears to be hardening the guarded manual-confi
 - Telegram token/chat fields are password inputs, blank on load, and preserve existing configured or `.env.local` effective values unless replacements are typed. The renderer receives only configured/env-local/missing status, not actual token/chat values. The command prefix is editable.
 - P packaging/startup track is mostly complete after P12 local validation; remaining release risks are optional installer/signing, real Windows sign-in/reboot testing, and full sleep/wake testing.
 - Local Perakam auto-login is enabled on the test machine and succeeded during W4/W5 without credential-value logging. Treat it as an operational setting to intentionally enable, disable, or document before future workplace tests.
-- Next recommended major track: O operational readiness / release-candidate checklist. S3B Supabase schedule/completion implementation remains a later option only after explicit approval.
+- Next recommended major track: O operational readiness / release-candidate checklist. S3C Supabase schedule/completion write-path planning remains a later option only after explicit approval.
 - O1 operational readiness checklist is documented in `docs/OPERATIONAL_READINESS.md`: monitored `manual-confirm`/`dry-run` local use is acceptable; fully unattended real execution remains no-go.
 - O3 real-machine observation passed for packaged launch, scripted window hide/show, clean quit, sanitized logs, launch-at-login disabled, and completion records `0`; visual tray-menu click verification, real sign-in/reboot launch-at-login, and full sleep/wake remain pending.
-- O operational readiness is mostly complete after O4 consolidation. Current go/no-go: go for monitored local `manual-confirm`, `dry-run`, or `notify-only`; no-go for unattended real execution. Next options are RC real-world observation tasks, S3B Supabase sync implementation, or webapp/PWA planning, each only with explicit approval.
+- O operational readiness is mostly complete after O4 consolidation. Current go/no-go: go for monitored local `manual-confirm`, `dry-run`, or `notify-only`; no-go for unattended real execution. Next options are RC real-world observation tasks, S3C Supabase write-path planning, or webapp/PWA planning, each only with explicit approval.
 
 ## W Workplace Validation Track
 
