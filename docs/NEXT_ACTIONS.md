@@ -13,7 +13,8 @@
 - W6 workplace validation consolidation is complete; W track is mostly complete.
 - O1 operational readiness checklist is documented in `docs/OPERATIONAL_READINESS.md`.
 - O3 real-machine observation passed for packaged launch, scripted hide/show, clean quit, sanitized logs, launch-at-login disabled, and completion records `0`.
-- Continue with O-track release-candidate checks unless S3 Supabase schedule/completion sync planning is explicitly approved.
+- O4 consolidated the O track as mostly complete. Current go/no-go: monitored `manual-confirm`, `dry-run`, and `notify-only` are acceptable; fully unattended real execution remains no-go.
+- Next track options: RC small real-world observation tasks when physically ready, S3 Supabase schedule/completion sync planning only after explicit approval, or webapp/PWA planning only after explicit approval.
 - Keep `docs/PHASE_4D_MANUAL_CONFIRM_DESIGN.md` as historical design context, but update or supersede stale sections before relying on it for current behavior.
 - For Phase 6A dry-run testing, set `automation.executionMode` to `dry-run` only in local config and confirm that due actions are simulated, not clicked.
 
@@ -43,7 +44,7 @@ Before unattended daily use:
 
 Recommended next major track:
 
-- O operational readiness / release-candidate checks using `docs/OPERATIONAL_READINESS.md`. S3 Supabase schedule/completion sync planning remains a later option only after explicit approval.
+- RC small real-world observation tasks when physically ready. S3 Supabase schedule/completion sync planning and webapp/PWA planning remain later options only after explicit approval.
 
 ## Suggested Next Implementation Phase
 

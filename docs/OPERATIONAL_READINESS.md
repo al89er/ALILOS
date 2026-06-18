@@ -4,6 +4,7 @@ This checklist is for safe local Windows desktop use after the P packaging/start
 
 ## Current Readiness Status
 
+- O operational readiness is mostly complete: O1 checklist added, O2 launch-at-login log wording cleaned up, and O3 real-machine packaged observation completed.
 - Packaged `release/win-unpacked/ALILOS.exe` launches and runs.
 - Visible app/window title remains `A.L.I.L.O.S.`.
 - Packaged userData path is `%APPDATA%\ALILOS`.
@@ -18,6 +19,14 @@ This checklist is for safe local Windows desktop use after the P packaging/start
 - Checked logs remained sanitized.
 - Supabase heartbeat skeleton exists but remains disabled/deferred.
 - Local Perakam auto-login is enabled on the test machine and should be intentionally controlled before future tests.
+
+## O Track Consolidation
+
+- O1 added this operational readiness checklist.
+- O2 fixed the launch-at-login log wording to `Launch-at-login setting applied from settings...`.
+- O3 real-machine observation passed: packaged `ALILOS.exe` launched, `manual-confirm` was observed, launch-at-login final state was disabled, Network Monitor was active, internet was `online`, Perakam reachability was `login-required`, captive portal was `not-detected`, scripted hide/show IPC passed, Quit completed cleanly, no `ALILOS` process remained, completion records stayed `0`, and sanitized log review passed.
+- Current recommendation: go for monitored local use in `manual-confirm`, `dry-run`, or `notify-only`; no-go for fully unattended real execution.
+- Next track options: RC small real-world observation tasks when the user is physically ready, S3 Supabase schedule/completion sync planning only after explicit approval, or webapp/PWA planning only after explicit approval.
 
 ## Daily Pre-Use Checklist
 

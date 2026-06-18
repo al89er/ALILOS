@@ -140,6 +140,7 @@ The active implementation focus appears to be hardening the guarded manual-confi
 - Next recommended major track: O operational readiness / release-candidate checklist. S3 Supabase schedule/completion sync planning remains a later option only after explicit approval.
 - O1 operational readiness checklist is documented in `docs/OPERATIONAL_READINESS.md`: monitored `manual-confirm`/`dry-run` local use is acceptable; fully unattended real execution remains no-go.
 - O3 real-machine observation passed for packaged launch, scripted window hide/show, clean quit, sanitized logs, launch-at-login disabled, and completion records `0`; visual tray-menu click verification, real sign-in/reboot launch-at-login, and full sleep/wake remain pending.
+- O operational readiness is mostly complete after O4 consolidation. Current go/no-go: go for monitored local `manual-confirm`, `dry-run`, or `notify-only`; no-go for unattended real execution. Next options are RC real-world observation tasks, S3 Supabase sync planning, or webapp/PWA planning, each only with explicit approval.
 
 ## W Workplace Validation Track
 
