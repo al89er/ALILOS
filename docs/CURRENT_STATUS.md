@@ -31,6 +31,7 @@
 - WEB2 static/read-only web companion UI design is documented in `docs/WEB_COMPANION_PLAN.md`.
 - WEB3 legacy webapp relationship is documented in `docs/WEB_COMPANION_PLAN.md`.
 - WEB4 read-only web companion data contracts are documented in `docs/WEB_COMPANION_PLAN.md`.
+- RC1 monitored real-world observation plan is documented in `docs/OPERATIONAL_READINESS.md`.
 
 ## Partially Completed Work
 
@@ -90,6 +91,7 @@ The active implementation focus appears to be hardening the guarded manual-confi
 - W5 validated lock/idle stability: temporary `dry-run`, local Perakam auto-login enabled, lock and idle intervals stable, network/scheduler/browser/dashboard safe, no execution, completion records `0`, and config restored.
 - P packaging/startup local smoke testing passed for the unpacked Windows app, including `ALILOS.exe`, `%APPDATA%\ALILOS`, the project icon, tray show/hide/quit, disabled-by-default launch-at-login, simulated `--hidden-at-login`, and packaged Playwright launch.
 - Remaining release risks: full sleep/wake suspend-resume, real Windows sign-in/reboot launch-at-login, visual tray-menu verification, live Fortinet portal marker validation, real scheduled manual-confirm at an actual clock-in/out time, and any fully unattended real action remain unvalidated.
+- RC1 plans one monitored real-world `manual-confirm` scheduled cycle with the user physically present; it has not been executed.
 
 ### Readiness Gate
 
@@ -162,6 +164,7 @@ The active implementation focus appears to be hardening the guarded manual-confi
 - Next recommended major track: O operational readiness / release-candidate checklist. S3E Edge Function/API schema contract planning remains a later option only after explicit approval.
 - O1 operational readiness checklist is documented in `docs/OPERATIONAL_READINESS.md`: monitored `manual-confirm`/`dry-run` local use is acceptable; fully unattended real execution remains no-go.
 - O3 real-machine observation passed for packaged launch, scripted window hide/show, clean quit, sanitized logs, launch-at-login disabled, and completion records `0`; visual tray-menu click verification, real sign-in/reboot launch-at-login, and full sleep/wake remain pending.
+- RC1 monitored observation is planned for one actual scheduled `manual-confirm` cycle; abort conditions include wrong target, unexpected unattended click, captive portal uncertainty, target ambiguity, unsanitized logs, crash, or user absence.
 - O operational readiness is mostly complete after O4 consolidation. Current go/no-go: go for monitored local `manual-confirm`, `dry-run`, or `notify-only`; no-go for unattended real execution. Next options are RC real-world observation tasks, S3E Edge Function/API contract planning, or WEB5 authenticated read model/RLS planning, each only with explicit approval.
 
 ## W Workplace Validation Track

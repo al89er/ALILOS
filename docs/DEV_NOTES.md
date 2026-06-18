@@ -147,6 +147,7 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 - WEB2 static/read-only web companion UI design is documented in `docs/WEB_COMPANION_PLAN.md`.
 - WEB3 legacy webapp relationship is documented in `docs/WEB_COMPANION_PLAN.md`.
 - WEB4 read-only web companion data contracts are documented in `docs/WEB_COMPANION_PLAN.md`.
+- RC1 monitored real-world observation plan is documented in `docs/OPERATIONAL_READINESS.md`.
 - Heartbeat remains disabled by default.
 - Real Supabase writes are deferred until the auth/pairing/write-path decision is made.
 
@@ -241,6 +242,7 @@ Operational notes after W validation:
 - O1 operational readiness guidance lives in `docs/OPERATIONAL_READINESS.md`. Treat it as the current release-candidate checklist before monitored local use.
 - O3 real-machine observation passed for packaged launch, scripted window hide/show, clean quit, sanitized logs, launch-at-login disabled, and completion records `0`. Visual tray-menu click verification, real sign-in/reboot launch-at-login, and full sleep/wake suspend-resume remain pending.
 - O4 consolidated the O track as mostly complete. Monitored `manual-confirm`, `dry-run`, and `notify-only` local use are acceptable; fully unattended real execution remains no-go. Next work should be RC observation tasks, S3E Edge Function/API contract planning, or WEB5 authenticated read model/RLS planning only after explicit approval.
+- RC1 is planned for one actual scheduled `manual-confirm` cycle with the user physically present. It is not approval for unattended execution or for Codex to perform a real action.
 - Local Perakam auto-login is enabled on the test machine and succeeded during W4/W5 without credential-value logging. Intentionally decide whether it should be enabled or disabled before future tests.
 - Fully unattended real attendance action is not approved or validated.
 - Supabase heartbeat/write path remains disabled/deferred; do not start S3 schedule/completion runtime sync without explicit approval.
@@ -268,6 +270,13 @@ Stop conditions:
 - Credential, cookie, raw HTML, screenshot, staff identity, full portal URL, tokenized path, or query string appears in logs or UI export.
 - Repeated browser crash or packaged Playwright launch failure.
 - Ambiguous target detection, such as multiple visible primary targets or disagreement between dashboard state and action readiness.
+
+RC1 notes:
+
+- Use packaged `ALILOS.exe`, `manual-confirm`, and one real scheduled morning/evening cycle.
+- Keep the user physically present; the user manually confirms or cancels.
+- Abort on wrong target, unexpected unattended click, captive portal uncertainty, stale/login loop, target ambiguity, unsanitized logs, app crash, or user absence.
+- Record date/time, environment, mode, scheduled action, observed states, confirm/cancel outcome, completion state, verification state, sanitized log review, result classification, and follow-up.
 
 ### npm Advisory Audit
 

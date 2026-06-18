@@ -26,7 +26,8 @@ This checklist is for safe local Windows desktop use after the P packaging/start
 - O2 fixed the launch-at-login log wording to `Launch-at-login setting applied from settings...`.
 - O3 real-machine observation passed: packaged `ALILOS.exe` launched, `manual-confirm` was observed, launch-at-login final state was disabled, Network Monitor was active, internet was `online`, Perakam reachability was `login-required`, captive portal was `not-detected`, scripted hide/show IPC passed, Quit completed cleanly, no `ALILOS` process remained, completion records stayed `0`, and sanitized log review passed.
 - Current recommendation: go for monitored local use in `manual-confirm`, `dry-run`, or `notify-only`; no-go for fully unattended real execution.
-- Next track options: RC small real-world observation tasks when the user is physically ready, S3 Supabase schedule/completion sync planning only after explicit approval, or webapp/PWA planning only after explicit approval.
+- RC1 monitored real-world observation is planned below for one actual scheduled `manual-confirm` cycle with the user physically present.
+- Next track options: perform RC1 when physically ready, continue S3/Supabase planning only after explicit approval, or continue web/PWA planning only after explicit approval.
 
 ## Daily Pre-Use Checklist
 
@@ -134,6 +135,87 @@ This checklist is for safe local Windows desktop use after the P packaging/start
 - Fully unattended real action remains not approved and not validated.
 - Installer and signing remain optional release decisions.
 - Supabase schedule/completion sync remains deferred until explicit S3 approval.
+
+## RC1 Monitored Real-World Observation Plan
+
+RC1 is planning only. Do not perform a real Perakam action from Codex. RC1 is for one actual scheduled morning or evening cycle in `manual-confirm` with the user physically present.
+
+Current go/no-go remains:
+
+- Go for monitored local use in `manual-confirm`.
+- Go for `dry-run` and `notify-only`.
+- No-go for fully unattended real execution.
+
+### Pre-Use Setup
+
+- Use packaged `release/win-unpacked/ALILOS.exe`.
+- Confirm mode is `manual-confirm`.
+- Confirm the user is physically present and watching.
+- Keep launch-at-login disabled unless RC1 is explicitly testing startup behavior.
+- Review completion records before the test and confirm no stale/unexpected completion blocks exist.
+- Keep the Network/status panel visible.
+- Keep Logs available for review.
+- Do not require `.env.local` or secrets for RC1.
+- Confirm Supabase heartbeat/write path remains disabled/deferred unless a later approved task changes it.
+
+### Observation Target
+
+- Observe one actual scheduled morning or evening cycle.
+- Use the actual target window selected by the existing local scheduler.
+- The app may prepare Perakam and detect the configured target.
+- The user must manually decide whether to confirm or cancel.
+- No unattended action is allowed.
+
+### What To Observe
+
+- App launch state.
+- Tray/window state.
+- Schedule due detection.
+- Perakam login/session/dashboard state.
+- Target detection.
+- Notification/manual-confirm dialog behavior.
+- User confirm/cancel outcome.
+- Completion-state record.
+- Post-click verification state if the user confirms.
+- Log sanitization.
+
+### Abort Conditions
+
+Abort RC1 and do not continue toward a real action if any of these occur:
+
+- Wrong action target.
+- Unexpected unattended click.
+- Fortinet/captive portal uncertainty.
+- Stale/login error loop.
+- Target detection ambiguity.
+- Unsanitized log output.
+- App instability/crash.
+- User not physically present.
+
+### Result Classification
+
+- Pass: expected monitored `manual-confirm` flow, sanitized logs, and expected completion/verification state if confirmed.
+- Pass with observation: safe flow completed, but a non-blocking issue or follow-up was observed.
+- Fail/blocker: safety issue, wrong target, unexpected click, unsanitized output, crash, or other blocker.
+- Inconclusive/deferred: the scheduled window, network, Perakam state, or user availability did not permit a complete observation.
+
+### RC1 Result Template
+
+```text
+RC1 monitored observation result
+- Date/time:
+- Environment: work/home, network status:
+- Mode:
+- Scheduled action:
+- User present: yes/no
+- Observed states:
+- Confirm/cancel:
+- Completion record state:
+- Verification state:
+- Sanitized log review:
+- Result classification:
+- Follow-up item:
+```
 
 ## O3 Real-Machine Observation
 
