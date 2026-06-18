@@ -39,7 +39,7 @@
 - Supabase heartbeat has a Settings-tab project URL editor and disabled-by-default sender skeleton, but the phone-webapp receiver/dashboard is still not implemented in this repository.
 - Supabase is not required for local scheduled operation. The repository has the S2A heartbeat schema migration and S2B sender skeleton only; schedule backup ledger, completion backup ledger, hosted webapp/PWA, and remote command/control queue are not implemented.
 - The old Tampermonkey script and old webapp remain fallback/backup references only.
-- Live Perakam target-detection smoke testing is paused until intended workplace network access is available. The latest target-detection bugfix is assumed acceptable for now and remains pending workplace manual validation.
+- Workplace Perakam target-detection smoke testing passed in W2 on the intended network with packaged `ALILOS.exe`.
 
 ## Current Focus
 
@@ -67,12 +67,13 @@ The active implementation focus appears to be hardening the guarded manual-confi
 
 ### Desktop Operational Blockers
 
-- W2 workplace Perakam smoke passed with packaged `ALILOS.exe` in `manual-confirm` mode: login-required state was detected, the manually authenticated session reached the dashboard, and both primary targets were detected as available from visible dashboard candidates while hidden sidebar duplicates were ignored.
-- W3 Fortinet live smoke found no active captive portal during the packaged workplace check: network monitor was running, internet state was `online`, captive portal state was `not-detected`, host was `none`, and evidence was `none`.
-- W4 scheduled workplace dry-run passed with packaged `ALILOS.exe`: a temporary local-only evening test time triggered `schedule-due`, page preparation, `a51` candidate detection, `dry-run-action-simulated`, and `confirmation-required`; no real execution or completion record was created, and the original local config was restored.
-- W5 lock/idle observation passed for packaged `ALILOS.exe`: with temporary `dry-run` mode and local Perakam auto-login enabled, the app stayed stable through a 90-second idle interval and a 45-second locked-session interval; network, scheduler, browser, and Perakam dashboard state remained safe, no execution occurred, and config was restored.
+- W workplace validation is mostly complete: W1 planning, W2 Perakam workplace smoke, W3 no-live-portal Fortinet smoke, W4 scheduled dry-run, and W5 lock/idle observation passed with packaged `ALILOS.exe`.
+- W2 validated `manual-confirm` Perakam behavior: login-required state, dashboard after authentication, visible `a50`/`a51`, hidden sidebar duplicate rejection, no real action, completion records `0`, and sanitized logs.
+- W3 validated the current Fortinet no-portal state: network monitor active, internet `online`, captive portal `not-detected`, no form submission, Perakam unaffected, and sanitized logs. Live Fortinet marker validation remains conditional on the portal appearing.
+- W4 validated the scheduled dry-run path: temporary local-only near-future evening time, `schedule-due`, Perakam preparation, visible `a51`, simulated-only dry-run, no duplicate/repeat, completion records `0`, and config restored.
+- W5 validated lock/idle stability: temporary `dry-run`, local Perakam auto-login enabled, lock and idle intervals stable, network/scheduler/browser/dashboard safe, no execution, completion records `0`, and config restored.
 - P packaging/startup local smoke testing passed for the unpacked Windows app, including `ALILOS.exe`, `%APPDATA%\ALILOS`, the project icon, tray show/hide/quit, disabled-by-default launch-at-login, simulated `--hidden-at-login`, and packaged Playwright launch.
-- Real Windows sign-in/reboot launch-at-login behavior and full sleep/wake behavior remain pending.
+- Remaining release risks: full sleep/wake suspend-resume, real Windows sign-in/reboot launch-at-login, visual tray-menu verification, live Fortinet portal marker validation, real scheduled manual-confirm at an actual clock-in/out time, and any fully unattended real action remain unvalidated.
 
 ### Readiness Gate
 
@@ -107,7 +108,8 @@ The active implementation focus appears to be hardening the guarded manual-confi
 - Telegram bot token/chat ID can be stored in local config or supplied by `.env.local`; both are sensitive and must remain untracked/unlogged.
 - Perakam selectors and page-text heuristics may drift if the site changes.
 - Home/outside-workplace Perakam page variants can differ from the intended workplace network version and are unsupported for now.
-- Browser automation and notifications still need workplace-network validation in the next W track.
+- Workplace browser automation dry-run and notification-adjacent audit behavior passed in W4; remaining checks are operational release-readiness items.
+- W workplace validation is mostly complete; remaining work is operational/release hardening rather than broad detector changes.
 - Android/mobile use is not planned through Electron; future phone access should be via hosted webapp/PWA.
 - The current repository has uncommitted identity-related changes; do not overwrite them during unrelated work.
 
@@ -133,8 +135,9 @@ The active implementation focus appears to be hardening the guarded manual-confi
 - The Settings tab can edit worker enable/interval, automation execution mode/interval/dry-run preparation, scheduler windows/grace/reminders, Perakam dashboard URL, and Supabase heartbeat enable/project URL/interval. Supabase URL input is blank on load and only replaces the stored URL when a new URL is entered.
 - Launch-at-login uses top-level `startup.launchAtLogin`, remains disabled by default, uses Windows login items only in packaged ALILOS builds, and starts hidden to tray when launched at sign-in.
 - Telegram token/chat fields are password inputs, blank on load, and preserve existing configured or `.env.local` effective values unless replacements are typed. The renderer receives only configured/env-local/missing status, not actual token/chat values. The command prefix is editable.
-- P packaging/startup track is mostly complete after P12 local validation; remaining release risks are optional installer/signing, real Windows sign-in/reboot testing, sleep/wake/locked-session testing, and W workplace validation.
-- Next recommended major track: W workplace validation for Perakam login state, dashboard target availability, Fortinet portal state and sanitized reason text, network monitor state, scheduler state, and packaged-vs-dev behavior on the intended network.
+- P packaging/startup track is mostly complete after P12 local validation; remaining release risks are optional installer/signing, real Windows sign-in/reboot testing, and full sleep/wake testing.
+- Local Perakam auto-login is enabled on the test machine and succeeded during W4/W5 without credential-value logging. Treat it as an operational setting to intentionally enable, disable, or document before future workplace tests.
+- Next recommended major track: O operational readiness / release-candidate checklist. S3 Supabase schedule/completion sync planning remains a later option only after explicit approval.
 
 ## W Workplace Validation Track
 
@@ -143,7 +146,7 @@ The active implementation focus appears to be hardening the guarded manual-confi
 - W3 Fortinet captive portal live detection smoke: passed for the no-live-portal case. No portal form was opened or submitted; log review found no credential, cookie, raw HTML, Fortinet marker value, `magic`, `4Tredir`, or tokenized portal URL/path/query/hash evidence.
 - W4 scheduled dry-run/manual-confirm test: passed in `dry-run` mode. The monitor observed the due evening action, prepared Perakam, detected visible dashboard `a51`, recorded simulated-only audit events, and kept real attendance behind explicit confirmation.
 - W5 sleep/wake/locked-session observation: lock and idle observation passed. Full sleep/wake suspend/resume remains untested; tray/window hide/show IPC completed, but visual tray-menu verification was not performed during the scripted observation.
-- W6 workplace validation consolidation: summarize evidence, remaining risks, and whether release can remain unpacked or needs optional installer/signing.
+- W6 workplace validation consolidation: complete. W track is mostly complete; pending items are release-readiness checks, optional installer/signing, and explicitly approved future sync/planning work.
 
 ## Testing And Build Status
 

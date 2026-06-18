@@ -145,12 +145,13 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 
 ### Desktop Operational Blockers
 
-- W2 workplace Perakam smoke passed with packaged `ALILOS.exe` in `manual-confirm` mode. Login-required state and dashboard state were detected, `a50` and `a51` were available from visible dashboard candidates, hidden sidebar duplicates were ignored, and no completion record or real execution was created.
-- W3 Fortinet live smoke passed for the no-live-portal case. Packaged `ALILOS.exe` reported the network monitor active, internet `online`, Perakam reachability `login-required`, captive portal `not-detected`, host `none`, evidence `none`, and no form submission or real action occurred.
-- W4 scheduled dry-run passed with packaged `ALILOS.exe`. A temporary local-only evening schedule was moved to a near-future time, execution mode was set to `dry-run`, the monitor triggered once, Perakam reached the dashboard, visible `a51` was detected, simulated-only audit events were recorded, and the original local config was restored.
-- W5 lock/idle observation passed with packaged `ALILOS.exe`. Local Perakam auto-login was enabled and used the shared local credential; the observation temporarily set execution mode to `dry-run`, kept launch-at-login disabled, verified dashboard/network/scheduler stability after 90 seconds idle and 45 seconds locked, and restored execution mode to `manual-confirm`.
+- W workplace validation is mostly complete: W1 planning, W2 Perakam workplace smoke, W3 no-live-portal Fortinet smoke, W4 scheduled dry-run, and W5 lock/idle observation passed with packaged `ALILOS.exe`.
+- W2 validated login-required, dashboard, visible `a50`/`a51`, hidden sidebar duplicate rejection, no real action, completion records `0`, and sanitized logs in `manual-confirm`.
+- W3 validated active network monitor, internet `online`, captive portal `not-detected`, no form submission, Perakam unaffected, and sanitized logs. Live Fortinet portal marker validation remains conditional on the portal appearing.
+- W4 validated scheduled dry-run: temporary local-only near-future evening time, `schedule-due`, page preparation, visible `a51`, simulated-only result, no duplicate/repeat, completion records `0`, and config restored.
+- W5 validated lock/idle stability: temporary `dry-run`, local Perakam auto-login enabled, lock and idle intervals stable, network/scheduler/browser/dashboard safe, no execution, completion records `0`, and config restored.
 - P packaging/startup local smoke testing passed for `ALILOS.exe`, `%APPDATA%\ALILOS`, project-owned icons, tray show/hide/quit, disabled-by-default launch-at-login, simulated `--hidden-at-login`, and packaged Playwright launch.
-- Real Windows sign-in/reboot launch-at-login behavior and full sleep/wake suspend/resume behavior remain pending.
+- Remaining release risks: full sleep/wake suspend-resume, real Windows sign-in/reboot launch-at-login, visual tray-menu verification, live Fortinet portal marker validation, real scheduled manual-confirm at an actual clock-in/out time, and any fully unattended real action remain unvalidated.
 
 ### Workplace Smoke-Test Checklist
 
@@ -193,7 +194,7 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 - Do not perform an unattended real scheduled action.
 - Do not store or send sensitive data.
 - P12 local smoke status: packaged Playwright launch passed, `.env.local` was not packaged, no credential or tokenized portal URL log matches were observed, and no ALILOS process remained after Quit.
-- Known remaining concerns: installer/signing are not implemented, real Windows sign-in/reboot startup is untested, workplace scheduled dry-run is pending, and the high-severity npm advisory requires separate review rather than automatic fix.
+- Known remaining concerns: installer/signing are not implemented, real Windows sign-in/reboot startup is untested, full sleep/wake suspend/resume is pending, and the high-severity npm advisory requires separate review rather than automatic fix.
 
 ## Packaging / Startup Audit
 
@@ -204,7 +205,7 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 - Launch-at-login is implemented for packaged Windows builds with `app.setLoginItemSettings()` / `app.getLoginItemSettings()`, `process.execPath`, and `--hidden-at-login`.
 - Config and logs use Electron `userData`, which is suitable for packaged app state.
 - Playwright is a runtime dependency; local packaged smoke testing has confirmed browser launch, but release machines should still verify browser binary installation/executable resolution.
-- Recommended next operational step: run W workplace validation before relying on unattended startup or scheduled browser automation.
+- Recommended next operational step: run the O operational readiness / release-candidate checklist before relying on unattended startup or scheduled browser automation.
 
 ## Launch-at-Login Behavior
 
@@ -226,7 +227,14 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 - W3 Fortinet captive portal live detection smoke: passed for the observed no-live-portal case. If a Fortinet portal appears later, repeat W3 to verify `authupm.upm.edu.my` dynamic-port detection and safe marker evidence. Current log/config review found no credential, cookie, raw HTML, Fortinet marker value, `magic`, `4Tredir`, or tokenized portal URL/path/query/hash evidence.
 - W4 scheduled dry-run/manual-confirm test: passed. Temporary changes were limited to local userData config and restored afterward: execution mode `manual-confirm` -> `dry-run` -> `manual-confirm`, evening time `17:08` -> test time -> `17:08`, and monitor interval `30` -> requested `5` seconds with effective clamped `15` seconds -> `30`. No completion record, real execution, credential value, cookie, raw HTML, screenshot, full URL, or `link=` value was observed in logs.
 - W5 sleep/wake/locked-session observation: lock and idle observation passed. No real action, completion record, credential value, cookie, raw HTML, screenshot, full tokenized URL, or `link=` value was observed. Scripted tray/window hide/show IPC completed, but visual tray-menu verification and full sleep/wake suspend/resume remain pending.
-- W6 workplace validation consolidation: summarize evidence, unresolved release risks, and whether optional installer/signing or more workplace testing is needed.
+- W6 workplace validation consolidation: complete. W track is mostly complete; remaining items belong in an O operational readiness / release-candidate checklist unless the user explicitly chooses S3 Supabase schedule/completion sync planning.
+
+Operational notes after W validation:
+
+- Local Perakam auto-login is enabled on the test machine and succeeded during W4/W5 without credential-value logging. Intentionally decide whether it should be enabled or disabled before future tests.
+- Fully unattended real attendance action is not approved or validated.
+- Supabase heartbeat/write path remains disabled/deferred; do not start S3 schedule/completion sync without explicit approval.
+- Installer and signed release remain optional release decisions, not blockers for local unpacked operation.
 
 Safe defaults:
 
