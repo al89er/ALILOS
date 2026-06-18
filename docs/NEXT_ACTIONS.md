@@ -14,7 +14,7 @@
 - O1 operational readiness checklist is documented in `docs/OPERATIONAL_READINESS.md`.
 - O3 real-machine observation passed for packaged launch, scripted hide/show, clean quit, sanitized logs, launch-at-login disabled, and completion records `0`.
 - O4 consolidated the O track as mostly complete. Current go/no-go: monitored `manual-confirm`, `dry-run`, and `notify-only` are acceptable; fully unattended real execution remains no-go.
-- Next track options: RC small real-world observation tasks when physically ready, S3E Edge Function/API schedule/completion contract planning only after explicit approval, or WEB4 authenticated read-only web companion status planning only after explicit approval.
+- Next track options: RC small real-world observation tasks when physically ready, S3E Edge Function/API schedule/completion contract planning only after explicit approval, or WEB5 authenticated read model/RLS planning only after explicit approval.
 - Keep `docs/PHASE_4D_MANUAL_CONFIRM_DESIGN.md` as historical design context, but update or supersede stale sections before relying on it for current behavior.
 - For Phase 6A dry-run testing, set `automation.executionMode` to `dry-run` only in local config and confirm that due actions are simulated, not clicked.
 
@@ -47,7 +47,7 @@ Before unattended daily use:
 
 Recommended next major track:
 
-- RC small real-world observation tasks when physically ready. S3E Edge Function/API schedule/completion contract planning and WEB4 authenticated read-only web companion status planning remain later options only after explicit approval.
+- RC small real-world observation tasks when physically ready. S3E Edge Function/API schedule/completion contract planning and WEB5 authenticated read model/RLS planning remain later options only after explicit approval.
 
 ## Suggested Next Implementation Phase
 
@@ -223,6 +223,7 @@ WEB1 web companion planning:
 - WEB1 is read-only: show heartbeat/status when available, stale/offline warnings, and placeholders until schedule/completion sync exists.
 - WEB2 defines the static/read-only UI design: home/status dashboard, device detail, schedule, completion/verification, warnings/events, and settings/info placeholder screens.
 - WEB3 documents `al89er/perakamwaktu` as legacy webapp fallback/reference only. Prefer rebuilding the ALILOS web companion or using an isolated future `webapp/` boundary unless a later explicit review justifies reuse.
+- WEB4 defines read-only display data contracts for heartbeat/status, Perakam/browser/session status, network/captive portal status, schedule, completion/verification, warnings/events, and sync capability/status.
 - Future web controls require later approval and must go through the Supabase/Edge Function/API control-plane boundary.
 - The default repo plan is same-repo under a future isolated `webapp/` boundary, with separate repo still available if deployment/build complexity or secret-boundary risk grows.
 - Android/mobile use should be browser/PWA-based, not Electron.

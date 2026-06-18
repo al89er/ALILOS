@@ -212,6 +212,357 @@ Safety/security boundaries:
 - No Perakam/Fortinet credential handling in the web companion.
 - No bypass of the desktop manual-confirm safety model.
 
+## WEB4 Read-Only Data Contracts
+
+WEB4 is docs-only. It defines display contracts for future authenticated read-only web/PWA views. It does not create webapp code, runtime sync, migrations, writes, command/control, or unattended execution paths.
+
+All examples below are fake, non-sensitive, and display-safe.
+
+### Desktop/Device Heartbeat Status
+
+Purpose: show whether the desktop app is recently online and which coarse app state it last reported.
+
+Source: `devices` plus latest-row `heartbeats`, or a future read-only summary API.
+
+Minimum fields:
+
+- `device_id`
+- `display_name`
+- `last_seen_at`
+- `app_status`
+- `execution_mode`
+- `sync_status`
+
+Optional fields:
+
+- `app_version`
+- `platform`
+- `status_text`
+- `last_error_text`
+
+Stale/missing behavior:
+
+- Fresh heartbeat means "Desktop online."
+- Stale heartbeat means "Desktop status is stale or unreachable. Check the desktop app."
+- Missing heartbeat means "Desktop unreachable. No recent heartbeat is available."
+
+Sanitization:
+
+- No machine username, hostname, staff identity, config paths, raw logs, full URLs, credentials, tokens, or secrets.
+
+Exists now: schema exists for `devices` and `heartbeats`; runtime heartbeat writes remain disabled/deferred.
+
+Example:
+
+```json
+{
+  "device_id": "device-demo-001",
+  "display_name": "Home desktop",
+  "last_seen_at": "2026-06-18T09:15:00Z",
+  "app_status": "running",
+  "execution_mode": "manual-confirm",
+  "sync_status": "heartbeat-only",
+  "status_text": "Desktop online."
+}
+```
+
+### Perakam/Browser/Session Status
+
+Purpose: show the desktop-observed Perakam/browser/session state without exposing the browser session.
+
+Source: current heartbeat payload fields or future read-only status summary API.
+
+Minimum fields:
+
+- `device_id`
+- `perakam_status`
+- `browser_status`
+- `checked_at`
+
+Optional fields:
+
+- `sanitized_reason`
+- `control_availability`
+
+Stale/missing behavior:
+
+- Missing or stale data shows "Perakam status unavailable. Check the desktop app."
+- Session issue shows "Perakam login/session issue. Resolve on the desktop."
+
+Sanitization:
+
+- No Perakam credentials, cookies, raw HTML, screenshots, staff identity, full URLs, tokenized query strings, or opaque `link=` values.
+
+Exists now: desktop can observe these states locally; web-readable sync is future/deferred.
+
+Example:
+
+```json
+{
+  "device_id": "device-demo-001",
+  "perakam_status": "login-required",
+  "browser_status": "running",
+  "checked_at": "2026-06-18T09:14:30Z",
+  "sanitized_reason": "Desktop reports login/session issue."
+}
+```
+
+### Network/Captive Portal Status
+
+Purpose: show desktop-observed network and captive portal status.
+
+Source: heartbeat payload fields or future read-only status summary API.
+
+Minimum fields:
+
+- `device_id`
+- `network_status`
+- `captive_portal_status`
+- `checked_at`
+
+Optional fields:
+
+- `confidence`
+- `sanitized_reason`
+
+Stale/missing behavior:
+
+- Missing data shows "Network status unavailable."
+- Captive portal detected/possible should be a high-priority warning.
+
+Sanitization:
+
+- No portal form data, Fortinet credentials, full portal URLs, tokenized query strings, `magic`, `4Tredir`, opaque `link=` values, raw HTML, screenshots, or cookies.
+
+Exists now: desktop can observe these states locally; web-readable sync is future/deferred.
+
+Example:
+
+```json
+{
+  "device_id": "device-demo-001",
+  "network_status": "online",
+  "captive_portal_status": "not-detected",
+  "checked_at": "2026-06-18T09:14:00Z",
+  "sanitized_reason": "No captive portal detected."
+}
+```
+
+### Daily Schedule Display
+
+Purpose: show desktop-generated schedule rows after schedule sync exists.
+
+Source: `daily_schedules` or a future read-only schedule summary API.
+
+Minimum fields:
+
+- `device_id`
+- `schedule_date`
+- `action_key`
+- `target_time_local`
+- `status`
+
+Optional fields:
+
+- `window_start_local`
+- `window_end_local`
+- `source`
+- `updated_at`
+
+Stale/missing behavior:
+
+- Missing data shows "Schedule unavailable. The desktop may still have a local schedule."
+- Sync disabled shows "Schedule sync deferred."
+- Missing schedule data must never imply an action is due or safe.
+
+Sanitization:
+
+- No staff identity, credentials, browser state, URLs, raw page content, screenshots, or command intent.
+
+Exists now: schema exists; runtime schedule sync remains disabled/deferred.
+
+Example:
+
+```json
+{
+  "device_id": "device-demo-001",
+  "schedule_date": "2026-06-18",
+  "action_key": "clock-in",
+  "target_time_local": "08:05",
+  "window_start_local": "08:00",
+  "window_end_local": "08:10",
+  "status": "active",
+  "source": "local-generated"
+}
+```
+
+### Completion/Verification Display
+
+Purpose: show desktop-synced completion and verification state after completion sync exists.
+
+Source: `completion_records` or a future read-only completion summary API.
+
+Minimum fields:
+
+- `device_id`
+- `action_date`
+- `action_key`
+- `state`
+- `verification_state`
+
+Optional fields:
+
+- `sanitized_reason`
+- `attempted_at`
+- `verified_at`
+- `updated_at`
+
+Stale/missing behavior:
+
+- Missing data shows "Completion state unavailable or unknown. Check desktop before retrying."
+- `verification-unknown` or `verification-failed` must warn the user to check the desktop.
+- Missing completion data must never imply action readiness.
+
+Sanitization:
+
+- No confirmation ids if they reveal implementation details, no target DOM ids, no URLs, no raw page evidence, no screenshots, no staff identity, no credentials, no cookies.
+
+Exists now: schema exists; runtime completion sync remains disabled/deferred.
+
+Example:
+
+```json
+{
+  "device_id": "device-demo-001",
+  "action_date": "2026-06-18",
+  "action_key": "clock-out",
+  "state": "verification-unknown",
+  "verification_state": "verification-unknown",
+  "sanitized_reason": "Desktop could not verify completion; check desktop.",
+  "attempted_at": "2026-06-18T09:10:00Z"
+}
+```
+
+### Warnings/Events Display
+
+Purpose: show prioritized read-only warnings derived from sanitized synced state.
+
+Source: future read-only summary API; optionally derived client-side from heartbeat/schedule/completion records.
+
+Minimum fields:
+
+- `warning_id`
+- `device_id`
+- `severity`
+- `type`
+- `message`
+- `created_at`
+
+Optional fields:
+
+- `related_action_key`
+- `related_date`
+- `source`
+
+Stale/missing behavior:
+
+- Missing warning data should not hide stale heartbeat, sync disabled, or completion unknown warnings if those can be derived from other data.
+
+Sanitization:
+
+- Short sanitized messages only. No raw logs, raw HTML, screenshots, URLs, tokens, credentials, staff identity, or opaque external values.
+
+Exists now: future/deferred.
+
+Example:
+
+```json
+{
+  "warning_id": "warning-demo-001",
+  "device_id": "device-demo-001",
+  "severity": "warning",
+  "type": "desktop-stale",
+  "message": "Desktop status is stale. Check the desktop app.",
+  "created_at": "2026-06-18T09:30:00Z"
+}
+```
+
+### Sync Capability/Status
+
+Purpose: explain which data groups are available, disabled, partial, stale, or deferred.
+
+Source: future read-only summary API derived from configuration and latest synced rows.
+
+Minimum fields:
+
+- `device_id`
+- `heartbeat_sync`
+- `schedule_sync`
+- `completion_sync`
+- `last_success_at`
+
+Optional fields:
+
+- `summary`
+- `deferred_reason`
+
+Stale/missing behavior:
+
+- Missing sync status shows "Sync disabled or deferred. Local desktop state remains the source of truth."
+
+Sanitization:
+
+- No endpoint URLs, keys, tokens, project refs unless explicitly approved as non-sensitive display metadata.
+
+Exists now: future/deferred.
+
+Example:
+
+```json
+{
+  "device_id": "device-demo-001",
+  "heartbeat_sync": "disabled",
+  "schedule_sync": "deferred",
+  "completion_sync": "deferred",
+  "last_success_at": null,
+  "summary": "Sync disabled or deferred."
+}
+```
+
+### Stale/Offline Logic
+
+- Heartbeat fresh means desktop online.
+- Heartbeat stale means desktop stale/unreachable.
+- Schedule missing means show "Schedule unavailable."
+- Completion missing means show "Completion unknown."
+- Sync disabled means show "Sync disabled/deferred."
+- Missing web data must never imply action readiness, action due state, or permission to retry.
+
+### Read-Only Access Model
+
+- Future authenticated web users may read only their paired device summaries.
+- Direct write access remains closed.
+- Future writes go through the S3D Edge Function/API proxy plus device pairing/token.
+- Service-role keys remain server-side only.
+- Desktop remains the local source of truth.
+- Read policies/API responses must be least-privilege and must not authorize from user-editable metadata.
+
+### WEB4 Contract Boundaries
+
+- Web companion may display state.
+- Web companion may not trigger Perakam or Fortinet actions.
+- No command queue in WEB4.
+- No skip/unskip, mode switch, refresh command, or confirmation controls in WEB4.
+- No unattended execution pathway.
+
+### Future Contract Dependencies
+
+- Heartbeat runtime write enablement.
+- Schedule/completion runtime sync skeleton.
+- Edge Function/API contract.
+- Authenticated read model and RLS policy design.
+- Supervised command queue design only after explicit approval.
+
 ## Data Dependencies
 
 Existing/planned data sources:

@@ -344,6 +344,21 @@ Rollout phases:
 7. Recovery testing.
 8. No unattended execution approval unless explicitly decided later.
 
+## WEB4 Read-Only Web Companion Contracts
+
+`docs/WEB_COMPANION_PLAN.md` defines the read-only data contracts for future web/PWA display. The contracts cover desktop/device heartbeat status, Perakam/browser/session status, network/captive portal status, daily schedule display, completion/verification display, warnings/events, and sync capability/status.
+
+The contracts are display-only. They do not approve runtime sync, webapp code, direct writes, command/control, or unattended execution.
+
+Security defaults:
+
+- Authenticated web users may read only paired device summaries in a future read model.
+- Direct write access remains closed.
+- Future writes go through the S3D Edge Function/API proxy plus device pairing/token.
+- Service-role keys remain server-side only.
+- Desktop remains the local source of truth.
+- Missing web data must never imply action readiness.
+
 ## S2B Runtime Skeleton Status
 
 The desktop app has a config-gated Supabase heartbeat sender skeleton. It is disabled by default, and local scheduling continues normally when Supabase is disabled, missing config, or unreachable.

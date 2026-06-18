@@ -146,6 +146,7 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 - WEB1 web/PWA companion planning is documented in `docs/WEB_COMPANION_PLAN.md`.
 - WEB2 static/read-only web companion UI design is documented in `docs/WEB_COMPANION_PLAN.md`.
 - WEB3 legacy webapp relationship is documented in `docs/WEB_COMPANION_PLAN.md`.
+- WEB4 read-only web companion data contracts are documented in `docs/WEB_COMPANION_PLAN.md`.
 - Heartbeat remains disabled by default.
 - Real Supabase writes are deferred until the auth/pairing/write-path decision is made.
 
@@ -239,7 +240,7 @@ Operational notes after W validation:
 
 - O1 operational readiness guidance lives in `docs/OPERATIONAL_READINESS.md`. Treat it as the current release-candidate checklist before monitored local use.
 - O3 real-machine observation passed for packaged launch, scripted window hide/show, clean quit, sanitized logs, launch-at-login disabled, and completion records `0`. Visual tray-menu click verification, real sign-in/reboot launch-at-login, and full sleep/wake suspend-resume remain pending.
-- O4 consolidated the O track as mostly complete. Monitored `manual-confirm`, `dry-run`, and `notify-only` local use are acceptable; fully unattended real execution remains no-go. Next work should be RC observation tasks, S3E Edge Function/API contract planning, or WEB4 authenticated read-only web companion status planning only after explicit approval.
+- O4 consolidated the O track as mostly complete. Monitored `manual-confirm`, `dry-run`, and `notify-only` local use are acceptable; fully unattended real execution remains no-go. Next work should be RC observation tasks, S3E Edge Function/API contract planning, or WEB5 authenticated read model/RLS planning only after explicit approval.
 - Local Perakam auto-login is enabled on the test machine and succeeded during W4/W5 without credential-value logging. Intentionally decide whether it should be enabled or disabled before future tests.
 - Fully unattended real attendance action is not approved or validated.
 - Supabase heartbeat/write path remains disabled/deferred; do not start S3 schedule/completion runtime sync without explicit approval.
@@ -343,6 +344,9 @@ Stop conditions:
 - WEB2 remains read-only: no credential inputs, Perakam/Fortinet forms, attendance triggers, command buttons, mode switches, refresh commands, skip/unskip controls, or confirmation controls.
 - WEB3 treats `al89er/perakamwaktu` as legacy/current webapp fallback/reference only. Do not clone, merge, copy code, copy secrets/config, or disturb any production/backup deployment unless a future task explicitly approves a sanitized reference review.
 - Prefer rebuilding the ALILOS web companion or using an isolated future `webapp/` boundary. Compare legacy behavior later using sanitized screenshots or written summaries only.
+- WEB4 data contracts are read-only and display-safe. They cover desktop/device heartbeat, Perakam/browser/session, network/captive portal, daily schedule, completion/verification, warnings/events, and sync capability/status.
+- WEB4 sample payloads must stay fake and non-sensitive. Missing web data must show unavailable/unknown/deferred states and must never imply action readiness.
+- WEB4 does not add command queue, skip/unskip, mode switch, refresh command, confirmation control, runtime sync, or authenticated read/RLS implementation.
 
 ## Avoiding Accidental Real Actions
 
