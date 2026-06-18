@@ -6,9 +6,8 @@
 - Run `npm run build` before manual app testing or packaging work.
 - Manually smoke test dashboard startup with `npm run dev`.
 - Manually smoke test tab switching across Overview, Schedule, Actions, Browser / Site, Network, Telegram, Logs, and Settings.
-- Verify configured-site detection manually on the intended workplace network when access is available, without creating a real-action confirmation unless intentionally testing during the correct real action window.
-- Keep live Perakam target-detection smoke testing marked pending while only home/outside-workplace network access is available.
-- Begin the W workplace validation track next: Perakam detection, Fortinet portal detection, scheduled dry-run, and sanitized logs on the intended network.
+- W2 workplace Perakam detection passed in packaged `manual-confirm` mode; do not repeat unless Perakam changes or a regression is suspected.
+- Continue with W3 Fortinet captive portal live detection when the portal is present or can be safely triggered.
 - Keep `docs/PHASE_4D_MANUAL_CONFIRM_DESIGN.md` as historical design context, but update or supersede stale sections before relying on it for current behavior.
 - For Phase 6A dry-run testing, set `automation.executionMode` to `dry-run` only in local config and confirm that due actions are simulated, not clicked.
 
@@ -25,7 +24,7 @@ Current Supabase status:
 
 Desktop operational blockers:
 
-- Workplace Perakam smoke test pending.
+- W2 workplace Perakam smoke passed; dashboard and primary target detection are validated on the intended network.
 - Scheduled dry-run pending.
 - P packaging/startup local smoke testing passed for the unpacked Windows app.
 - Real Windows sign-in/reboot launch-at-login behavior, sleep/wake behavior, and locked-session behavior remain pending.
@@ -96,10 +95,10 @@ Recommended next major track:
 ### Workplace Smoke-Test Checklist
 
 - Run from the workplace/hospital network.
-- Verify Perakam login detection.
-- Verify Perakam dashboard detection.
-- Verify visible `a50` / `a51` target availability.
-- Verify hidden sidebar candidates are ignored.
+- W2 passed: Perakam login detection.
+- W2 passed: Perakam dashboard detection.
+- W2 passed: visible `a50` / `a51` target availability.
+- W2 passed: hidden sidebar candidates are ignored.
 - Verify manual-confirm and dry-run behavior.
 - Verify no duplicate action after a local completion record exists.
 - Verify logs contain sanitized status only.
@@ -107,7 +106,7 @@ Recommended next major track:
 ### W Workplace Validation Track
 
 - W1 workplace validation plan: document the safe checklist, evidence to collect, and stop conditions before live workplace testing.
-- W2 manual workplace browser/login/button detection smoke: run on the workplace network and verify Perakam login state, dashboard state, visible `a50`/`a51`, hidden-sidebar filtering, Browser / Site status, network monitor state, and sanitized logs.
+- W2 manual workplace browser/login/button detection smoke: passed with packaged `ALILOS.exe` in `manual-confirm`; no real action, confirmation, execution, or completion record was created.
 - W3 Fortinet captive portal live detection smoke: if the portal appears, verify detection-only behavior for `authupm.upm.edu.my` on dynamic ports, safe captive-portal reason text, and absence of full tokenized portal paths/query strings in logs.
 - W4 scheduled dry-run/manual-confirm test: keep `dry-run` or `manual-confirm`, verify scheduler state, generated times, due-action audit events, missed-action grace, duplicate prevention, and no unattended real click.
 - W5 sleep/wake/locked-session observation: observe packaged resident behavior, tray recovery, network monitor state, scheduler state, and logs after sleep/wake and locked-session transitions; keep launch-at-login disabled unless intentionally testing it.
