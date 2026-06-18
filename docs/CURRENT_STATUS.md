@@ -138,6 +138,7 @@ The active implementation focus appears to be hardening the guarded manual-confi
 - P packaging/startup track is mostly complete after P12 local validation; remaining release risks are optional installer/signing, real Windows sign-in/reboot testing, and full sleep/wake testing.
 - Local Perakam auto-login is enabled on the test machine and succeeded during W4/W5 without credential-value logging. Treat it as an operational setting to intentionally enable, disable, or document before future workplace tests.
 - Next recommended major track: O operational readiness / release-candidate checklist. S3 Supabase schedule/completion sync planning remains a later option only after explicit approval.
+- O1 operational readiness checklist is documented in `docs/OPERATIONAL_READINESS.md`: monitored `manual-confirm`/`dry-run` local use is acceptable; fully unattended real execution remains no-go.
 
 ## W Workplace Validation Track
 

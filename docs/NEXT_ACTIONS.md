@@ -11,7 +11,8 @@
 - W4 scheduled dry-run/manual-confirm validation passed in packaged `dry-run` mode.
 - W5 lock/idle observation passed; full sleep/wake suspend/resume remains pending.
 - W6 workplace validation consolidation is complete; W track is mostly complete.
-- Continue with O operational readiness / release-candidate checklist unless S3 Supabase schedule/completion sync planning is explicitly approved.
+- O1 operational readiness checklist is documented in `docs/OPERATIONAL_READINESS.md`.
+- Continue with O-track release-candidate checks unless S3 Supabase schedule/completion sync planning is explicitly approved.
 - Keep `docs/PHASE_4D_MANUAL_CONFIRM_DESIGN.md` as historical design context, but update or supersede stale sections before relying on it for current behavior.
 - For Phase 6A dry-run testing, set `automation.executionMode` to `dry-run` only in local config and confirm that due actions are simulated, not clicked.
 
@@ -41,7 +42,7 @@ Before unattended daily use:
 
 Recommended next major track:
 
-- O operational readiness / release-candidate checklist. S3 Supabase schedule/completion sync planning remains a later option only after explicit approval.
+- O operational readiness / release-candidate checks using `docs/OPERATIONAL_READINESS.md`. S3 Supabase schedule/completion sync planning remains a later option only after explicit approval.
 
 ## Suggested Next Implementation Phase
 

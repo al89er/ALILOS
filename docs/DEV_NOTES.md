@@ -231,6 +231,7 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 
 Operational notes after W validation:
 
+- O1 operational readiness guidance lives in `docs/OPERATIONAL_READINESS.md`. Treat it as the current release-candidate checklist before monitored local use.
 - Local Perakam auto-login is enabled on the test machine and succeeded during W4/W5 without credential-value logging. Intentionally decide whether it should be enabled or disabled before future tests.
 - Fully unattended real attendance action is not approved or validated.
 - Supabase heartbeat/write path remains disabled/deferred; do not start S3 schedule/completion sync without explicit approval.
