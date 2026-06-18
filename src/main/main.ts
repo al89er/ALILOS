@@ -653,7 +653,7 @@ function applyLaunchAtLoginSetting(source: "startup" | "settings"): void {
   });
 
   const effective = launchAtLoginSettingsSnapshot();
-  logger.info(`Launch-at-login ${source} setting applied. Saved: ${config.startup.launchAtLogin ? "enabled" : "disabled"}. Effective: ${effective.openAtLogin ? "enabled" : "disabled"}.`);
+  logger.info(`Launch-at-login setting applied from ${source}. Saved: ${config.startup.launchAtLogin ? "enabled" : "disabled"}. Effective: ${effective.openAtLogin ? "enabled" : "disabled"}.`);
 }
 
 function launchAtLoginSettingsSnapshot(): Electron.LoginItemSettings {
