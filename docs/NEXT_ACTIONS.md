@@ -301,7 +301,8 @@ S3B schema status:
 
 - `supabase/migrations/20260618215953_s3b_schedule_completion_schema.sql` creates `daily_schedules` and `completion_records`.
 - Both tables use per-device/date/action uniqueness for duplicate prevention.
-- `completion_records.dedupe_key` is stored rather than generated; the tuple unique constraint is the authoritative duplicate key because generated date-to-text keys can be formatting-sensitive.
+- `completion_records.dedupe_key` is optional supporting metadata rather than a generated or authoritative duplicate key; the tuple unique constraint is authoritative because generated date-to-text keys can be formatting-sensitive.
+- Future completion-state additions require a deliberate schema-constraint migration before runtime sync writes those states.
 - RLS is enabled on both tables and direct `anon` / `authenticated` privileges are revoked.
 - No table policies, Edge Functions, runtime writes, dependencies, `.env.local`, secrets, command/control, or unattended real execution are added.
 

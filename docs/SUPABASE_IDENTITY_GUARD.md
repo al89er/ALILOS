@@ -129,12 +129,12 @@ Proposed fields:
 - `completed_at`: timestamp from the desktop agent.
 - `completion_source`: `local`, `manual-confirm`, `dry-run`, `telegram-fallback`, or future approved source.
 - `result_code`: short sanitized outcome.
-- `dedupe_key`: deterministic key from `device_id`, `action_date`, and `action_key`.
+- `dedupe_key`: optional deterministic supporting key from `device_id`, `action_date`, and `action_key`.
 - `local_record_hash`: optional hash of the local completion record for reconciliation.
 
 Suggested uniqueness:
 
-- Unique on `(device_id, action_date, action_key)` or on `dedupe_key`.
+- Unique on `(device_id, action_date, action_key)`. Treat `dedupe_key` as supporting metadata, not the authoritative duplicate key.
 - If audit history or corrections are needed, add an append-only history/correction table later rather than making the duplicate-prevention table harder to query.
 
 ### Deferred `command_queue`
@@ -194,8 +194,8 @@ Conceptual `daily_schedules` model:
 
 Conceptual `completion_records` model:
 
-- Key: one sanitized row per `device_id`, `action_date`, and `action_key`, or an equivalent deterministic `dedupe_key`.
-- Fields: `id`, `device_id`, `action_date`, `action_key`, `completed_at`, `completion_source`, `result_code`, `dedupe_key`, optional `local_record_hash`, `created_at`, and `updated_at`.
+- Key: one sanitized row per `device_id`, `action_date`, and `action_key`, with optional deterministic `dedupe_key` as supporting metadata.
+- Fields: `id`, `device_id`, `action_date`, `action_key`, `completed_at`, `completion_source`, `result_code`, optional `dedupe_key`, optional `local_record_hash`, `created_at`, and `updated_at`.
 - Allowed payload shape: sanitized completion/skip outcome, source, timestamp, result code, and reconciliation hashes. Do not include staff identity, confirmation UI details that reveal private implementation, credentials, cookies, raw HTML, screenshots, full URLs, query strings, or `link=` values.
 
 Recovery order:
@@ -277,7 +277,8 @@ Constraint summary:
 - `daily_schedules.status` allows `active`, `skipped`, `superseded`, and `archived`.
 - `completion_records.state` matches the current `AttendanceCompletionState` values.
 - `completion_records.verification_state` matches the current verification status values when present.
-- `completion_records.dedupe_key` is stored, not generated. The tuple unique constraint remains authoritative because generated date-to-text keys can be sensitive to PostgreSQL date formatting settings.
+- `completion_records.dedupe_key` is optional stored supporting metadata, not generated and not authoritative. The tuple unique constraint remains authoritative because generated date-to-text keys can be sensitive to PostgreSQL date formatting settings.
+- Future completion-state additions must update the schema constraint deliberately before any runtime sync writes those states.
 
 RLS is enabled on both S3B tables. No broad public policies are added. Direct table privileges are revoked from `anon` and `authenticated`, matching the conservative S2A posture until device pairing/write-path authorization is approved.
 

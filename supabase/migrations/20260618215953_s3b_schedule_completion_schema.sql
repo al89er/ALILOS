@@ -42,7 +42,7 @@ create table public.completion_records (
   device_id text not null,
   action_date date not null,
   action_key text not null,
-  dedupe_key text not null,
+  dedupe_key text,
   state text not null,
   verification_state text,
   sanitized_reason text,
@@ -52,7 +52,7 @@ create table public.completion_records (
   updated_at timestamp with time zone not null default now(),
   constraint completion_records_device_id_length check (char_length(device_id) between 1 and 80),
   constraint completion_records_action_key_check check (action_key in ('clock-in', 'clock-out')),
-  constraint completion_records_dedupe_key_length check (char_length(dedupe_key) between 1 and 220),
+  constraint completion_records_dedupe_key_length check (dedupe_key is null or char_length(dedupe_key) between 1 and 220),
   constraint completion_records_state_check check (
     state in (
       'not-attempted',
@@ -86,7 +86,7 @@ comment on column public.completion_records.device_id is
 comment on column public.completion_records.action_key is
   'Sanitized app action key. Current allowed values are clock-in and clock-out; do not store DOM target ids, staff identity, URLs, or site payloads.';
 comment on column public.completion_records.dedupe_key is
-  'Stored deterministic key supplied by the future write path, expected to derive from device_id, action_date, and action_key. It is not generated here because date-to-text generated expressions can be DateStyle-sensitive; the tuple unique constraint is authoritative.';
+  'Optional stored deterministic key supplied by a future write path when useful. If present, it should derive from device_id, action_date, and action_key. It is not generated here because date-to-text generated expressions can be DateStyle-sensitive; the tuple unique constraint is authoritative.';
 comment on column public.completion_records.sanitized_reason is
   'Short sanitized reason/result text only. No credentials, cookies, raw HTML, screenshots, staff identity, Telegram secrets, full URLs, tokenized query strings, or opaque link values.';
 

@@ -315,7 +315,8 @@ Stop conditions:
 - Do not place a service role key in desktop, renderer, user-editable config, or desktop `.env.local`.
 - `supabase/migrations/20260618215953_s3b_schedule_completion_schema.sql` adds `daily_schedules` and `completion_records` only. It enables RLS and revokes direct `anon` / `authenticated` privileges, but adds no broad table policies.
 - Current allowed action keys are `clock-in` and `clock-out`. Current completion states are the `AttendanceCompletionState` values from `src/shared/types.ts`.
-- `completion_records.dedupe_key` is stored rather than generated; the future write path must compute it consistently, while the `(device_id, action_date, action_key)` unique constraint remains authoritative.
+- `completion_records.dedupe_key` is optional supporting metadata rather than a generated or authoritative duplicate key; the `(device_id, action_date, action_key)` unique constraint remains authoritative.
+- Future `AttendanceCompletionState` additions require a deliberate schema-constraint migration before runtime sync writes those states.
 - Open decisions before implementation: direct RLS vs Edge Function/API proxy vs device-token pairing, upsert latest row vs append-only audit, user confirmation on disagreement, and whether S3 waits for heartbeat write-path approval.
 
 ## Avoiding Accidental Real Actions
