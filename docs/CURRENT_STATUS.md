@@ -81,6 +81,7 @@ The active implementation focus appears to be hardening the guarded manual-confi
 - Run `npm run package:win` and verify `release/win-unpacked` exists.
 - Launch `release/win-unpacked/ALILOS.exe`.
 - Confirm the app opens, the tray icon/menu works, close hides to tray, and Quit exits.
+- Confirm the packaged app and tray use the project-owned ALILOS icon rather than the default Electron icon.
 - Confirm config and logs use packaged Electron `userData`, not repository folders.
 - Packaged Windows app internals use `ALILOS`; older smoke-test config/logs may remain under the old trailing-dot `A.L.I.L.O.S.` userData folder and can be manually removed after confirming the new app works.
 - Confirm local dev secrets are not bundled, and `.env.local` is not packaged.

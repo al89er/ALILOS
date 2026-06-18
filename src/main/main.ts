@@ -44,6 +44,10 @@ if (!hasSingleInstanceLock) {
   app.quit();
 }
 
+function appIconPath(): string {
+  return path.join(app.getAppPath(), "assets", "app-icon.ico");
+}
+
 function createWindow(): BrowserWindow {
   const window = new BrowserWindow({
     width: 1080,
@@ -51,6 +55,7 @@ function createWindow(): BrowserWindow {
     minWidth: 760,
     minHeight: 560,
     title: "A.L.I.L.O.S.",
+    icon: appIconPath(),
     backgroundColor: "#f5f7fb",
     webPreferences: {
       preload: path.join(__dirname, "..", "preload", "preload.js"),
@@ -233,7 +238,7 @@ app.whenReady().then(() => {
   );
 
   mainWindow = createWindow();
-  appTray = createAppTray(mainWindow);
+  appTray = createAppTray(mainWindow, appIconPath());
 
   logger.info("A.L.I.L.O.S. Phase 1 app started.");
   worker.on("updated", broadcastSnapshot);

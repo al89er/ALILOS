@@ -174,6 +174,7 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 - Run `npm run package:win` and verify `release/win-unpacked` exists.
 - Launch `release/win-unpacked/ALILOS.exe`.
 - Confirm the app opens, the tray icon/menu works, close hides to tray, and Quit exits.
+- Confirm the packaged app and tray use the project-owned ALILOS icon rather than the default Electron icon.
 - Confirm config and logs use packaged Electron `userData`, not repository folders.
 - Packaged Windows app internals use `ALILOS`; older smoke-test config/logs may remain under the old trailing-dot `A.L.I.L.O.S.` userData folder and can be manually removed after confirming the new app works.
 - Confirm existing local dev secrets are not bundled, and `.env.local` is not packaged.
@@ -188,7 +189,7 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 - Keep mode as `dry-run` or `manual-confirm`.
 - Do not perform an unattended real scheduled action.
 - Do not store or send sensitive data.
-- Known remaining concerns: default Electron icon, Playwright browser binary handling, launch-at-login not implemented, installer not implemented, and the high-severity npm advisory requires separate review rather than automatic fix.
+- Known remaining concerns: Playwright browser binary handling, launch-at-login not implemented, installer not implemented, and the high-severity npm advisory requires separate review rather than automatic fix.
 
 ## Packaging / Startup Audit
 

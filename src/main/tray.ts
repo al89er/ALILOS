@@ -1,7 +1,7 @@
 import { app, BrowserWindow, Menu, nativeImage, Tray } from "electron";
 
-export function createAppTray(mainWindow: BrowserWindow): Tray {
-  const icon = nativeImage.createEmpty();
+export function createAppTray(mainWindow: BrowserWindow, iconPath: string): Tray {
+  const icon = nativeImage.createFromPath(iconPath);
   const tray = new Tray(icon);
 
   tray.setToolTip("A.L.I.L.O.S. Web Action Assistant");

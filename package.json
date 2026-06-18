@@ -30,10 +30,12 @@
     },
     "files": [
       "dist/**/*",
+      "assets/**/*",
       "package.json",
       "node_modules/**/*"
     ],
     "win": {
+      "icon": "assets/app-icon.ico",
       "target": [
         "dir"
       ]
