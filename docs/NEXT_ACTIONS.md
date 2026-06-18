@@ -12,6 +12,7 @@
 - W5 lock/idle observation passed; full sleep/wake suspend/resume remains pending.
 - W6 workplace validation consolidation is complete; W track is mostly complete.
 - O1 operational readiness checklist is documented in `docs/OPERATIONAL_READINESS.md`.
+- O3 real-machine observation passed for packaged launch, scripted hide/show, clean quit, sanitized logs, launch-at-login disabled, and completion records `0`.
 - Continue with O-track release-candidate checks unless S3 Supabase schedule/completion sync planning is explicitly approved.
 - Keep `docs/PHASE_4D_MANUAL_CONFIRM_DESIGN.md` as historical design context, but update or supersede stale sections before relying on it for current behavior.
 - For Phase 6A dry-run testing, set `automation.executionMode` to `dry-run` only in local config and confirm that due actions are simulated, not clicked.
@@ -32,7 +33,7 @@ Desktop operational blockers:
 - W workplace validation is mostly complete: W2 Perakam smoke, W3 no-live-portal Fortinet smoke, W4 scheduled dry-run, and W5 lock/idle observation passed with packaged `ALILOS.exe`.
 - Local Perakam auto-login is enabled on the test machine and succeeded during W4/W5 without credential-value logging; intentionally control this setting in future tests.
 - P packaging/startup local smoke testing passed for the unpacked Windows app.
-- Remaining release risks: full sleep/wake suspend-resume, real Windows sign-in/reboot launch-at-login, visual tray-menu verification, live Fortinet portal marker validation, real scheduled manual-confirm at an actual clock-in/out time, and any fully unattended real action remain unvalidated.
+- Remaining release risks: full sleep/wake suspend-resume, real Windows sign-in/reboot launch-at-login, visual tray-menu click verification, live Fortinet portal marker validation, real scheduled manual-confirm at an actual clock-in/out time, and any fully unattended real action remain unvalidated.
 
 Before unattended daily use:
 

@@ -13,6 +13,7 @@ This checklist is for safe local Windows desktop use after the P packaging/start
 - Fortinet captive portal detection has a safe no-live-portal workplace baseline; live portal marker validation remains conditional on the portal appearing.
 - Scheduled workplace dry-run path passed with `schedule-due`, page preparation, `a51` detection, simulated-only dry-run, and explicit confirmation requirement.
 - Lock/idle observation passed. Full sleep/wake suspend-resume remains pending.
+- O3 real-machine observation passed for packaged launch, scripted window hide/show, clean quit, sanitized logs, launch-at-login disabled, and completion records unchanged. Visual tray-menu verification, real sign-in/reboot launch-at-login, and full sleep/wake suspend-resume remain pending.
 - No real action was attempted in W validation. Completion records stayed `0`.
 - Checked logs remained sanitized.
 - Supabase heartbeat skeleton exists but remains disabled/deferred.
@@ -124,6 +125,20 @@ This checklist is for safe local Windows desktop use after the P packaging/start
 - Fully unattended real action remains not approved and not validated.
 - Installer and signing remain optional release decisions.
 - Supabase schedule/completion sync remains deferred until explicit S3 approval.
+
+## O3 Real-Machine Observation
+
+- Packaged `release/win-unpacked/ALILOS.exe` launched successfully on the real Windows machine.
+- Execution mode observed: `manual-confirm`.
+- Launch-at-login observed final state: disabled.
+- Local Perakam auto-login observed: enabled with shared local credential; credential values were not exposed.
+- Network Monitor observed: active, internet `online`, Perakam reachability `login-required`, captive portal `not-detected`.
+- Scheduler observed: both actions were already missed for the day; no due action was executed.
+- Scripted window hide/show IPC completed and the app quit cleanly.
+- Quit result: no `ALILOS` process remained.
+- Completion records remained `0`.
+- Sanitized log review found no checked credential, cookie, raw HTML, full tokenized URL, or `link=` patterns.
+- Not performed: visual tray-menu click verification, real Windows sign-in/reboot launch-at-login, and sleep/wake suspend-resume.
 
 ## Go / No-Go
 
