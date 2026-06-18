@@ -9,7 +9,8 @@
 - W2 workplace Perakam detection passed in packaged `manual-confirm` mode; do not repeat unless Perakam changes or a regression is suspected.
 - W3 Fortinet live smoke passed for the no-live-portal case; repeat only if the portal appears or can be safely triggered without submitting a login form.
 - W4 scheduled dry-run/manual-confirm validation passed in packaged `dry-run` mode.
-- Continue with W5 sleep/wake/locked-session observation.
+- W5 lock/idle observation passed; full sleep/wake suspend/resume remains pending.
+- Continue with W6 workplace validation consolidation.
 - Keep `docs/PHASE_4D_MANUAL_CONFIRM_DESIGN.md` as historical design context, but update or supersede stale sections before relying on it for current behavior.
 - For Phase 6A dry-run testing, set `automation.executionMode` to `dry-run` only in local config and confirm that due actions are simulated, not clicked.
 
@@ -30,7 +31,7 @@ Desktop operational blockers:
 - W3 Fortinet smoke passed for no-live-portal state; live portal-marker validation remains conditional on the portal appearing.
 - W4 scheduled dry-run passed; no real execution or completion record was created.
 - P packaging/startup local smoke testing passed for the unpacked Windows app.
-- Real Windows sign-in/reboot launch-at-login behavior, sleep/wake behavior, and locked-session behavior remain pending.
+- Real Windows sign-in/reboot launch-at-login behavior and full sleep/wake suspend/resume behavior remain pending.
 
 Before unattended daily use:
 
@@ -112,7 +113,7 @@ Recommended next major track:
 - W2 manual workplace browser/login/button detection smoke: passed with packaged `ALILOS.exe` in `manual-confirm`; no real action, confirmation, execution, or completion record was created.
 - W3 Fortinet captive portal live detection smoke: passed for the no-live-portal case with captive portal `not-detected`, host `none`, and evidence `none`. If a Fortinet portal appears later, repeat detection-only checks for safe `authupm.upm.edu.my` dynamic-port evidence and no full tokenized portal paths/query strings in logs.
 - W4 scheduled dry-run/manual-confirm test: passed with a temporary local-only evening schedule change in packaged `dry-run` mode. Observed `schedule-due`, `page-prepared`, `candidate-detected`, `dry-run-action-simulated`, and `confirmation-required`; original config was restored and completion count stayed zero.
-- W5 sleep/wake/locked-session observation: observe packaged resident behavior, tray recovery, network monitor state, scheduler state, and logs after sleep/wake and locked-session transitions; keep launch-at-login disabled unless intentionally testing it.
+- W5 sleep/wake/locked-session observation: lock and idle observation passed with packaged `ALILOS.exe`, temporary `dry-run`, launch-at-login disabled, and local Perakam auto-login enabled. Network, scheduler, browser, and dashboard state stayed stable; no execution or completion record was created. Full sleep/wake suspend/resume and visual tray-menu verification remain pending.
 - W6 workplace validation consolidation: summarize evidence, remaining release risks, and whether optional installer/signing or more workplace testing is needed.
 
 W-track safety defaults:
