@@ -147,7 +147,7 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 
 - W2 workplace Perakam smoke passed with packaged `ALILOS.exe` in `manual-confirm` mode. Login-required state and dashboard state were detected, `a50` and `a51` were available from visible dashboard candidates, hidden sidebar duplicates were ignored, and no completion record or real execution was created.
 - W3 Fortinet live smoke passed for the no-live-portal case. Packaged `ALILOS.exe` reported the network monitor active, internet `online`, Perakam reachability `login-required`, captive portal `not-detected`, host `none`, evidence `none`, and no form submission or real action occurred.
-- Scheduled dry-run testing is pending.
+- W4 scheduled dry-run passed with packaged `ALILOS.exe`. A temporary local-only evening schedule was moved to a near-future time, execution mode was set to `dry-run`, the monitor triggered once, Perakam reached the dashboard, visible `a51` was detected, simulated-only audit events were recorded, and the original local config was restored.
 - P packaging/startup local smoke testing passed for `ALILOS.exe`, `%APPDATA%\ALILOS`, project-owned icons, tray show/hide/quit, disabled-by-default launch-at-login, simulated `--hidden-at-login`, and packaged Playwright launch.
 - Real Windows sign-in/reboot launch-at-login behavior, sleep/wake behavior, and locked-session behavior remain pending.
 
@@ -223,7 +223,7 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 - W1 workplace validation plan: docs-only planning for safe workplace validation, evidence to collect, and stop conditions.
 - W2 manual workplace browser/login/button detection smoke: passed in packaged mode. Login-required state was seen before authentication, dashboard state was seen after manual authentication, `a50` and `a51` were available from visible dashboard candidates, hidden sidebar duplicates were ignored, and log/config review found no credential, cookie, raw HTML, tokenized `link=`, completion record, or real execution evidence.
 - W3 Fortinet captive portal live detection smoke: passed for the observed no-live-portal case. If a Fortinet portal appears later, repeat W3 to verify `authupm.upm.edu.my` dynamic-port detection and safe marker evidence. Current log/config review found no credential, cookie, raw HTML, Fortinet marker value, `magic`, `4Tredir`, or tokenized portal URL/path/query/hash evidence.
-- W4 scheduled dry-run/manual-confirm test: keep execution mode as `dry-run` or `manual-confirm`; verify scheduler state, generated times, due-action audit events, missed-action grace, duplicate prevention, and no unattended real click.
+- W4 scheduled dry-run/manual-confirm test: passed. Temporary changes were limited to local userData config and restored afterward: execution mode `manual-confirm` -> `dry-run` -> `manual-confirm`, evening time `17:08` -> test time -> `17:08`, and monitor interval `30` -> requested `5` seconds with effective clamped `15` seconds -> `30`. No completion record, real execution, credential value, cookie, raw HTML, screenshot, full URL, or `link=` value was observed in logs.
 - W5 sleep/wake/locked-session observation: observe packaged resident behavior, tray recovery, network monitor state, scheduler state, and logs after sleep/wake and locked-session transitions.
 - W6 workplace validation consolidation: summarize evidence, unresolved release risks, and whether optional installer/signing or more workplace testing is needed.
 
