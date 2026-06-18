@@ -7,7 +7,8 @@
 - Manually smoke test dashboard startup with `npm run dev`.
 - Manually smoke test tab switching across Overview, Schedule, Actions, Browser / Site, Network, Telegram, Logs, and Settings.
 - W2 workplace Perakam detection passed in packaged `manual-confirm` mode; do not repeat unless Perakam changes or a regression is suspected.
-- Continue with W3 Fortinet captive portal live detection when the portal is present or can be safely triggered.
+- W3 Fortinet live smoke passed for the no-live-portal case; repeat only if the portal appears or can be safely triggered without submitting a login form.
+- Continue with W4 scheduled dry-run/manual-confirm validation.
 - Keep `docs/PHASE_4D_MANUAL_CONFIRM_DESIGN.md` as historical design context, but update or supersede stale sections before relying on it for current behavior.
 - For Phase 6A dry-run testing, set `automation.executionMode` to `dry-run` only in local config and confirm that due actions are simulated, not clicked.
 
@@ -25,6 +26,7 @@ Current Supabase status:
 Desktop operational blockers:
 
 - W2 workplace Perakam smoke passed; dashboard and primary target detection are validated on the intended network.
+- W3 Fortinet smoke passed for no-live-portal state; live portal-marker validation remains conditional on the portal appearing.
 - Scheduled dry-run pending.
 - P packaging/startup local smoke testing passed for the unpacked Windows app.
 - Real Windows sign-in/reboot launch-at-login behavior, sleep/wake behavior, and locked-session behavior remain pending.
@@ -107,7 +109,7 @@ Recommended next major track:
 
 - W1 workplace validation plan: document the safe checklist, evidence to collect, and stop conditions before live workplace testing.
 - W2 manual workplace browser/login/button detection smoke: passed with packaged `ALILOS.exe` in `manual-confirm`; no real action, confirmation, execution, or completion record was created.
-- W3 Fortinet captive portal live detection smoke: if the portal appears, verify detection-only behavior for `authupm.upm.edu.my` on dynamic ports, safe captive-portal reason text, and absence of full tokenized portal paths/query strings in logs.
+- W3 Fortinet captive portal live detection smoke: passed for the no-live-portal case with captive portal `not-detected`, host `none`, and evidence `none`. If a Fortinet portal appears later, repeat detection-only checks for safe `authupm.upm.edu.my` dynamic-port evidence and no full tokenized portal paths/query strings in logs.
 - W4 scheduled dry-run/manual-confirm test: keep `dry-run` or `manual-confirm`, verify scheduler state, generated times, due-action audit events, missed-action grace, duplicate prevention, and no unattended real click.
 - W5 sleep/wake/locked-session observation: observe packaged resident behavior, tray recovery, network monitor state, scheduler state, and logs after sleep/wake and locked-session transitions; keep launch-at-login disabled unless intentionally testing it.
 - W6 workplace validation consolidation: summarize evidence, remaining release risks, and whether optional installer/signing or more workplace testing is needed.

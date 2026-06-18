@@ -68,6 +68,7 @@ The active implementation focus appears to be hardening the guarded manual-confi
 ### Desktop Operational Blockers
 
 - W2 workplace Perakam smoke passed with packaged `ALILOS.exe` in `manual-confirm` mode: login-required state was detected, the manually authenticated session reached the dashboard, and both primary targets were detected as available from visible dashboard candidates while hidden sidebar duplicates were ignored.
+- W3 Fortinet live smoke found no active captive portal during the packaged workplace check: network monitor was running, internet state was `online`, captive portal state was `not-detected`, host was `none`, and evidence was `none`.
 - Scheduled dry-run testing is pending.
 - P packaging/startup local smoke testing passed for the unpacked Windows app, including `ALILOS.exe`, `%APPDATA%\ALILOS`, the project icon, tray show/hide/quit, disabled-by-default launch-at-login, simulated `--hidden-at-login`, and packaged Playwright launch.
 - Real Windows sign-in/reboot launch-at-login behavior, sleep/wake behavior, and locked-session behavior remain pending.
@@ -138,7 +139,7 @@ The active implementation focus appears to be hardening the guarded manual-confi
 
 - W1 workplace validation plan: document the safe checklist, stop conditions, and evidence to collect before live network testing.
 - W2 manual workplace browser/login/button detection smoke: passed with packaged `ALILOS.exe`; no confirmation, execution, completion record, credential logging, raw HTML, cookie, or tokenized `link=` logging was observed.
-- W3 Fortinet captive portal live detection smoke: if the portal appears, verify detection-only behavior for `authupm.upm.edu.my` on dynamic ports, safe reason text, network monitor state, and absence of full portal paths/query strings.
+- W3 Fortinet captive portal live detection smoke: passed for the no-live-portal case. No portal form was opened or submitted; log review found no credential, cookie, raw HTML, Fortinet marker value, `magic`, `4Tredir`, or tokenized portal URL/path/query/hash evidence.
 - W4 scheduled dry-run/manual-confirm test: keep execution mode as `dry-run` or `manual-confirm`, verify scheduler state, generated times, due-action audit events, missed-action grace, duplicate prevention, and no unattended real click.
 - W5 sleep/wake/locked-session observation: observe resident packaged behavior, network recovery, scheduler state, tray behavior, and logs across sleep/wake and locked-session transitions.
 - W6 workplace validation consolidation: summarize evidence, remaining risks, and whether release can remain unpacked or needs optional installer/signing.
