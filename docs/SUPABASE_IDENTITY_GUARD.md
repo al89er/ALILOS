@@ -32,7 +32,7 @@ Do not store these values in Supabase:
 - Screenshots.
 - Staff ID/name.
 - Telegram token/chat ID.
-- Full tokenized URLs or opaque query strings.
+- Full URLs, tokenized query strings, or opaque `link=` values.
 
 Remote command/control is not implemented. Any command queue or control-plane action requires a later explicit approval phase before schema, runtime code, or webapp behavior is added.
 
@@ -174,6 +174,52 @@ The desktop agent should recover schedules and completion state in this order:
 Duplicate prevention rule: before any action is considered due or executable, check local completion records OR Supabase completion records for the same `device_id`, `action_date`, and `action_key`. If either source says the action is completed, skip execution and record a sanitized reconciliation/audit event locally. Supabase must never be the only guard against duplicate actions.
 
 Supabase is recovery and monitoring support, not a required dependency for scheduled local operation. If Supabase is unavailable, local schedule generation, local completion checks, and local guarded execution behavior must continue using existing local state.
+
+## S3A Schedule/Completion Sync Plan
+
+S3A is a docs-only plan for durable backup and recovery of generated daily schedules and completion records. It does not approve migrations, runtime clients, dependencies, `.env.local`, Supabase enablement, command/control, or unattended real execution.
+
+The desktop remains local-first:
+
+- The local schedule and local completion records are the operational source of truth when valid.
+- Supabase is backup/recovery only and must not be required for local startup, schedule generation, duplicate blocking, reminders, manual-confirm, dry-run, or notify-only operation.
+- No service role key belongs in the desktop app, renderer, local user-editable config, or desktop `.env.local`.
+- Supabase records must exclude Perakam credentials, cookies, raw HTML, screenshots, staff ID/name, Telegram token/chat ID, full URLs, tokenized query strings, and opaque `link=` values.
+
+Conceptual `daily_schedules` model:
+
+- Key: one sanitized row per `device_id`, `schedule_date`, and `action_key`.
+- Fields: `id`, `device_id`, `schedule_date`, `action_key`, `scheduled_at`, `timezone`, `generation_source`, `schedule_hash`, optional sanitized `schedule_payload`, `generated_at`, `created_at`, and `updated_at`.
+- Allowed payload shape: action label/key, due time, reminder metadata, skip state, generator version, and hashes. Do not include workplace identity, page URLs, DOM HTML, credentials, cookies, screenshots, or raw site state.
+
+Conceptual `completion_records` model:
+
+- Key: one sanitized row per `device_id`, `action_date`, and `action_key`, or an equivalent deterministic `dedupe_key`.
+- Fields: `id`, `device_id`, `action_date`, `action_key`, `completed_at`, `completion_source`, `result_code`, `dedupe_key`, optional `local_record_hash`, `created_at`, and `updated_at`.
+- Allowed payload shape: sanitized completion/skip outcome, source, timestamp, result code, and reconciliation hashes. Do not include staff identity, confirmation UI details that reveal private implementation, credentials, cookies, raw HTML, screenshots, full URLs, query strings, or `link=` values.
+
+Recovery order:
+
+1. Load and validate local schedule/completion storage for the current local date and timezone.
+2. Use a valid local schedule first.
+3. If the local schedule is missing or corrupt, fetch matching Supabase `daily_schedules` rows.
+4. Generate a schedule locally only when neither a valid local schedule nor a usable Supabase backup exists.
+5. Save generated or recovered schedule state locally first, then attempt a sanitized Supabase backup.
+6. If Supabase is unavailable or the backup write fails, continue local operation and surface only sanitized status.
+
+Duplicate prevention:
+
+- Before considering an action due or executable, check local completion records and any available Supabase `completion_records` for the same `device_id`, date, and `action_key`.
+- A blocking attempt/completion in either local storage or Supabase prevents repeat execution.
+- If local and Supabase disagree, fail safe toward no repeat until a later approved reconciliation rule says otherwise.
+- Supabase absence, read failure, or write failure must never force or justify a real action; local guards continue to decide from local state.
+
+Open S3A decisions:
+
+- Whether desktop writes use direct RLS, an Edge Function/API proxy, or device-token pairing.
+- Whether schedule/completion backup uses latest-row upserts or append-only audit history.
+- Whether user confirmation is required when local and Supabase records disagree.
+- Whether schedule/completion sync waits for the heartbeat write-path approval before any implementation.
 
 ## RLS and Security Planning
 

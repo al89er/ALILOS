@@ -14,7 +14,7 @@
 - O1 operational readiness checklist is documented in `docs/OPERATIONAL_READINESS.md`.
 - O3 real-machine observation passed for packaged launch, scripted hide/show, clean quit, sanitized logs, launch-at-login disabled, and completion records `0`.
 - O4 consolidated the O track as mostly complete. Current go/no-go: monitored `manual-confirm`, `dry-run`, and `notify-only` are acceptable; fully unattended real execution remains no-go.
-- Next track options: RC small real-world observation tasks when physically ready, S3 Supabase schedule/completion sync planning only after explicit approval, or webapp/PWA planning only after explicit approval.
+- Next track options: RC small real-world observation tasks when physically ready, S3B Supabase schedule/completion implementation only after explicit approval, or webapp/PWA planning only after explicit approval.
 - Keep `docs/PHASE_4D_MANUAL_CONFIRM_DESIGN.md` as historical design context, but update or supersede stale sections before relying on it for current behavior.
 - For Phase 6A dry-run testing, set `automation.executionMode` to `dry-run` only in local config and confirm that due actions are simulated, not clicked.
 
@@ -26,6 +26,7 @@ Current Supabase status:
 - S2B heartbeat skeleton done.
 - S2C/S2D safety and local dry-run passed.
 - S2E write-path options documented.
+- S3A schedule/completion sync planning documented.
 - Heartbeat remains disabled by default.
 - Real writes remain deferred until auth/pairing/write-path authorization is decided.
 
@@ -44,7 +45,7 @@ Before unattended daily use:
 
 Recommended next major track:
 
-- RC small real-world observation tasks when physically ready. S3 Supabase schedule/completion sync planning and webapp/PWA planning remain later options only after explicit approval.
+- RC small real-world observation tasks when physically ready. S3B Supabase schedule/completion implementation and webapp/PWA planning remain later options only after explicit approval.
 
 ## Suggested Next Implementation Phase
 
@@ -267,6 +268,39 @@ S2E write-path recommendation:
 - Prefer a future explicit pairing/device-token or Edge Function/API proxy approach before enabling desktop writes.
 - Do not put service role keys in desktop, renderer, or desktop `.env.local`.
 - Do not add command queue/control until S5 is separately approved.
+
+### S3A Schedule/Completion Sync Planning Notes
+
+S3A is docs-only. It does not add migrations, runtime Supabase clients, dependencies, `.env.local`, Supabase enablement, command/control, or unattended real execution.
+
+Planned model:
+
+- `daily_schedules`: one sanitized row per `device_id`, `schedule_date`, and `action_key`, with generated due time, timezone, generator/version metadata, schedule hash, and optional sanitized payload.
+- `completion_records`: one sanitized row per `device_id`, `action_date`, and `action_key`, or equivalent `dedupe_key`, with completion timestamp, source, result code, and reconciliation hash.
+- Supabase remains backup/recovery only. The desktop must start, generate schedules, block duplicates, remind, and run guarded local flows without Supabase.
+- No service role key belongs in desktop, renderer, user-editable config, or desktop `.env.local`.
+- Supabase records must exclude Perakam credentials, cookies, raw HTML, screenshots, staff ID/name, Telegram token/chat ID, full URLs, tokenized query strings, and opaque `link=` values.
+
+Recovery order:
+
+1. Use a valid local schedule.
+2. If local schedule storage is missing or corrupt, fetch matching Supabase schedule backup rows.
+3. Generate locally only when neither local nor Supabase schedule state is usable.
+4. Save recovered/generated state locally first, then attempt a sanitized Supabase backup.
+5. Continue local operation if Supabase is unavailable.
+
+Duplicate prevention:
+
+- Local or Supabase completion/attempt evidence for the same device/date/action blocks repeat execution.
+- If local and Supabase disagree, fail safe toward no repeat until a reconciliation rule is explicitly approved.
+- Supabase absence or failure never forces an action.
+
+Open decisions before S3B implementation:
+
+- Direct RLS vs Edge Function/API proxy vs device-token pairing.
+- Latest-row upsert vs append-only audit history.
+- Whether user confirmation is required on local/Supabase disagreement.
+- Whether schedule/completion sync waits for heartbeat write-path approval.
 
 ## Documentation Maintenance Tasks
 

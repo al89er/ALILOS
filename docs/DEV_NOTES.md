@@ -140,6 +140,7 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 - S2B disabled-by-default heartbeat skeleton is done.
 - S2C/S2D safety review and local dry-run passed.
 - S2E heartbeat write-path options are documented.
+- S3A schedule/completion sync planning is documented.
 - Heartbeat remains disabled by default.
 - Real Supabase writes are deferred until the auth/pairing/write-path decision is made.
 
@@ -233,7 +234,7 @@ Operational notes after W validation:
 
 - O1 operational readiness guidance lives in `docs/OPERATIONAL_READINESS.md`. Treat it as the current release-candidate checklist before monitored local use.
 - O3 real-machine observation passed for packaged launch, scripted window hide/show, clean quit, sanitized logs, launch-at-login disabled, and completion records `0`. Visual tray-menu click verification, real sign-in/reboot launch-at-login, and full sleep/wake suspend-resume remain pending.
-- O4 consolidated the O track as mostly complete. Monitored `manual-confirm`, `dry-run`, and `notify-only` local use are acceptable; fully unattended real execution remains no-go. Next work should be RC observation tasks, S3 Supabase sync planning, or webapp/PWA planning only after explicit approval.
+- O4 consolidated the O track as mostly complete. Monitored `manual-confirm`, `dry-run`, and `notify-only` local use are acceptable; fully unattended real execution remains no-go. Next work should be RC observation tasks, S3B Supabase sync implementation, or webapp/PWA planning only after explicit approval.
 - Local Perakam auto-login is enabled on the test machine and succeeded during W4/W5 without credential-value logging. Intentionally decide whether it should be enabled or disabled before future tests.
 - Fully unattended real attendance action is not approved or validated.
 - Supabase heartbeat/write path remains disabled/deferred; do not start S3 schedule/completion sync without explicit approval.
@@ -301,6 +302,17 @@ Stop conditions:
 - Configure the Supabase heartbeat URL only through local config or the Settings tab. The renderer shows only configured state, project host, and key source after loading.
 - Heartbeat payloads include app status, worker state, execution mode, network state, Perakam status, Telegram status, sanitized status/error text, and timestamp.
 - Heartbeat payloads must not include credentials, Telegram token, Telegram chat ID, staff name, staff number, personal identifiers, raw HTML, screenshots, cookies, session data, or full sensitive URLs.
+
+## Planning Schedule/Completion Backup Safely
+
+- S3A is docs-only. Do not add migrations, runtime Supabase clients, dependencies, `.env.local`, Supabase enablement, command/control, or unattended real execution from S3A notes alone.
+- Planned `daily_schedules` rows are keyed by `device_id`, `schedule_date`, and `action_key`; planned `completion_records` rows are keyed by `device_id`, `action_date`, and `action_key` or an equivalent deterministic `dedupe_key`.
+- Store only sanitized schedule/completion metadata: generated due time, timezone, generator/source, skip state, result code, source, timestamps, and reconciliation hashes.
+- Never store Perakam credentials, cookies, raw HTML, screenshots, staff ID/name, Telegram token/chat ID, full URLs, tokenized query strings, or opaque `link=` values in Supabase.
+- Recovery stays local-first: use valid local schedule, fetch Supabase only when local schedule state is missing/corrupt, generate only if neither exists, save local first, then attempt backup.
+- Duplicate prevention fails safe: a local or Supabase blocking attempt/completion prevents repeat execution, disagreement blocks repeat until an approved reconciliation path exists, and Supabase absence/failure never forces action.
+- Do not place a service role key in desktop, renderer, user-editable config, or desktop `.env.local`.
+- Open decisions before implementation: direct RLS vs Edge Function/API proxy vs device-token pairing, upsert latest row vs append-only audit, user confirmation on disagreement, and whether S3 waits for heartbeat write-path approval.
 
 ## Avoiding Accidental Real Actions
 
