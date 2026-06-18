@@ -1,5 +1,7 @@
 # App Structure
 
+There is no web/PWA companion app in this repository yet. WEB1 planning lives in `docs/WEB_COMPANION_PLAN.md`; a future web companion may live under an isolated `webapp/` boundary only after explicit approval.
+
 ## Runtime And Scripts
 
 Detected from `package.json`:

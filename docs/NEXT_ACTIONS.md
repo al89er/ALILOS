@@ -14,7 +14,7 @@
 - O1 operational readiness checklist is documented in `docs/OPERATIONAL_READINESS.md`.
 - O3 real-machine observation passed for packaged launch, scripted hide/show, clean quit, sanitized logs, launch-at-login disabled, and completion records `0`.
 - O4 consolidated the O track as mostly complete. Current go/no-go: monitored `manual-confirm`, `dry-run`, and `notify-only` are acceptable; fully unattended real execution remains no-go.
-- Next track options: RC small real-world observation tasks when physically ready, S3E Edge Function/API schedule/completion contract planning only after explicit approval, or webapp/PWA planning only after explicit approval.
+- Next track options: RC small real-world observation tasks when physically ready, S3E Edge Function/API schedule/completion contract planning only after explicit approval, or WEB2 static/read-only web companion UI design only after explicit approval.
 - Keep `docs/PHASE_4D_MANUAL_CONFIRM_DESIGN.md` as historical design context, but update or supersede stale sections before relying on it for current behavior.
 - For Phase 6A dry-run testing, set `automation.executionMode` to `dry-run` only in local config and confirm that due actions are simulated, not clicked.
 
@@ -47,7 +47,7 @@ Before unattended daily use:
 
 Recommended next major track:
 
-- RC small real-world observation tasks when physically ready. S3E Edge Function/API schedule/completion contract planning and webapp/PWA planning remain later options only after explicit approval.
+- RC small real-world observation tasks when physically ready. S3E Edge Function/API schedule/completion contract planning and WEB2 static/read-only web companion UI design remain later options only after explicit approval.
 
 ## Suggested Next Implementation Phase
 
@@ -57,6 +57,7 @@ Recommended next major track:
 - Keep Supabase/webapp work phased: S0 architecture documentation, S1 schema and identity planning, S2 status-only heartbeat, S3 durable schedule/completion backup ledger, S4 phone webapp/PWA status dashboard, S5 command queue/control only after explicit approval, and S6 Telegram reduced to fallback.
 - Treat the old Tampermonkey script and old webapp as fallback/backup references while the Electron desktop agent remains Windows/desktop-only.
 - Plan Android/mobile access through a hosted webapp/PWA, not Electron. A future webapp may live under `webapp/` in this repo after explicit approval.
+- WEB1 planning lives in `docs/WEB_COMPANION_PLAN.md`: read-only first, no control commands, no Perakam/Fortinet login, and no bypass of the desktop manual-confirm safety model.
 - Improve dashboard wording where old "scaffold" or "detection only" text conflicts with current guarded execution capabilities.
 - Smoke test the disabled-by-default Windows launch-at-login setting with real sign-in/reboot before relying on unattended startup.
 - Treat the P packaging/startup and W workplace tracks as mostly complete after local packaged and workplace validation; remaining release work is optional installer/signing plus O-track readiness checks.
@@ -215,6 +216,14 @@ Rollback and manual disable:
 - S6: Telegram reduced to fallback.
 
 Do not implement Supabase runtime features, schema migrations, remote command/control, or `webapp/` scaffolding until the relevant phase is explicitly requested. Future Supabase records must exclude configured-site credentials, cookies/session data, raw page HTML, screenshots, staff ID/name, Telegram token/chat ID, and full tokenized URLs or opaque query strings.
+
+WEB1 web companion planning:
+
+- `docs/WEB_COMPANION_PLAN.md` defines the future mobile/PWA companion as a status/control surface only.
+- WEB1 is read-only: show heartbeat/status when available, stale/offline warnings, and placeholders until schedule/completion sync exists.
+- Future web controls require later approval and must go through the Supabase/Edge Function/API control-plane boundary.
+- The default repo plan is same-repo under a future isolated `webapp/` boundary, with separate repo still available if deployment/build complexity or secret-boundary risk grows.
+- Android/mobile use should be browser/PWA-based, not Electron.
 
 ### S1 Schema and Identity Planning Notes
 

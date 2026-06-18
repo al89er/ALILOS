@@ -143,6 +143,7 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 - S3A schedule/completion sync planning is documented.
 - S3B schedule/completion schema migration is drafted.
 - S3D schedule/completion write-path decision is documented: future writes should use an Edge Function/API proxy plus explicit device pairing/token.
+- WEB1 web/PWA companion planning is documented in `docs/WEB_COMPANION_PLAN.md`.
 - Heartbeat remains disabled by default.
 - Real Supabase writes are deferred until the auth/pairing/write-path decision is made.
 
@@ -236,7 +237,7 @@ Operational notes after W validation:
 
 - O1 operational readiness guidance lives in `docs/OPERATIONAL_READINESS.md`. Treat it as the current release-candidate checklist before monitored local use.
 - O3 real-machine observation passed for packaged launch, scripted window hide/show, clean quit, sanitized logs, launch-at-login disabled, and completion records `0`. Visual tray-menu click verification, real sign-in/reboot launch-at-login, and full sleep/wake suspend-resume remain pending.
-- O4 consolidated the O track as mostly complete. Monitored `manual-confirm`, `dry-run`, and `notify-only` local use are acceptable; fully unattended real execution remains no-go. Next work should be RC observation tasks, S3E Edge Function/API contract planning, or webapp/PWA planning only after explicit approval.
+- O4 consolidated the O track as mostly complete. Monitored `manual-confirm`, `dry-run`, and `notify-only` local use are acceptable; fully unattended real execution remains no-go. Next work should be RC observation tasks, S3E Edge Function/API contract planning, or WEB2 static/read-only web companion UI design only after explicit approval.
 - Local Perakam auto-login is enabled on the test machine and succeeded during W4/W5 without credential-value logging. Intentionally decide whether it should be enabled or disabled before future tests.
 - Fully unattended real attendance action is not approved or validated.
 - Supabase heartbeat/write path remains disabled/deferred; do not start S3 schedule/completion runtime sync without explicit approval.
@@ -324,6 +325,16 @@ Stop conditions:
 - Forbidden future payload fields are Perakam credentials, cookies, raw HTML, screenshots, staff ID/name, Telegram token/chat ID, full URLs, tokenized query strings, opaque `link=` values, and service-role keys.
 - S3D rollout order is docs decision, Edge Function/API schema contract, disabled runtime client skeleton, dry-run payload logging without network writes, non-sensitive write-path smoke test, supervised backup, recovery testing, then no unattended execution approval unless explicitly decided later.
 - Remaining decisions before implementation: upsert latest row vs append-only audit details, user confirmation on disagreement, exact route shape, token issuance, token rotation, and revocation flow.
+
+## Planning The Web Companion Safely
+
+- WEB1 is docs-only. Do not create `webapp/`, frontend dependencies, migrations, `.env.local`, secrets, runtime sync, command/control, or Electron runtime changes from the plan alone.
+- The Electron desktop app remains the only local browser/session/action assistant. The web/PWA companion is a mobile status/control surface only.
+- WEB1 starts read-only: heartbeat/status when available, stale/offline warnings, placeholders until schedule/completion sync exists, and no control commands.
+- Future supervised controls require later explicit approval and must go through the Supabase/Edge Function/API control-plane boundary.
+- The web companion must not perform Perakam login, Fortinet login/form submission, credential handling, cookie handling, raw HTML/screenshot display, tokenized URL handling, direct unattended real actions, or any bypass of desktop manual-confirm safety.
+- Default repo plan is same-repo under a future isolated `webapp/` boundary after approval; move to a separate repo if deployment/build complexity or secret-boundary risk grows.
+- Android/mobile use should be browser/PWA-based, not Electron.
 
 ## Avoiding Accidental Real Actions
 
