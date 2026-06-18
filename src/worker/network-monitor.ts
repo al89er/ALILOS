@@ -17,6 +17,7 @@ const MIN_INTERVAL_SECONDS = 30;
 const DEFAULT_TIMEOUT_MS = 7000;
 const BODY_SAMPLE_LIMIT = 12000;
 const TEXT_SNIPPET_LIMIT = 240;
+const FORTINET_PORTAL_HOST_HINTS = ["authupm.upm.edu.my"];
 const EMPTY_CAPTIVE_PORTAL: CaptivePortalSnapshot = {
   state: "not-detected",
   detectedAt: null,
@@ -305,9 +306,7 @@ async function checkConnectivity(captivePortalDetectionEnabled: boolean): Promis
   if (captive) {
     return {
       state: captive.state === "detected" ? "captive-portal-detected" : "captive-portal-suspected",
-      reason: captive.state === "detected"
-        ? `Captive portal detected at ${captive.portalHost ?? "unknown host"}.`
-        : "Captive portal suspected from passive internet probes.",
+      reason: captivePortalReason(captive),
       error: firstError(probes),
       captivePortal: captive
     };
@@ -593,7 +592,7 @@ function bestCaptivePortalSnapshot(probes: ProbeResult[]): CaptivePortalSnapshot
   return snapshots.sort((left, right) => confidenceRank(right.confidence) - confidenceRank(left.confidence))[0];
 }
 
-function buildCaptivePortalSnapshot(input: {
+export function buildCaptivePortalSnapshot(input: {
   probeUrl: string;
   redirectedTo: string | null;
   status: number;
@@ -612,10 +611,16 @@ function buildCaptivePortalSnapshot(input: {
   const loginWordMatches = loginWords.filter((word) => text.includes(word));
   const unexpectedRedirect = Boolean(redirectedTo && redirectedHost && redirectedHost !== expectedHost);
   const gatewayHost = Boolean(redirectedHost && looksLikePortalHost(redirectedHost));
+  const fortinetPortalHost = Boolean(redirectedHost && isKnownFortinetPortalHost(redirectedHost));
+  const fortinetPageMarkers = fortinetMarkers(input.sample);
   const htmlResponse = input.contentType.toLowerCase().includes("html") || /<html|<form|<title/i.test(input.sample);
 
   if (unexpectedRedirect) {
     evidence.push("unexpected redirect");
+  }
+
+  if (fortinetPortalHost && redirectedHost) {
+    evidence.push(`Fortinet captive portal detected: ${knownFortinetPortalHostLabel(redirectedHost)}`);
   }
 
   if (gatewayHost) {
@@ -628,6 +633,10 @@ function buildCaptivePortalSnapshot(input: {
 
   if (loginWordMatches.length > 0) {
     evidence.push(`login-like words: ${loginWordMatches.slice(0, 4).join(", ")}`);
+  }
+
+  if (fortinetPageMarkers.length > 0) {
+    evidence.push("Fortinet captive portal page markers detected");
   }
 
   if (input.status >= 300 && input.status < 400) {
@@ -643,6 +652,8 @@ function buildCaptivePortalSnapshot(input: {
   const confidence = portalConfidence({
     unexpectedRedirect,
     gatewayHost,
+    fortinetPortalHost,
+    fortinetPageMarkerCount: fortinetPageMarkers.length,
     htmlResponse,
     loginWordCount: loginWordMatches.length
   });
@@ -666,9 +677,15 @@ function buildCaptivePortalSnapshot(input: {
 function portalConfidence(input: {
   unexpectedRedirect: boolean;
   gatewayHost: boolean;
+  fortinetPortalHost: boolean;
+  fortinetPageMarkerCount: number;
   htmlResponse: boolean;
   loginWordCount: number;
 }): CaptivePortalConfidence {
+  if (input.fortinetPortalHost || input.fortinetPageMarkerCount > 0) {
+    return "high";
+  }
+
   if (input.unexpectedRedirect && input.htmlResponse && input.loginWordCount > 0) {
     return "high";
   }
@@ -699,6 +716,20 @@ function firstError(probes: ProbeResult[]): string | null {
   return probes.find((probe) => probe.error)?.error ?? null;
 }
 
+function captivePortalReason(snapshot: CaptivePortalSnapshot): string {
+  if (snapshot.evidence.includes("Fortinet captive portal page markers detected")) {
+    return "Fortinet captive portal page markers detected.";
+  }
+
+  if (snapshot.portalHost && isKnownFortinetPortalHost(snapshot.portalHost)) {
+    return `Fortinet captive portal detected: ${knownFortinetPortalHostLabel(snapshot.portalHost)}.`;
+  }
+
+  return snapshot.state === "detected"
+    ? `Captive portal detected at ${snapshot.portalHost ?? "unknown host"}.`
+    : "Captive portal suspected from passive internet probes.";
+}
+
 function buildPerakamLoginUrl(dashboardUrl: string): string {
   try {
     return new URL("login.do", dashboardUrl).toString();
@@ -709,13 +740,13 @@ function buildPerakamLoginUrl(dashboardUrl: string): string {
 
 function hostLabel(url: string): string {
   try {
-    return new URL(url).host;
+    return new URL(url).hostname.toLowerCase();
   } catch {
     return "internet endpoint";
   }
 }
 
-function sanitizePortalUrl(value: string | null): string | null {
+export function sanitizePortalUrl(value: string | null): string | null {
   if (!value) {
     return null;
   }
@@ -728,6 +759,7 @@ function sanitizePortalUrl(value: string | null): string | null {
 
     parsed.username = "";
     parsed.password = "";
+    parsed.pathname = "/";
     parsed.search = "";
     parsed.hash = "";
 
@@ -739,7 +771,8 @@ function sanitizePortalUrl(value: string | null): string | null {
 
 function looksLikePortalHost(host: string): boolean {
   const normalized = host.toLowerCase();
-  return normalized.includes("login")
+  return isKnownFortinetPortalHost(normalized)
+    || normalized.includes("login")
     || normalized.includes("portal")
     || normalized.includes("captive")
     || normalized.includes("hotspot")
@@ -747,6 +780,35 @@ function looksLikePortalHost(host: string): boolean {
     || normalized.startsWith("192.168.")
     || normalized.startsWith("10.")
     || /^172\.(1[6-9]|2\d|3[0-1])\./.test(normalized);
+}
+
+function isKnownFortinetPortalHost(host: string): boolean {
+  const normalized = host.toLowerCase().split(":")[0];
+  return FORTINET_PORTAL_HOST_HINTS.some((hint) => normalized === hint || normalized.endsWith(`.${hint}`));
+}
+
+function knownFortinetPortalHostLabel(host: string): string {
+  const normalized = host.toLowerCase().split(":")[0];
+  return FORTINET_PORTAL_HOST_HINTS.find((hint) => normalized === hint || normalized.endsWith(`.${hint}`)) ?? normalized;
+}
+
+function fortinetMarkers(sample: string): string[] {
+  const lower = sample.toLowerCase();
+  const compact = lower.replace(/\s+/g, " ");
+
+  const markerChecks: Array<[string, boolean]> = [
+    ["Firewall Authentication", lower.includes("firewall authentication")],
+    ["Authentication Required", lower.includes("authentication required")],
+    ["Fortinet username input", /<input\b[^>]*\bid=["']ft_un["'][^>]*\bname=["']username["']/i.test(sample) || /<input\b[^>]*\bname=["']username["'][^>]*\bid=["']ft_un["']/i.test(sample)],
+    ["Fortinet password input", /<input\b[^>]*\bid=["']ft_pd["'][^>]*\bname=["']password["']/i.test(sample) || /<input\b[^>]*\bname=["']password["'][^>]*\bid=["']ft_pd["']/i.test(sample)],
+    ["Fortinet magic field", /<input\b[^>]*\bname=["']magic["']/i.test(sample)],
+    ["Fortinet redirect field", /<input\b[^>]*\bname=["']4tredir["']/i.test(sample)],
+    ["Fortinet login instruction", compact.includes("please enter your username and password to continue.")],
+    ["Fortinet keep-open instruction", compact.includes("please do not close this page after sign in.")],
+    ["Fortinet form action", /<form\b[^>]*\baction=["']\/["'][^>]*\bmethod=["']post["']/i.test(sample) || /<form\b[^>]*\bmethod=["']post["'][^>]*\baction=["']\/["']/i.test(sample)]
+  ];
+
+  return markerChecks.filter(([, matches]) => matches).map(([marker]) => marker);
 }
 
 function extractTitle(sample: string): string | null {
