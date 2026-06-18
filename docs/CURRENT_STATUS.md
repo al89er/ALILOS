@@ -79,9 +79,10 @@ The active implementation focus appears to be hardening the guarded manual-confi
 ### Packaged Windows Smoke-Test Checklist
 
 - Run `npm run package:win` and verify `release/win-unpacked` exists.
-- Launch `release/win-unpacked/A.L.I.L.O.S.exe`.
+- Launch `release/win-unpacked/ALILOS.exe`.
 - Confirm the app opens, the tray icon/menu works, close hides to tray, and Quit exits.
 - Confirm config and logs use packaged Electron `userData`, not repository folders.
+- Packaged Windows app internals use `ALILOS`; older smoke-test config/logs may remain under the old trailing-dot `A.L.I.L.O.S.` userData folder and can be manually removed after confirming the new app works.
 - Confirm local dev secrets are not bundled, and `.env.local` is not packaged.
 - Confirm worker services start, today's schedule loads or generates, Telegram polling behavior is unchanged, the network monitor starts, and Supabase heartbeat remains disabled by default.
 - Confirm Playwright browser launch works from the packaged app. If it fails, capture sanitized error/log text only.

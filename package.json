@@ -1,8 +1,8 @@
 {
   "name": "alilos",
   "version": "0.1.0",
-  "productName": "A.L.I.L.O.S.",
-  "description": "A.L.I.L.O.S. Electron Authorized Website Action Assistant",
+  "productName": "ALILOS",
+  "description": "ALILOS Electron Authorized Website Action Assistant",
   "main": "dist/main/main.js",
   "private": true,
   "scripts": {
@@ -23,7 +23,7 @@
   "license": "UNLICENSED",
   "build": {
     "appId": "com.afif.alilos",
-    "productName": "A.L.I.L.O.S.",
+    "productName": "ALILOS",
     "asar": true,
     "directories": {
       "output": "release"

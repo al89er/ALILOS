@@ -172,9 +172,10 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 ### Packaging / Startup Checklist
 
 - Run `npm run package:win` and verify `release/win-unpacked` exists.
-- Launch `release/win-unpacked/A.L.I.L.O.S.exe`.
+- Launch `release/win-unpacked/ALILOS.exe`.
 - Confirm the app opens, the tray icon/menu works, close hides to tray, and Quit exits.
 - Confirm config and logs use packaged Electron `userData`, not repository folders.
+- Packaged Windows app internals use `ALILOS`; older smoke-test config/logs may remain under the old trailing-dot `A.L.I.L.O.S.` userData folder and can be manually removed after confirming the new app works.
 - Confirm existing local dev secrets are not bundled, and `.env.local` is not packaged.
 - Confirm worker services start.
 - Confirm scheduler loads or generates today's times.
@@ -218,7 +219,7 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 - No explicit in-repo Node/Chromium API assumptions are documented beyond the Electron runtime, BrowserWindow/preload/tray lifecycle, safeStorage use, notifications, and packaged `userData` paths.
 - Do not use `npm audit fix --force` blindly because it proposes a breaking Electron major jump to `42.4.1` without checking app lifecycle, preload IPC, tray behavior, safeStorage, Playwright interaction, or Electron Builder packaging compatibility.
 - Proposed upgrade strategy: choose the target Electron major deliberately after release-note review; upgrade Electron only first with `npm install --save-dev --save-exact electron@39.8.10`; run full validation; run the packaged app smoke test; only then consider Electron Builder or related tooling updates if compatibility requires them.
-- Required validation after the Electron-only upgrade: `npm run typecheck`, `npm run build`, `npm test`, `npm run package:win`, launch `release/win-unpacked/A.L.I.L.O.S.exe`, verify tray close/quit behavior, verify worker startup, verify Playwright browser launch, and confirm Supabase heartbeat remains disabled by default.
+- Required validation after the Electron-only upgrade: `npm run typecheck`, `npm run build`, `npm test`, `npm run package:win`, launch `release/win-unpacked/ALILOS.exe`, verify tray close/quit behavior, verify worker startup, verify Playwright browser launch, and confirm Supabase heartbeat remains disabled by default.
 - Rollback plan: keep the Electron/package-lock upgrade isolated in one commit and revert that commit if the packaged Windows smoke test fails.
 
 ## Perakam Fixture Safety
