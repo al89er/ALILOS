@@ -95,11 +95,10 @@ The active implementation focus appears to be hardening the guarded manual-confi
 
 - No automated unit/integration test suite exists.
 - No signed installer, auto-update, or launch-at-login workflow exists.
-- Tray icon is currently empty.
 - Launch-at-login is not implemented.
 - Playwright browser binaries/executable handling for a packaged Windows app remains the main package smoke-test concern.
 - The high-severity npm advisory reported during packaging setup requires separate review, not an automatic fix during packaging work.
-- A targeted Electron-only upgrade path is planned but not implemented; current lockfile Electron remains `33.4.11`.
+- Electron is upgraded to `39.8.10`; packaged Windows smoke testing has covered the renamed `ALILOS.exe`, `%APPDATA%\ALILOS` userData, and the project-owned app/tray icon.
 - `BackgroundWorker` status text may understate implemented services because it says the worker scaffold performs no configured-site clicking, while the separate confirmation/browser services do implement guarded clicking.
 - Telegram bot token/chat ID can be stored in local config or supplied by `.env.local`; both are sensitive and must remain untracked/unlogged.
 - Perakam selectors and page-text heuristics may drift if the site changes.
@@ -128,6 +127,7 @@ The active implementation focus appears to be hardening the guarded manual-confi
 - No remote command/control is implemented. Future command queue/control work is S5 and requires explicit approval before implementation.
 - Renderer tabs are UI-only; all existing DOM IDs and preload calls remain the behavior boundary.
 - The Settings tab can edit worker enable/interval, automation execution mode/interval/dry-run preparation, scheduler windows/grace/reminders, Perakam dashboard URL, and Supabase heartbeat enable/project URL/interval. Supabase URL input is blank on load and only replaces the stored URL when a new URL is entered.
+- Launch-at-login planning targets a future top-level `startup.launchAtLogin` setting, disabled by default, using Windows login items only in packaged ALILOS builds and starting hidden to tray when launched at sign-in.
 - Telegram token/chat fields are password inputs, blank on load, and preserve existing configured or `.env.local` effective values unless replacements are typed. The renderer receives only configured/env-local/missing status, not actual token/chat values. The command prefix is editable.
 
 ## Testing And Build Status

@@ -102,6 +102,7 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 ## Settings Editor Safety
 
 - The Settings tab edits only selected operational settings: worker enable/interval, automation execution mode/interval/dry-run browser preparation, scheduler windows/grace/reminders, Perakam dashboard URL, and Supabase heartbeat enable/project URL/interval.
+- Planned P11 launch-at-login support should add only a Windows startup checkbox backed by a top-level `startup.launchAtLogin` config value. It must not change execution mode, scheduler behavior, or any configured action path.
 - Supabase heartbeat is displayed as configured/not configured plus host and key source only. The URL input is blank on load; saving a blank URL preserves the existing local Supabase URL. The publishable key is configured through local config or `.env.local`, not exposed in the renderer.
 - Telegram token and chat fields are password inputs and are blank on load. The renderer receives only configured/env-local/missing status, never the actual token or chat ID. Saving blank fields preserves existing local or `.env.local` effective values; typing a new value saves it into local app config.
 - The Settings tab does not edit generated schedules, completion records, automation audit events, target mappings, UPM credentials, cookies/session data, screenshots, raw HTML, staff identifiers, or raw log files.
@@ -200,7 +201,20 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 - Launch-at-login is not implemented.
 - Config and logs use Electron `userData`, which is suitable for packaged app state.
 - Playwright is a runtime dependency; packaged Windows testing must confirm browser binary installation/executable resolution before relying on Perakam browser automation.
-- Recommended next implementation step: produce and smoke test the minimal packaged Windows build before adding launch-at-login or startup automation.
+- Recommended next implementation step: implement the disabled-by-default Windows launch-at-login setting only after keeping packaged smoke testing green.
+
+## Launch-at-Login Plan
+
+- Config location: add a new top-level `startup` section to `AppConfig`, separate from `automation`, with `launchAtLogin: false` as the default.
+- Settings surface: expose `startup.launchAtLogin` through `AppSettingsSnapshot` / `AppSettingsInput` and add one checkbox under General / Automation, worded `Start ALILOS when I sign in to Windows`.
+- Default behavior: launch-at-login remains disabled. Normal manual launches continue to show the main `A.L.I.L.O.S.` window.
+- Enabled behavior: Windows sign-in launch should start ALILOS resident in the tray, with the main window hidden until tray Show or second-instance activation.
+- Startup marker: configure login item args with `--hidden-at-login` and treat only that argument as a tray-hidden startup request.
+- Electron API: use `app.setLoginItemSettings()` when settings are applied, and `app.getLoginItemSettings()` for effective status/diagnostics.
+- Packaged Windows behavior: use `process.execPath` for the login item path. The packaged product/executable name is `ALILOS`; userData is `%APPDATA%\ALILOS`.
+- Dev behavior: avoid registering dev runs as a Windows login item by default. If a dev-only diagnostic is needed, keep it explicit and do not persist surprising startup entries.
+- Safety boundary: enabling launch-at-login must not change `automation.executionMode`, scheduler generation, Browser/Perakam startup, Telegram, Supabase heartbeat, or Fortinet detection. No automatic real attendance action should occur beyond the existing configured mode/schedule guardrails.
+- Manual disable: uncheck the Settings checkbox and save; if the app cannot be opened, disable `ALILOS` in Windows Startup Apps or Task Manager Startup apps, then relaunch and save disabled.
 
 ### npm Advisory Audit
 

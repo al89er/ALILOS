@@ -37,7 +37,7 @@ Before packaging/startup work:
 
 Recommended first packaging/startup step:
 
-- Run the `electron-builder` Windows directory package proof, confirm it starts, preserves userData config/log paths, shows a real tray icon after one is added, and confirms Playwright browser launch strategy before adding launch-at-login.
+- Implement launch-at-login only after the packaged `ALILOS.exe` smoke path remains green with the ALILOS userData path and project-owned icon.
 
 ## Suggested Next Implementation Phase
 
@@ -48,7 +48,7 @@ Recommended first packaging/startup step:
 - Treat the old Tampermonkey script and old webapp as fallback/backup references while the Electron desktop agent remains Windows/desktop-only.
 - Plan Android/mobile access through a hosted webapp/PWA, not Electron. A future webapp may live under `webapp/` in this repo after explicit approval.
 - Improve dashboard wording where old "scaffold" or "detection only" text conflicts with current guarded execution capabilities.
-- Add a real tray icon and packaging metadata when preparing a Windows build.
+- Add the planned disabled-by-default Windows launch-at-login setting after a docs-only design review.
 - Consider a small diagnostics/export flow for sanitized logs and status snapshots to make future Perakam detection debugging easier.
 - Extend detector fixture checks only if they remain independent from runtime fixture reads, including future zero-rect anchor plus visible dashboard descendant cases.
 - Do not add selector support for home/outside-workplace Perakam page variants unless explicitly requested later.
@@ -118,9 +118,11 @@ Recommended first packaging/startup step:
 ### Packaging / Startup Checklist
 
 - Run `npm run package:win` and verify `release/win-unpacked` exists.
-- Launch `release/win-unpacked/A.L.I.L.O.S.exe`.
+- Launch `release/win-unpacked/ALILOS.exe`.
 - Confirm the app opens, the tray icon/menu works, close hides to tray, and Quit exits.
+- Confirm the packaged app and tray use the project-owned ALILOS icon rather than the default Electron icon.
 - Confirm config and logs use packaged Electron `userData`, not repository folders.
+- Confirm packaged Windows userData is under `%APPDATA%\ALILOS`.
 - Confirm local dev secrets are not bundled, and `.env.local` is not packaged.
 - Confirm worker services start.
 - Confirm scheduler loads or generates today's times.
@@ -133,7 +135,41 @@ Recommended first packaging/startup step:
 - Keep mode as `dry-run` or `manual-confirm`.
 - Do not perform an unattended real scheduled action.
 - Do not store or send sensitive data.
-- Known remaining concerns: default Electron icon, Playwright browser binary handling, launch-at-login not implemented, installer not implemented, and the high-severity npm advisory requires separate review rather than automatic fix.
+- Known remaining concerns: Playwright browser binary handling, launch-at-login not implemented, installer not implemented, and the high-severity npm advisory requires separate review rather than automatic fix.
+
+### P11 Launch-at-Login Implementation Checklist
+
+Recommended design:
+
+- Add a new top-level config section, `startup`, separate from `automation`, with `launchAtLogin: false` by default.
+- Expose the setting in `AppSettingsSnapshot` and `AppSettingsInput` as `startup.launchAtLogin`.
+- Add one Settings checkbox under General / Automation with wording like `Start ALILOS when I sign in to Windows`.
+- Keep manual app launches unchanged: open the main `A.L.I.L.O.S.` window normally.
+- When launched by Windows login startup, start resident in the tray and do not show the main window unless the user chooses Show from the tray or starts the app again.
+- Use an explicit startup argument such as `--hidden-at-login` in the login item args so the app can distinguish login startup from normal launches.
+- Apply login item changes from the main process after config load/save with Electron `app.setLoginItemSettings()`.
+- Read back effective state with `app.getLoginItemSettings()` for diagnostics/status text; treat Windows as the supported platform and avoid changing login items in dev unless explicitly needed for local testing.
+- For packaged Windows, use `process.execPath` as the login item path. The current package/product app name is `ALILOS`, and the packaged executable is `release/win-unpacked/ALILOS.exe`.
+- Do not change `automation.executionMode`, scheduler behavior, browser startup, Telegram, Supabase heartbeat, or Fortinet detection when enabling login startup.
+- Keep the safe operating default: launch-at-login disabled; if enabled, tray-resident at sign-in; no automatic real attendance action beyond the already configured execution mode and existing schedule guards.
+
+Validation and smoke checklist for P11:
+
+- Run `npm run typecheck`, `npm run build`, `npm test`, and `npm run package:win`.
+- Launch packaged `ALILOS.exe`, toggle launch-at-login on and off, save, reload, and confirm the Settings checkbox reflects the saved/effective state.
+- Confirm `app.getLoginItemSettings()` reports enabled after saving on and disabled after saving off.
+- Confirm a simulated `--hidden-at-login` launch starts the app without showing the main window and leaves the tray available.
+- Confirm a normal packaged launch still opens the main window.
+- Confirm close-to-tray, tray Show/Hide, and Quit still work.
+- Confirm worker, scheduler, network monitor, Telegram polling, and disabled-by-default Supabase heartbeat startup logs are unchanged except for safe startup-setting status.
+- Confirm no real configured action runs unexpectedly during startup testing; keep execution mode as `manual-confirm` or `dry-run`.
+
+Rollback and manual disable:
+
+- In the app, open Settings, uncheck `Start ALILOS when I sign in to Windows`, save, then quit from the tray.
+- If the UI is unavailable, disable `ALILOS` from Windows Settings > Apps > Startup or Task Manager > Startup apps.
+- As a last resort, remove the per-user Windows startup entry for `ALILOS` from the current user's Run startup entries, then launch `ALILOS.exe` manually and save the setting disabled.
+- Reverting the P11 implementation commit should leave startup disabled once the app next runs with `app.setLoginItemSettings({ openAtLogin: false })`.
 
 ## Supabase / Webapp Roadmap
 
