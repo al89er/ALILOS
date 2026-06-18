@@ -14,7 +14,7 @@
 - O1 operational readiness checklist is documented in `docs/OPERATIONAL_READINESS.md`.
 - O3 real-machine observation passed for packaged launch, scripted hide/show, clean quit, sanitized logs, launch-at-login disabled, and completion records `0`.
 - O4 consolidated the O track as mostly complete. Current go/no-go: monitored `manual-confirm`, `dry-run`, and `notify-only` are acceptable; fully unattended real execution remains no-go.
-- Next track options: RC small real-world observation tasks when physically ready, S3C Supabase schedule/completion write-path planning only after explicit approval, or webapp/PWA planning only after explicit approval.
+- Next track options: RC small real-world observation tasks when physically ready, S3E Edge Function/API schedule/completion contract planning only after explicit approval, or webapp/PWA planning only after explicit approval.
 - Keep `docs/PHASE_4D_MANUAL_CONFIRM_DESIGN.md` as historical design context, but update or supersede stale sections before relying on it for current behavior.
 - For Phase 6A dry-run testing, set `automation.executionMode` to `dry-run` only in local config and confirm that due actions are simulated, not clicked.
 
@@ -28,6 +28,7 @@ Current Supabase status:
 - S2E write-path options documented.
 - S3A schedule/completion sync planning documented.
 - S3B schedule/completion schema migration drafted.
+- S3D write-path decision documented: prefer Edge Function/API proxy plus explicit device pairing/token.
 - Heartbeat remains disabled by default.
 - Real writes remain deferred until auth/pairing/write-path authorization is decided.
 
@@ -46,7 +47,7 @@ Before unattended daily use:
 
 Recommended next major track:
 
-- RC small real-world observation tasks when physically ready. S3C Supabase schedule/completion write-path planning and webapp/PWA planning remain later options only after explicit approval.
+- RC small real-world observation tasks when physically ready. S3E Edge Function/API schedule/completion contract planning and webapp/PWA planning remain later options only after explicit approval.
 
 ## Suggested Next Implementation Phase
 
@@ -306,12 +307,37 @@ S3B schema status:
 - RLS is enabled on both tables and direct `anon` / `authenticated` privileges are revoked.
 - No table policies, Edge Functions, runtime writes, dependencies, `.env.local`, secrets, command/control, or unattended real execution are added.
 
-Open decisions before S3C/write-path implementation:
+S3D write-path decision:
 
-- Direct RLS vs Edge Function/API proxy vs device-token pairing.
-- Latest-row upsert vs append-only audit history.
+- Prefer a hybrid Edge Function/API proxy plus explicit device pairing/token for future schedule/completion writes.
+- Keep direct table writes closed for `anon` and `authenticated`; do not add direct desktop table write policies.
+- Keep service-role keys server-side only, never in desktop, renderer, user-editable config, logs, docs, or desktop `.env.local`.
+- Desktop payloads must be sanitized and minimal. Allowed fields are stable non-personal `device_id`, local date, action key, schedule target/window, completion state, verification state, sanitized reason/status, and timestamps.
+- Forbidden fields remain Perakam credentials, cookies, raw HTML, screenshots, staff ID/name, Telegram token/chat ID, full URLs, tokenized query strings, opaque `link=` values, and service-role keys.
+- Runtime sync remains disabled until the write path is implemented and tested through the documented rollout.
+
+Rejected/default-deferred options:
+
+- Direct RLS from desktop is rejected as the default because row ownership, revocation, and payload-shape validation would be too policy-heavy for this project.
+- Edge Function/API without pairing is incomplete because it lacks a clear revocable device identity.
+- Device-token/pairing without an API proxy is deferred because it would still require client-visible table access policies.
+
+Rollout phases:
+
+1. Docs-only decision.
+2. Edge Function/API schema contract.
+3. Disabled runtime client skeleton.
+4. Dry-run payload logging without network writes.
+5. Write-path smoke test with non-sensitive test payloads.
+6. Supervised schedule/completion backup.
+7. Recovery testing.
+8. No unattended execution approval unless explicitly decided later.
+
+Remaining decisions before runtime sync:
+
+- Latest-row upsert vs append-only audit history details.
 - Whether user confirmation is required on local/Supabase disagreement.
-- Whether schedule/completion sync waits for heartbeat write-path approval.
+- Exact Edge Function/API route shape, token issuance, token rotation, and revocation flow.
 
 ## Documentation Maintenance Tasks
 

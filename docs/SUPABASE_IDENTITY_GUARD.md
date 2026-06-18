@@ -214,12 +214,12 @@ Duplicate prevention:
 - If local and Supabase disagree, fail safe toward no repeat until a later approved reconciliation rule says otherwise.
 - Supabase absence, read failure, or write failure must never force or justify a real action; local guards continue to decide from local state.
 
-Open S3A decisions:
+S3 follow-up decisions:
 
-- Whether desktop writes use direct RLS, an Edge Function/API proxy, or device-token pairing.
+- S3D selects a hybrid Edge Function/API proxy plus explicit device pairing/token for future desktop writes.
 - Whether schedule/completion backup uses latest-row upserts or append-only audit history.
 - Whether user confirmation is required when local and Supabase records disagree.
-- Whether schedule/completion sync waits for the heartbeat write-path approval before any implementation.
+- Exact Edge Function/API contract, token issuance, token rotation, revocation flow, and recovery-test flow.
 
 ## RLS and Security Planning
 
@@ -282,7 +282,67 @@ Constraint summary:
 
 RLS is enabled on both S3B tables. No broad public policies are added. Direct table privileges are revoked from `anon` and `authenticated`, matching the conservative S2A posture until device pairing/write-path authorization is approved.
 
-Write path remains unresolved. Future implementation must still decide direct RLS vs Edge Function/API proxy vs device-token pairing before any desktop schedule/completion writes are enabled.
+Write path is decided in S3D below. Runtime sync remains disabled until the chosen write path is implemented and tested.
+
+## S3D Schedule/Completion Write-Path Decision
+
+S3D is a docs-only decision. It does not add migrations, runtime desktop sync, heartbeat write enablement, Supabase client dependencies, `.env.local`, secrets, Edge Functions, command/control, direct desktop table policies, or unattended real execution approval.
+
+Recommended future write path: use an Edge Function/API proxy plus explicit device pairing/token.
+
+Decision:
+
+- Keep direct table writes closed for `anon` and `authenticated`.
+- Keep the service-role key server-side only, inside the Edge Function/API environment. Never place it in the desktop app, renderer, user-editable config, logs, docs, or desktop `.env.local`.
+- Pair each desktop installation with a stable non-personal `device_id` and a revocable device token or pairing secret.
+- Store only a hash or server-side representation of the pairing secret where needed; never make raw device tokens part of table RLS policy inputs.
+- Have the desktop send only sanitized, minimal schedule/completion payloads to the Edge Function/API.
+- Let the Edge Function/API validate device authorization, payload shape, allowed enum values, date/action uniqueness, size limits, and sanitization before writing to `daily_schedules` or `completion_records`.
+- Runtime sync remains disabled until this path has an approved contract, disabled client skeleton, dry-run logging, smoke testing, supervised backup, and recovery testing.
+
+Option comparison:
+
+- Direct RLS from desktop app: lowest component count, but highest risk for this project. It exposes a publishable client path directly to tables, makes row ownership hard to prove without a stronger pairing model, puts more logic into RLS policies, weakens payload-shape validation, and makes device revocation harder to reason about. Reject as the S3 schedule/completion default.
+- Edge Function/API proxy: good sanitization and validation boundary, keeps privileged writes server-side, works well for schedule/completion payload contracts, and is compatible with a future web/PWA companion. By itself it still needs a device identity/revocation model.
+- Device-token or pairing-based write path: strong fit for local-first desktop identity and device revocation, but direct table use would still push too much trust into client-visible policies. Better as an input to a narrow API endpoint than as standalone table access.
+- Hybrid Edge Function plus device pairing/token: best balance. It keeps secrets server-side, avoids broad table policies, supports revocation, centralizes payload validation/sanitization, works for both schedule and completion backup, and can later share authorization concepts with a web/PWA companion.
+
+Payload boundaries:
+
+Allowed:
+
+- Stable non-personal `device_id`.
+- Local date.
+- `action_key`.
+- Schedule target/window.
+- Completion state.
+- Verification state.
+- Sanitized reason/status.
+- Timestamps.
+
+Forbidden:
+
+- Perakam credentials.
+- Cookies.
+- Raw HTML.
+- Screenshots.
+- Staff ID/name.
+- Telegram token/chat ID.
+- Full URLs.
+- Tokenized query strings.
+- Opaque `link=` values.
+- Service-role key.
+
+Rollout phases:
+
+1. Docs-only decision.
+2. Edge Function/API schema contract.
+3. Disabled runtime client skeleton.
+4. Dry-run payload logging without network writes.
+5. Write-path smoke test with non-sensitive test payloads.
+6. Supervised schedule/completion backup.
+7. Recovery testing.
+8. No unattended execution approval unless explicitly decided later.
 
 ## S2B Runtime Skeleton Status
 

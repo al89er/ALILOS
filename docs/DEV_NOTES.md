@@ -142,6 +142,7 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 - S2E heartbeat write-path options are documented.
 - S3A schedule/completion sync planning is documented.
 - S3B schedule/completion schema migration is drafted.
+- S3D schedule/completion write-path decision is documented: future writes should use an Edge Function/API proxy plus explicit device pairing/token.
 - Heartbeat remains disabled by default.
 - Real Supabase writes are deferred until the auth/pairing/write-path decision is made.
 
@@ -235,7 +236,7 @@ Operational notes after W validation:
 
 - O1 operational readiness guidance lives in `docs/OPERATIONAL_READINESS.md`. Treat it as the current release-candidate checklist before monitored local use.
 - O3 real-machine observation passed for packaged launch, scripted window hide/show, clean quit, sanitized logs, launch-at-login disabled, and completion records `0`. Visual tray-menu click verification, real sign-in/reboot launch-at-login, and full sleep/wake suspend-resume remain pending.
-- O4 consolidated the O track as mostly complete. Monitored `manual-confirm`, `dry-run`, and `notify-only` local use are acceptable; fully unattended real execution remains no-go. Next work should be RC observation tasks, S3C Supabase write-path planning, or webapp/PWA planning only after explicit approval.
+- O4 consolidated the O track as mostly complete. Monitored `manual-confirm`, `dry-run`, and `notify-only` local use are acceptable; fully unattended real execution remains no-go. Next work should be RC observation tasks, S3E Edge Function/API contract planning, or webapp/PWA planning only after explicit approval.
 - Local Perakam auto-login is enabled on the test machine and succeeded during W4/W5 without credential-value logging. Intentionally decide whether it should be enabled or disabled before future tests.
 - Fully unattended real attendance action is not approved or validated.
 - Supabase heartbeat/write path remains disabled/deferred; do not start S3 schedule/completion runtime sync without explicit approval.
@@ -317,7 +318,12 @@ Stop conditions:
 - Current allowed action keys are `clock-in` and `clock-out`. Current completion states are the `AttendanceCompletionState` values from `src/shared/types.ts`.
 - `completion_records.dedupe_key` is optional supporting metadata rather than a generated or authoritative duplicate key; the `(device_id, action_date, action_key)` unique constraint remains authoritative.
 - Future `AttendanceCompletionState` additions require a deliberate schema-constraint migration before runtime sync writes those states.
-- Open decisions before implementation: direct RLS vs Edge Function/API proxy vs device-token pairing, upsert latest row vs append-only audit, user confirmation on disagreement, and whether S3 waits for heartbeat write-path approval.
+- S3D selects a hybrid Edge Function/API proxy plus explicit device pairing/token for future writes. Direct desktop table writes remain closed for `anon` and `authenticated`.
+- Keep service-role keys server-side only. Never put a service-role key in desktop, renderer, user-editable config, logs, docs, or desktop `.env.local`.
+- Allowed future payload fields are stable non-personal `device_id`, local date, action key, schedule target/window, completion state, verification state, sanitized reason/status, and timestamps.
+- Forbidden future payload fields are Perakam credentials, cookies, raw HTML, screenshots, staff ID/name, Telegram token/chat ID, full URLs, tokenized query strings, opaque `link=` values, and service-role keys.
+- S3D rollout order is docs decision, Edge Function/API schema contract, disabled runtime client skeleton, dry-run payload logging without network writes, non-sensitive write-path smoke test, supervised backup, recovery testing, then no unattended execution approval unless explicitly decided later.
+- Remaining decisions before implementation: upsert latest row vs append-only audit details, user confirmation on disagreement, exact route shape, token issuance, token rotation, and revocation flow.
 
 ## Avoiding Accidental Real Actions
 
