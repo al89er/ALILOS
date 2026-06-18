@@ -75,6 +75,8 @@ The active implementation focus appears to be hardening the guarded manual-confi
 ### Readiness Gate
 
 - Do not rely on unattended daily use until workplace detection, scheduled dry-run, real sign-in startup, sleep/wake behavior, locked-session behavior, and sanitized logging have been tested on the intended Windows environment.
+- W workplace validation must use `dry-run` or `manual-confirm` by default. Do not allow an automatic real attendance click during validation unless the user explicitly approves that later in the correct attendance window.
+- Stop validation immediately if there is unexpected real-action risk, unsanitized credential or tokenized URL logging, repeated browser crashes, or ambiguous Perakam target detection.
 
 ### Packaged Windows Smoke-Test Checklist
 
@@ -130,7 +132,16 @@ The active implementation focus appears to be hardening the guarded manual-confi
 - Launch-at-login uses top-level `startup.launchAtLogin`, remains disabled by default, uses Windows login items only in packaged ALILOS builds, and starts hidden to tray when launched at sign-in.
 - Telegram token/chat fields are password inputs, blank on load, and preserve existing configured or `.env.local` effective values unless replacements are typed. The renderer receives only configured/env-local/missing status, not actual token/chat values. The command prefix is editable.
 - P packaging/startup track is mostly complete after P12 local validation; remaining release risks are optional installer/signing, real Windows sign-in/reboot testing, sleep/wake/locked-session testing, and W workplace validation.
-- Next recommended major track: W workplace validation for Perakam, Fortinet portal behavior, scheduled dry-run, and sanitized logs on the intended network.
+- Next recommended major track: W workplace validation for Perakam login state, dashboard target availability, Fortinet portal state and sanitized reason text, network monitor state, scheduler state, and packaged-vs-dev behavior on the intended network.
+
+## W Workplace Validation Track
+
+- W1 workplace validation plan: document the safe checklist, stop conditions, and evidence to collect before live network testing.
+- W2 manual workplace browser/login/button detection smoke: use the workplace network to verify Perakam login state, dashboard detection, visible `a50`/`a51` availability, hidden sidebar filtering, Browser / Site status, and sanitized logs.
+- W3 Fortinet captive portal live detection smoke: if the portal appears, verify detection-only behavior for `authupm.upm.edu.my` on dynamic ports, safe reason text, network monitor state, and absence of full portal paths/query strings.
+- W4 scheduled dry-run/manual-confirm test: keep execution mode as `dry-run` or `manual-confirm`, verify scheduler state, generated times, due-action audit events, missed-action grace, duplicate prevention, and no unattended real click.
+- W5 sleep/wake/locked-session observation: observe resident packaged behavior, network recovery, scheduler state, tray behavior, and logs across sleep/wake and locked-session transitions.
+- W6 workplace validation consolidation: summarize evidence, remaining risks, and whether release can remain unpacked or needs optional installer/signing.
 
 ## Testing And Build Status
 

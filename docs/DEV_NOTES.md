@@ -219,11 +219,35 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 
 ## W Workplace Validation Track
 
-- Run from the intended workplace network with execution mode kept as `dry-run` or `manual-confirm`.
-- Verify Perakam login/dashboard detection, visible `a50`/`a51` target availability, hidden sidebar filtering, and no duplicate action after a local completion record.
-- If the Fortinet portal appears, verify detection reports only safe reasons such as the portal hostname or page-marker summary and does not log full tokenized paths or query strings.
-- Run a scheduled dry-run during an appropriate window and confirm audit events remain simulated unless the user intentionally performs a guarded real action.
-- Keep launch-at-login disabled unless explicitly testing it; real sign-in/reboot, sleep/wake, and locked-session behavior remain release-readiness checks.
+- W1 workplace validation plan: docs-only planning for safe workplace validation, evidence to collect, and stop conditions.
+- W2 manual workplace browser/login/button detection smoke: run from the intended workplace network and verify Perakam login state, dashboard state, visible `a50`/`a51` target availability, hidden sidebar filtering, Browser / Site status, and sanitized logs.
+- W3 Fortinet captive portal live detection smoke: if the portal appears, verify detection-only behavior for `authupm.upm.edu.my` on dynamic ports, including `8090`, and confirm safe reason text without full tokenized paths or query strings.
+- W4 scheduled dry-run/manual-confirm test: keep execution mode as `dry-run` or `manual-confirm`; verify scheduler state, generated times, due-action audit events, missed-action grace, duplicate prevention, and no unattended real click.
+- W5 sleep/wake/locked-session observation: observe packaged resident behavior, tray recovery, network monitor state, scheduler state, and logs after sleep/wake and locked-session transitions.
+- W6 workplace validation consolidation: summarize evidence, unresolved release risks, and whether optional installer/signing or more workplace testing is needed.
+
+Safe defaults:
+
+- Prefer `dry-run` for scheduled validation and `manual-confirm` only when a human is watching.
+- Do not perform an automatic real attendance click during W validation unless explicitly approved later in the correct real attendance window.
+- Keep Supabase heartbeat disabled unless a later Supabase write-path task explicitly enables it.
+- Keep launch-at-login disabled unless W5 is explicitly testing startup behavior.
+- Do not change Perakam selectors, Fortinet detection, scheduler behavior, Telegram behavior, Supabase behavior, packaging config, or credential storage during W validation.
+
+Observe and record only sanitized status:
+
+- Perakam login/dashboard state and target availability.
+- Fortinet captive portal state and safe reason text.
+- Network monitor internet/Perakam/captive-portal state.
+- Scheduler next action, generated times, skip/weekend/grace state, and completion-blocking state.
+- Whether behavior differs between packaged `ALILOS.exe` and dev mode, if both are used.
+
+Stop conditions:
+
+- Unexpected path toward a real attendance action.
+- Credential, cookie, raw HTML, screenshot, staff identity, full portal URL, tokenized path, or query string appears in logs or UI export.
+- Repeated browser crash or packaged Playwright launch failure.
+- Ambiguous target detection, such as multiple visible primary targets or disagreement between dashboard state and action readiness.
 
 ### npm Advisory Audit
 
