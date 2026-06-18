@@ -1,6 +1,6 @@
 # App Structure
 
-There is no web/PWA companion app in this repository yet. WEB1 planning lives in `docs/WEB_COMPANION_PLAN.md`; a future web companion may live under an isolated `webapp/` boundary only after explicit approval.
+There is no web/PWA companion app in this repository yet. WEB1-WEB3 planning lives in `docs/WEB_COMPANION_PLAN.md`; a future web companion may live under an isolated `webapp/` boundary only after explicit approval. The legacy/current `al89er/perakamwaktu` webapp is reference/fallback only and is not imported into this repo.
 
 ## Runtime And Scripts
 

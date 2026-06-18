@@ -169,6 +169,49 @@ Last completion/verification:
 - WEB5 supervised command queue design only.
 - WEB6 supervised controls only after explicit approval.
 
+## WEB3 Legacy Webapp Reference
+
+Known legacy/current webapp reference: `al89er/perakamwaktu`.
+
+WEB3 is docs-only. Do not clone, modify, merge, or copy from the legacy repo unless it is explicitly available locally and the task is reference-only. Do not copy code, secrets, Supabase keys, Telegram tokens, credentials, production config, cookies, raw HTML, screenshots, tokenized URLs, or opaque `link=` values.
+
+Role of the legacy webapp:
+
+- Existing backup/reference implementation.
+- Useful for understanding prior UI/data-flow between the old Tampermonkey workflow, Supabase, and a web surface.
+- Should remain available as fallback while the Electron desktop app and ALILOS web companion mature.
+- Should not be merged into ALILOS automatically.
+
+Reuse decision:
+
+- Reusing `al89er/perakamwaktu` could preserve proven prior behavior, but it risks carrying old assumptions, older security boundaries, production config coupling, and Tampermonkey-era workflows into ALILOS.
+- Rebuilding the ALILOS web companion keeps the desktop-first architecture, S3D Edge Function/API boundary, read-only WEB1/WEB2 posture, and future supervised controls cleaner.
+- Recommendation: rebuild or create an isolated future `webapp/` folder in this repo unless a later explicit review finds a strong reason to reuse the legacy repo.
+- Secrets/config boundaries must be re-designed either way. No legacy secret, token, production config, credential, cookie, raw page capture, full URL, tokenized query string, or opaque `link=` value should be copied.
+
+Same-repo vs separate-repo implication:
+
+- Same ALILOS repo remains possible with an isolated future `webapp/` boundary and separate web build/deploy config.
+- The legacy `al89er/perakamwaktu` repo can remain separate as fallback/reference.
+- A separate repo may remain better if deployment complexity, production fallback risk, or secret-boundary separation matters more than shared documentation and contracts.
+
+Migration strategy:
+
+1. Do not disturb the existing production/backup webapp.
+2. Document ALILOS data contracts first.
+3. Build the ALILOS web companion read-only first.
+4. Compare UI/behavior later using sanitized screenshots or written summaries only.
+5. Migrate or retire legacy behavior only after explicit approval.
+
+Safety/security boundaries:
+
+- No legacy secrets copied.
+- No direct command/control copied.
+- No web-triggered attendance action.
+- No desktop service-role exposure.
+- No Perakam/Fortinet credential handling in the web companion.
+- No bypass of the desktop manual-confirm safety model.
+
 ## Data Dependencies
 
 Existing/planned data sources:
