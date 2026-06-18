@@ -37,6 +37,7 @@ let perakamLoginInFlight = false;
 let lastPerakamLoginAttemptMs = 0;
 let perakamAutoLoginRetryTimer: ReturnType<typeof setTimeout> | null = null;
 const PERAKAM_LOGIN_COOLDOWN_MS = 60 * 1000;
+const HIDDEN_AT_LOGIN_ARG = "--hidden-at-login";
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 
@@ -48,6 +49,10 @@ function appIconPath(): string {
   return path.join(app.getAppPath(), "assets", "app-icon.ico");
 }
 
+function shouldStartHiddenAtLogin(): boolean {
+  return process.argv.includes(HIDDEN_AT_LOGIN_ARG);
+}
+
 function createWindow(): BrowserWindow {
   const window = new BrowserWindow({
     width: 1080,
@@ -56,6 +61,7 @@ function createWindow(): BrowserWindow {
     minHeight: 560,
     title: "A.L.I.L.O.S.",
     icon: appIconPath(),
+    show: !shouldStartHiddenAtLogin(),
     backgroundColor: "#f5f7fb",
     webPreferences: {
       preload: path.join(__dirname, "..", "preload", "preload.js"),
@@ -130,6 +136,7 @@ app.whenReady().then(() => {
   configStore = new ConfigStore(app.getPath("userData"), app.getAppPath());
   config = configStore.load();
   logger = new AppLogger(app.getPath("userData"));
+  applyLaunchAtLoginSetting("startup");
   worker = new BackgroundWorker(config, logger);
   browserController = new BrowserController(app.getPath("userData"), logger, () => {
     void maybeAttemptPerakamAutoLogin("status-change");
@@ -241,6 +248,9 @@ app.whenReady().then(() => {
   appTray = createAppTray(mainWindow, appIconPath());
 
   logger.info("A.L.I.L.O.S. Phase 1 app started.");
+  if (shouldStartHiddenAtLogin()) {
+    logger.info("Started from Windows sign-in; main window remains hidden in tray.");
+  }
   worker.on("updated", broadcastSnapshot);
   logger.on("entry", broadcastSnapshot);
 
@@ -285,6 +295,7 @@ app.whenReady().then(() => {
     const next = normalizeAppSettings(settings);
 
     config.worker = next.worker;
+    config.startup = next.startup;
     config.automation = {
       ...config.automation,
       ...next.automation
@@ -319,8 +330,9 @@ app.whenReady().then(() => {
     }
     automationMonitor.configure();
     heartbeatService.configure();
+    applyLaunchAtLoginSetting("settings");
 
-    logger.info(`App settings saved. Execution mode: ${config.automation.executionMode}. Worker: ${config.worker.enabled ? "enabled" : "disabled"}.`);
+    logger.info(`App settings saved. Execution mode: ${config.automation.executionMode}. Worker: ${config.worker.enabled ? "enabled" : "disabled"}. Launch at login: ${config.startup.launchAtLogin ? "enabled" : "disabled"}.`);
     await broadcastSnapshot();
     return buildAppSettingsSnapshot();
   });
@@ -619,6 +631,48 @@ function telegramSecretStatus(configValue: string, envLocalValue: string): Teleg
   return "missing";
 }
 
+function isLaunchAtLoginSupported(): boolean {
+  return process.platform === "win32" && app.isPackaged;
+}
+
+function launchAtLoginItemSettings(): Electron.LoginItemSettingsOptions {
+  return {
+    path: process.execPath,
+    args: [HIDDEN_AT_LOGIN_ARG]
+  };
+}
+
+function applyLaunchAtLoginSetting(source: "startup" | "settings"): void {
+  if (!isLaunchAtLoginSupported()) {
+    return;
+  }
+
+  app.setLoginItemSettings({
+    ...launchAtLoginItemSettings(),
+    openAtLogin: config.startup.launchAtLogin
+  });
+
+  const effective = launchAtLoginSettingsSnapshot();
+  logger.info(`Launch-at-login ${source} setting applied. Saved: ${config.startup.launchAtLogin ? "enabled" : "disabled"}. Effective: ${effective.openAtLogin ? "enabled" : "disabled"}.`);
+}
+
+function launchAtLoginSettingsSnapshot(): Electron.LoginItemSettings {
+  if (!isLaunchAtLoginSupported()) {
+    return {
+      openAtLogin: false,
+      openAsHidden: false,
+      wasOpenedAtLogin: shouldStartHiddenAtLogin(),
+      wasOpenedAsHidden: shouldStartHiddenAtLogin(),
+      restoreState: false,
+      status: "not-found",
+      executableWillLaunchAtLogin: false,
+      launchItems: []
+    };
+  }
+
+  return app.getLoginItemSettings(launchAtLoginItemSettings());
+}
+
 function normalizeOptionalSecret(value: unknown, fallback: string): string {
   if (typeof value !== "string") {
     return fallback;
@@ -629,10 +683,16 @@ function normalizeOptionalSecret(value: unknown, fallback: string): string {
 }
 
 function buildAppSettingsSnapshot(): AppSettingsSnapshot {
+  const loginItemSettings = launchAtLoginSettingsSnapshot();
   return {
     worker: {
       enabled: config.worker.enabled,
       pollIntervalSeconds: config.worker.pollIntervalSeconds
+    },
+    startup: {
+      launchAtLogin: config.startup.launchAtLogin,
+      supported: isLaunchAtLoginSupported(),
+      openAtLogin: loginItemSettings.openAtLogin
     },
     automation: {
       executionMode: config.automation.executionMode,
@@ -672,6 +732,9 @@ function normalizeAppSettings(settings: Partial<AppSettingsInput> | null): AppSe
     worker: {
       enabled: settings?.worker?.enabled ?? config.worker.enabled,
       pollIntervalSeconds: clampSettingNumber(settings?.worker?.pollIntervalSeconds, 15, 24 * 60 * 60, config.worker.pollIntervalSeconds, "Worker poll interval")
+    },
+    startup: {
+      launchAtLogin: settings?.startup?.launchAtLogin ?? config.startup.launchAtLogin
     },
     automation: {
       executionMode: normalizeSettingsExecutionMode(settings?.automation?.executionMode),

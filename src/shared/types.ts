@@ -148,6 +148,7 @@ export interface AppConfig {
     enabled: boolean;
     pollIntervalSeconds: number;
   };
+  startup: StartupSettings;
   automation: AutomationSettings;
   heartbeat: HeartbeatSettings;
   attendance: {
@@ -181,6 +182,10 @@ export interface AutomationSettings {
   monitorIntervalSeconds: number;
   prepareBrowserInDryRun: boolean;
   auditEvents: AutomationAuditEvent[];
+}
+
+export interface StartupSettings {
+  launchAtLogin: boolean;
 }
 
 export interface AutomationAuditEvent {
@@ -309,6 +314,11 @@ export interface AppSettingsSnapshot {
     enabled: boolean;
     pollIntervalSeconds: number;
   };
+  startup: {
+    launchAtLogin: boolean;
+    supported: boolean;
+    openAtLogin: boolean;
+  };
   automation: {
     executionMode: ExecutionMode;
     monitorIntervalSeconds: number;
@@ -336,6 +346,9 @@ export interface AppSettingsInput {
   worker: {
     enabled: boolean;
     pollIntervalSeconds: number;
+  };
+  startup: {
+    launchAtLogin: boolean;
   };
   automation: {
     executionMode: ExecutionMode;

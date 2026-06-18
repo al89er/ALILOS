@@ -37,7 +37,7 @@ Before packaging/startup work:
 
 Recommended first packaging/startup step:
 
-- Implement launch-at-login only after the packaged `ALILOS.exe` smoke path remains green with the ALILOS userData path and project-owned icon.
+- Smoke test launch-at-login on the intended Windows login session after the packaged `ALILOS.exe` path remains green.
 
 ## Suggested Next Implementation Phase
 
@@ -48,7 +48,7 @@ Recommended first packaging/startup step:
 - Treat the old Tampermonkey script and old webapp as fallback/backup references while the Electron desktop agent remains Windows/desktop-only.
 - Plan Android/mobile access through a hosted webapp/PWA, not Electron. A future webapp may live under `webapp/` in this repo after explicit approval.
 - Improve dashboard wording where old "scaffold" or "detection only" text conflicts with current guarded execution capabilities.
-- Add the planned disabled-by-default Windows launch-at-login setting after a docs-only design review.
+- Smoke test the disabled-by-default Windows launch-at-login setting before relying on unattended startup.
 - Consider a small diagnostics/export flow for sanitized logs and status snapshots to make future Perakam detection debugging easier.
 - Extend detector fixture checks only if they remain independent from runtime fixture reads, including future zero-rect anchor plus visible dashboard descendant cases.
 - Do not add selector support for home/outside-workplace Perakam page variants unless explicitly requested later.
@@ -123,6 +123,8 @@ Recommended first packaging/startup step:
 - Confirm the packaged app and tray use the project-owned ALILOS icon rather than the default Electron icon.
 - Confirm config and logs use packaged Electron `userData`, not repository folders.
 - Confirm packaged Windows userData is under `%APPDATA%\ALILOS`.
+- Toggle launch-at-login on/off in Settings and confirm Electron reports the effective login item state.
+- Launch with `--hidden-at-login` and confirm the app starts resident in the tray without showing the main window.
 - Confirm local dev secrets are not bundled, and `.env.local` is not packaged.
 - Confirm worker services start.
 - Confirm scheduler loads or generates today's times.
@@ -135,21 +137,21 @@ Recommended first packaging/startup step:
 - Keep mode as `dry-run` or `manual-confirm`.
 - Do not perform an unattended real scheduled action.
 - Do not store or send sensitive data.
-- Known remaining concerns: Playwright browser binary handling, launch-at-login not implemented, installer not implemented, and the high-severity npm advisory requires separate review rather than automatic fix.
+- Known remaining concerns: Playwright browser binary handling, installer not implemented, and the high-severity npm advisory requires separate review rather than automatic fix.
 
-### P11 Launch-at-Login Implementation Checklist
+### Launch-at-Login Smoke Checklist
 
-Recommended design:
+Implemented design:
 
-- Add a new top-level config section, `startup`, separate from `automation`, with `launchAtLogin: false` by default.
-- Expose the setting in `AppSettingsSnapshot` and `AppSettingsInput` as `startup.launchAtLogin`.
-- Add one Settings checkbox under General / Automation with wording like `Start ALILOS when I sign in to Windows`.
+- Uses top-level config section `startup`, separate from `automation`, with `launchAtLogin: false` by default.
+- Exposes the setting in `AppSettingsSnapshot` and `AppSettingsInput` as `startup.launchAtLogin`.
+- Adds one Settings checkbox under General / Automation: `Start ALILOS when I sign in to Windows`.
 - Keep manual app launches unchanged: open the main `A.L.I.L.O.S.` window normally.
 - When launched by Windows login startup, start resident in the tray and do not show the main window unless the user chooses Show from the tray or starts the app again.
-- Use an explicit startup argument such as `--hidden-at-login` in the login item args so the app can distinguish login startup from normal launches.
-- Apply login item changes from the main process after config load/save with Electron `app.setLoginItemSettings()`.
-- Read back effective state with `app.getLoginItemSettings()` for diagnostics/status text; treat Windows as the supported platform and avoid changing login items in dev unless explicitly needed for local testing.
-- For packaged Windows, use `process.execPath` as the login item path. The current package/product app name is `ALILOS`, and the packaged executable is `release/win-unpacked/ALILOS.exe`.
+- Uses explicit startup argument `--hidden-at-login` in the login item args so the app can distinguish login startup from normal launches.
+- Applies login item changes from the main process after config load/save with Electron `app.setLoginItemSettings()`.
+- Reads back effective state with `app.getLoginItemSettings()` for diagnostics/status text; Windows packaged builds are the supported registration target.
+- For packaged Windows, uses `process.execPath` as the login item path. The current package/product app name is `ALILOS`, and the packaged executable is `release/win-unpacked/ALILOS.exe`.
 - Do not change `automation.executionMode`, scheduler behavior, browser startup, Telegram, Supabase heartbeat, or Fortinet detection when enabling login startup.
 - Keep the safe operating default: launch-at-login disabled; if enabled, tray-resident at sign-in; no automatic real attendance action beyond the already configured execution mode and existing schedule guards.
 

@@ -166,6 +166,7 @@ const sendTelegramTest = document.querySelector<HTMLButtonElement>("#send-telegr
 const telegramResult = document.querySelector<HTMLElement>("#telegram-result");
 const settingsForm = document.querySelector<HTMLFormElement>("#settings-form");
 const settingsWorkerEnabled = document.querySelector<HTMLInputElement>("#settings-worker-enabled");
+const settingsLaunchAtLogin = document.querySelector<HTMLInputElement>("#settings-launch-at-login");
 const settingsWorkerInterval = document.querySelector<HTMLInputElement>("#settings-worker-interval");
 const settingsExecutionMode = document.querySelector<HTMLSelectElement>("#settings-execution-mode");
 const settingsAutomationInterval = document.querySelector<HTMLInputElement>("#settings-automation-interval");
@@ -374,6 +375,7 @@ const elements = {
   telegramResult: requireElement(telegramResult, "telegram-result"),
   settingsForm: requireElement(settingsForm, "settings-form"),
   settingsWorkerEnabled: requireElement(settingsWorkerEnabled, "settings-worker-enabled"),
+  settingsLaunchAtLogin: requireElement(settingsLaunchAtLogin, "settings-launch-at-login"),
   settingsWorkerInterval: requireElement(settingsWorkerInterval, "settings-worker-interval"),
   settingsExecutionMode: requireElement(settingsExecutionMode, "settings-execution-mode"),
   settingsAutomationInterval: requireElement(settingsAutomationInterval, "settings-automation-interval"),
@@ -567,7 +569,7 @@ function renderSettingsSummaries(snapshot: RendererDashboardSnapshot): void {
   const clockInWindow = settings?.scheduler.clockInWindow;
   const clockOutWindow = settings?.scheduler.clockOutWindow;
   elements.settingsScheduleWindow.textContent = `Configured windows: morning ${clockInWindow?.start ?? "07:45"}-${clockInWindow?.end ?? "07:50"}, evening ${clockOutWindow?.start ?? "17:05"}-${clockOutWindow?.end ?? "17:10"}. Today generated ${snapshot.schedule.schedule.clockInTime} / ${snapshot.schedule.schedule.clockOutTime}; grace ${snapshot.schedule.gracePeriodMinutes} min.`;
-  elements.settingsBrowserSummary.textContent = `Profile ${snapshot.browser.profilePath}. Configured site ${settings?.perakam.dashboardUrl ?? snapshot.perakam.dashboardUrl}. Auto-login ${snapshot.perakamAutoLogin.enabled ? "enabled" : "disabled"}; password ${snapshot.perakamAutoLogin.hasSavedPassword ? "saved locally" : "not saved"}.`;
+  elements.settingsBrowserSummary.textContent = `Profile ${snapshot.browser.profilePath}. Configured site ${settings?.perakam.dashboardUrl ?? snapshot.perakam.dashboardUrl}. Auto-login ${snapshot.perakamAutoLogin.enabled ? "enabled" : "disabled"}; password ${snapshot.perakamAutoLogin.hasSavedPassword ? "saved locally" : "not saved"}. Launch at login ${(settings?.startup.openAtLogin ?? false) ? "enabled" : "disabled"}.`;
   elements.settingsNetworkSummary.textContent = `${snapshot.networkMonitor.enabled ? "Enabled" : "Disabled"}; interval ${snapshot.networkMonitor.settings.intervalSeconds}s; captive portal detection ${snapshot.networkMonitor.settings.captivePortalDetectionEnabled ? "enabled" : "disabled"}.`;
   elements.settingsTelegramSummary.textContent = currentTelegramSettings
     ? `${currentTelegramSettings.enabled ? "Enabled" : "Disabled"}; bot token ${telegramSecretStatusLabel(currentTelegramSettings.secretStatus.botToken)}; chat ${telegramSecretStatusLabel(currentTelegramSettings.secretStatus.chatId)}; prefix ${commandPrefixLabel(currentTelegramSettings.commandPrefix)}.`
@@ -860,6 +862,7 @@ elements.settingsForm.addEventListener("submit", (event) => {
 });
 [
   elements.settingsWorkerEnabled,
+  elements.settingsLaunchAtLogin,
   elements.settingsWorkerInterval,
   elements.settingsExecutionMode,
   elements.settingsAutomationInterval,
@@ -1856,6 +1859,7 @@ function renderAppSettings(settings: RendererAppSettingsSnapshot, options: { for
 
   if (!appSettingsDirty || options.force) {
     elements.settingsWorkerEnabled.checked = settings.worker.enabled;
+    elements.settingsLaunchAtLogin.checked = settings.startup.launchAtLogin;
     elements.settingsWorkerInterval.value = String(settings.worker.pollIntervalSeconds);
     elements.settingsExecutionMode.value = settings.automation.executionMode;
     elements.settingsAutomationInterval.value = String(settings.automation.monitorIntervalSeconds);
@@ -1905,6 +1909,9 @@ function readAppSettings(): RendererAppSettingsInput {
       enabled: elements.settingsWorkerEnabled.checked,
       pollIntervalSeconds: readPositiveNumber(elements.settingsWorkerInterval.value, "Worker interval")
     },
+    startup: {
+      launchAtLogin: elements.settingsLaunchAtLogin.checked
+    },
     automation: {
       executionMode: readExecutionMode(elements.settingsExecutionMode.value),
       monitorIntervalSeconds: readPositiveNumber(elements.settingsAutomationInterval.value, "Automation interval"),
@@ -1935,6 +1942,7 @@ function readAppSettings(): RendererAppSettingsInput {
 
 function setAppSettingsControlsDisabled(disabled: boolean): void {
   elements.settingsWorkerEnabled.disabled = disabled;
+  elements.settingsLaunchAtLogin.disabled = disabled || !currentAppSettings?.startup.supported;
   elements.settingsWorkerInterval.disabled = disabled;
   elements.settingsExecutionMode.disabled = disabled;
   elements.settingsAutomationInterval.disabled = disabled;

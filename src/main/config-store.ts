@@ -19,6 +19,9 @@ function createDefaultConfig(): AppConfig {
       enabled: true,
       pollIntervalSeconds: 60
     },
+    startup: {
+      launchAtLogin: false
+    },
     automation: {
       executionMode: "manual-confirm",
       monitorIntervalSeconds: 30,
@@ -160,6 +163,11 @@ export class ConfigStore {
         ...defaultConfig.worker,
         ...parsed.worker
       },
+      startup: {
+        ...defaultConfig.startup,
+        ...parsed.startup,
+        launchAtLogin: Boolean(parsed.startup?.launchAtLogin)
+      },
       automation: {
         ...defaultConfig.automation,
         ...parsed.automation,
@@ -233,7 +241,7 @@ export class ConfigStore {
       }
     };
 
-    if (parsedHeartbeat?.deviceId !== normalized.heartbeat.deviceId) {
+    if (parsedHeartbeat?.deviceId !== normalized.heartbeat.deviceId || !parsed.startup) {
       this.save(normalized);
     }
 
