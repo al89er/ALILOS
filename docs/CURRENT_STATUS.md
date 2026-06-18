@@ -69,12 +69,12 @@ The active implementation focus appears to be hardening the guarded manual-confi
 
 - Workplace Perakam smoke test is pending.
 - Scheduled dry-run testing is pending.
-- Packaged Windows smoke testing is pending.
-- Startup/tray reliability testing is pending.
+- P packaging/startup local smoke testing passed for the unpacked Windows app, including `ALILOS.exe`, `%APPDATA%\ALILOS`, the project icon, tray show/hide/quit, disabled-by-default launch-at-login, simulated `--hidden-at-login`, and packaged Playwright launch.
+- Real Windows sign-in/reboot launch-at-login behavior, sleep/wake behavior, and locked-session behavior remain pending.
 
 ### Readiness Gate
 
-- Do not package for unattended daily use until workplace detection, scheduled dry-run, tray/startup behavior, sleep/wake behavior, and sanitized logging have been tested on the intended Windows environment.
+- Do not rely on unattended daily use until workplace detection, scheduled dry-run, real sign-in startup, sleep/wake behavior, locked-session behavior, and sanitized logging have been tested on the intended Windows environment.
 
 ### Packaged Windows Smoke-Test Checklist
 
@@ -96,14 +96,14 @@ The active implementation focus appears to be hardening the guarded manual-confi
 - No automated unit/integration test suite exists.
 - No signed installer or auto-update workflow exists.
 - Launch-at-login is implemented for packaged Windows builds, disabled by default, and starts hidden to tray when launched with `--hidden-at-login`.
-- Playwright browser binaries/executable handling for a packaged Windows app remains the main package smoke-test concern.
+- Packaged Playwright launch passed in local unpacked smoke testing; real release machines should still verify browser binary availability.
 - The high-severity npm advisory reported during packaging setup requires separate review, not an automatic fix during packaging work.
 - Electron is upgraded to `39.8.10`; packaged Windows smoke testing has covered the renamed `ALILOS.exe`, `%APPDATA%\ALILOS` userData, and the project-owned app/tray icon.
 - `BackgroundWorker` status text may understate implemented services because it says the worker scaffold performs no configured-site clicking, while the separate confirmation/browser services do implement guarded clicking.
 - Telegram bot token/chat ID can be stored in local config or supplied by `.env.local`; both are sensitive and must remain untracked/unlogged.
 - Perakam selectors and page-text heuristics may drift if the site changes.
 - Home/outside-workplace Perakam page variants can differ from the intended workplace network version and are unsupported for now.
-- Browser automation and notifications need manual Windows smoke testing.
+- Browser automation and notifications still need workplace-network validation in the next W track.
 - Android/mobile use is not planned through Electron; future phone access should be via hosted webapp/PWA.
 - The current repository has uncommitted identity-related changes; do not overwrite them during unrelated work.
 
@@ -129,6 +129,8 @@ The active implementation focus appears to be hardening the guarded manual-confi
 - The Settings tab can edit worker enable/interval, automation execution mode/interval/dry-run preparation, scheduler windows/grace/reminders, Perakam dashboard URL, and Supabase heartbeat enable/project URL/interval. Supabase URL input is blank on load and only replaces the stored URL when a new URL is entered.
 - Launch-at-login uses top-level `startup.launchAtLogin`, remains disabled by default, uses Windows login items only in packaged ALILOS builds, and starts hidden to tray when launched at sign-in.
 - Telegram token/chat fields are password inputs, blank on load, and preserve existing configured or `.env.local` effective values unless replacements are typed. The renderer receives only configured/env-local/missing status, not actual token/chat values. The command prefix is editable.
+- P packaging/startup track is mostly complete after P12 local validation; remaining release risks are optional installer/signing, real Windows sign-in/reboot testing, sleep/wake/locked-session testing, and W workplace validation.
+- Next recommended major track: W workplace validation for Perakam, Fortinet portal behavior, scheduled dry-run, and sanitized logs on the intended network.
 
 ## Testing And Build Status
 

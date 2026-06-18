@@ -147,8 +147,8 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 
 - Workplace Perakam smoke test is pending.
 - Scheduled dry-run testing is pending.
-- Packaged Windows smoke testing is pending.
-- Startup/tray reliability testing is pending.
+- P packaging/startup local smoke testing passed for `ALILOS.exe`, `%APPDATA%\ALILOS`, project-owned icons, tray show/hide/quit, disabled-by-default launch-at-login, simulated `--hidden-at-login`, and packaged Playwright launch.
+- Real Windows sign-in/reboot launch-at-login behavior, sleep/wake behavior, and locked-session behavior remain pending.
 
 ### Workplace Smoke-Test Checklist
 
@@ -190,7 +190,8 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 - Keep mode as `dry-run` or `manual-confirm`.
 - Do not perform an unattended real scheduled action.
 - Do not store or send sensitive data.
-- Known remaining concerns: Playwright browser binary handling, installer not implemented, and the high-severity npm advisory requires separate review rather than automatic fix.
+- P12 local smoke status: packaged Playwright launch passed, `.env.local` was not packaged, no credential or tokenized portal URL log matches were observed, and no ALILOS process remained after Quit.
+- Known remaining concerns: installer/signing are not implemented, real Windows sign-in/reboot startup is untested, workplace scheduled dry-run is pending, and the high-severity npm advisory requires separate review rather than automatic fix.
 
 ## Packaging / Startup Audit
 
@@ -200,8 +201,8 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 - App lifecycle uses a single-instance lock, starts services after `app.whenReady()`, keeps the process resident on `window-all-closed`, and stops services during `before-quit`.
 - Launch-at-login is implemented for packaged Windows builds with `app.setLoginItemSettings()` / `app.getLoginItemSettings()`, `process.execPath`, and `--hidden-at-login`.
 - Config and logs use Electron `userData`, which is suitable for packaged app state.
-- Playwright is a runtime dependency; packaged Windows testing must confirm browser binary installation/executable resolution before relying on Perakam browser automation.
-- Recommended next implementation step: smoke test launch-at-login on the intended Windows login session before relying on unattended startup.
+- Playwright is a runtime dependency; local packaged smoke testing has confirmed browser launch, but release machines should still verify browser binary installation/executable resolution.
+- Recommended next operational step: run W workplace validation before relying on unattended startup or scheduled browser automation.
 
 ## Launch-at-Login Behavior
 
@@ -215,6 +216,14 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 - Dev behavior: avoid registering dev runs as a Windows login item by default. If a dev-only diagnostic is needed, keep it explicit and do not persist surprising startup entries.
 - Safety boundary: enabling launch-at-login must not change `automation.executionMode`, scheduler generation, Browser/Perakam startup, Telegram, Supabase heartbeat, or Fortinet detection. No automatic real attendance action should occur beyond the existing configured mode/schedule guardrails.
 - Manual disable: uncheck the Settings checkbox and save; if the app cannot be opened, disable `ALILOS` in Windows Startup Apps or Task Manager Startup apps, then relaunch and save disabled.
+
+## W Workplace Validation Track
+
+- Run from the intended workplace network with execution mode kept as `dry-run` or `manual-confirm`.
+- Verify Perakam login/dashboard detection, visible `a50`/`a51` target availability, hidden sidebar filtering, and no duplicate action after a local completion record.
+- If the Fortinet portal appears, verify detection reports only safe reasons such as the portal hostname or page-marker summary and does not log full tokenized paths or query strings.
+- Run a scheduled dry-run during an appropriate window and confirm audit events remain simulated unless the user intentionally performs a guarded real action.
+- Keep launch-at-login disabled unless explicitly testing it; real sign-in/reboot, sleep/wake, and locked-session behavior remain release-readiness checks.
 
 ### npm Advisory Audit
 

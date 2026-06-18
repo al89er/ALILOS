@@ -8,6 +8,7 @@
 - Manually smoke test tab switching across Overview, Schedule, Actions, Browser / Site, Network, Telegram, Logs, and Settings.
 - Verify configured-site detection manually on the intended workplace network when access is available, without creating a real-action confirmation unless intentionally testing during the correct real action window.
 - Keep live Perakam target-detection smoke testing marked pending while only home/outside-workplace network access is available.
+- Begin the W workplace validation track next: Perakam detection, Fortinet portal detection, scheduled dry-run, and sanitized logs on the intended network.
 - Keep `docs/PHASE_4D_MANUAL_CONFIRM_DESIGN.md` as historical design context, but update or supersede stale sections before relying on it for current behavior.
 - For Phase 6A dry-run testing, set `automation.executionMode` to `dry-run` only in local config and confirm that due actions are simulated, not clicked.
 
@@ -26,18 +27,18 @@ Desktop operational blockers:
 
 - Workplace Perakam smoke test pending.
 - Scheduled dry-run pending.
-- Packaged Windows smoke testing pending.
-- Startup/tray reliability pending.
+- P packaging/startup local smoke testing passed for the unpacked Windows app.
+- Real Windows sign-in/reboot launch-at-login behavior, sleep/wake behavior, and locked-session behavior remain pending.
 
-Before packaging/startup work:
+Before unattended daily use:
 
 - Run workplace smoke testing from the workplace/hospital network.
 - Keep scheduled testing in `dry-run` or `manual-confirm`; do not perform real unattended actions.
-- Run the minimal Windows package proof with `npm run package:win` and verify tray/minimize, launch-at-login decision, locked-session, sleep/wake, and log/export behavior.
+- Complete real sign-in/reboot launch-at-login, locked-session, sleep/wake, and log/export behavior checks.
 
-Recommended first packaging/startup step:
+Recommended next major track:
 
-- Smoke test launch-at-login on the intended Windows login session after the packaged `ALILOS.exe` path remains green.
+- W workplace validation: confirm Perakam, Fortinet, scheduled dry-run, and sanitized logging behavior on the intended network before adding new runtime features.
 
 ## Suggested Next Implementation Phase
 
@@ -49,15 +50,12 @@ Recommended first packaging/startup step:
 - Plan Android/mobile access through a hosted webapp/PWA, not Electron. A future webapp may live under `webapp/` in this repo after explicit approval.
 - Improve dashboard wording where old "scaffold" or "detection only" text conflicts with current guarded execution capabilities.
 - Smoke test the disabled-by-default Windows launch-at-login setting before relying on unattended startup.
+- Treat the P packaging/startup track as mostly complete after P12 local validation; remaining release work is optional installer/signing plus real Windows sign-in/reboot and workplace dry-run validation.
 - Consider a small diagnostics/export flow for sanitized logs and status snapshots to make future Perakam detection debugging easier.
 - Extend detector fixture checks only if they remain independent from runtime fixture reads, including future zero-rect anchor plus visible dashboard descendant cases.
 - Do not add selector support for home/outside-workplace Perakam page variants unless explicitly requested later.
 - Add explicit documentation or UI affordances for the Perakam auto-login safety model and where encrypted credentials are stored.
-- Plan and run a targeted Electron-only major upgrade separately from packaging smoke testing. Full `npm audit` flags direct `electron@33.4.11` as high severity, while `npm audit --omit=dev` is clean; npm's automatic fix requires a breaking upgrade to `electron@42.4.1`.
-- First target for that Electron-only upgrade: `electron@39.8.10`. Latest Electron seen from npm is `42.4.1`, but Electron 39.8.10 is past the `<=39.8.4` advisory cutoff while reducing upgrade jump size.
-- Future upgrade command: `npm install --save-dev --save-exact electron@39.8.10`.
-- For that Electron upgrade, avoid related tooling churn first, run `npm run typecheck`, `npm run build`, `npm test`, `npm run package:win`, then launch the packaged app and verify tray close/quit, worker startup, Playwright browser launch, and disabled-by-default heartbeat.
-- If the packaged smoke test fails after the Electron upgrade, revert the isolated Electron/package-lock commit and reassess before changing Electron Builder or packaging behavior.
+- Electron is already upgraded to `39.8.10`; future Electron upgrades should remain targeted and include typecheck, build, test, package, tray, worker startup, Playwright launch, and disabled-by-default heartbeat checks.
 
 ## Testing / Smoke-Test Checklist
 
@@ -106,6 +104,15 @@ Recommended first packaging/startup step:
 - Verify no duplicate action after a local completion record exists.
 - Verify logs contain sanitized status only.
 
+### W Workplace Validation Track
+
+- W1 baseline: run on the workplace network with `dry-run` or `manual-confirm`, no unattended real action.
+- W2 Perakam: verify login/dashboard state, visible `a50`/`a51`, hidden-sidebar filtering, and no repeat after local completion.
+- W3 Fortinet: if the portal appears, verify safe captive-portal reason text and confirm full tokenized paths/query strings are absent from logs.
+- W4 scheduled dry-run: verify generated times, due-action audit events, missed-action grace, and simulated results only.
+- W5 startup environment: optionally test real Windows sign-in/reboot, sleep/wake, and locked-session behavior with launch-at-login disabled unless intentionally enabled.
+- W6 release decision: decide whether an installer and signed release are needed; both remain optional.
+
 ### Scheduled Dry-Run Checklist
 
 - Keep safe mode as `dry-run` or `manual-confirm`.
@@ -137,7 +144,8 @@ Recommended first packaging/startup step:
 - Keep mode as `dry-run` or `manual-confirm`.
 - Do not perform an unattended real scheduled action.
 - Do not store or send sensitive data.
-- Known remaining concerns: Playwright browser binary handling, installer not implemented, and the high-severity npm advisory requires separate review rather than automatic fix.
+- P12 local smoke passed for packaged Playwright launch, `%APPDATA%\ALILOS` userData, project-owned icon, `.env.local` exclusion, disabled launch-at-login, and simulated `--hidden-at-login`.
+- Known remaining concerns: installer/signing are not implemented, real Windows sign-in/reboot startup is untested, workplace scheduled dry-run is pending, and the high-severity npm advisory requires separate review rather than automatic fix.
 
 ### Launch-at-Login Smoke Checklist
 
