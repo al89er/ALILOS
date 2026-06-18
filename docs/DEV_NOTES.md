@@ -144,6 +144,7 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 - S3B schedule/completion schema migration is drafted.
 - S3D schedule/completion write-path decision is documented: future writes should use an Edge Function/API proxy plus explicit device pairing/token.
 - WEB1 web/PWA companion planning is documented in `docs/WEB_COMPANION_PLAN.md`.
+- WEB2 static/read-only web companion UI design is documented in `docs/WEB_COMPANION_PLAN.md`.
 - Heartbeat remains disabled by default.
 - Real Supabase writes are deferred until the auth/pairing/write-path decision is made.
 
@@ -237,7 +238,7 @@ Operational notes after W validation:
 
 - O1 operational readiness guidance lives in `docs/OPERATIONAL_READINESS.md`. Treat it as the current release-candidate checklist before monitored local use.
 - O3 real-machine observation passed for packaged launch, scripted window hide/show, clean quit, sanitized logs, launch-at-login disabled, and completion records `0`. Visual tray-menu click verification, real sign-in/reboot launch-at-login, and full sleep/wake suspend-resume remain pending.
-- O4 consolidated the O track as mostly complete. Monitored `manual-confirm`, `dry-run`, and `notify-only` local use are acceptable; fully unattended real execution remains no-go. Next work should be RC observation tasks, S3E Edge Function/API contract planning, or WEB2 static/read-only web companion UI design only after explicit approval.
+- O4 consolidated the O track as mostly complete. Monitored `manual-confirm`, `dry-run`, and `notify-only` local use are acceptable; fully unattended real execution remains no-go. Next work should be RC observation tasks, S3E Edge Function/API contract planning, or WEB3 authenticated read-only web companion status planning only after explicit approval.
 - Local Perakam auto-login is enabled on the test machine and succeeded during W4/W5 without credential-value logging. Intentionally decide whether it should be enabled or disabled before future tests.
 - Fully unattended real attendance action is not approved or validated.
 - Supabase heartbeat/write path remains disabled/deferred; do not start S3 schedule/completion runtime sync without explicit approval.
@@ -335,6 +336,10 @@ Stop conditions:
 - The web companion must not perform Perakam login, Fortinet login/form submission, credential handling, cookie handling, raw HTML/screenshot display, tokenized URL handling, direct unattended real actions, or any bypass of desktop manual-confirm safety.
 - Default repo plan is same-repo under a future isolated `webapp/` boundary after approval; move to a separate repo if deployment/build complexity or secret-boundary risk grows.
 - Android/mobile use should be browser/PWA-based, not Electron.
+- WEB2 screen design includes home/status dashboard, desktop/device detail, schedule, completion/verification, warnings/events, and settings/info placeholder.
+- WEB2 status cards cover desktop online/stale/unreachable, Perakam reachability/session issues, captive portal state, sync disabled/deferred, next scheduled action, pending desktop manual confirmation, and last completion/verification state.
+- WEB2 UI must stay single-column, timestamped, text-explicit, placeholder-friendly, and free of hidden/destructive controls.
+- WEB2 remains read-only: no credential inputs, Perakam/Fortinet forms, attendance triggers, command buttons, mode switches, refresh commands, skip/unskip controls, or confirmation controls.
 
 ## Avoiding Accidental Real Actions
 

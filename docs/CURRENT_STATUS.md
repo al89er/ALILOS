@@ -28,6 +28,7 @@
 - S3A docs-only Supabase schedule/completion sync planning is documented for durable backup/recovery of generated daily schedules and completion records.
 - S3B schema-only Supabase migration is drafted for `daily_schedules` and `completion_records`.
 - WEB1 docs-only web/PWA companion planning is documented in `docs/WEB_COMPANION_PLAN.md`.
+- WEB2 static/read-only web companion UI design is documented in `docs/WEB_COMPANION_PLAN.md`.
 
 ## Partially Completed Work
 
@@ -42,6 +43,7 @@
 - Supabase heartbeat has a Settings-tab project URL editor and disabled-by-default sender skeleton, but the phone-webapp receiver/dashboard is still not implemented in this repository.
 - Supabase is not required for local scheduled operation. The repository has the S2A heartbeat schema migration, S2B sender skeleton, S3A docs-only schedule/completion sync plan, and S3B schema-only schedule/completion migration; runtime schedule/completion sync, hosted webapp/PWA, and remote command/control queue are not implemented.
 - The future web/PWA companion remains unimplemented. WEB1 plans a read-only-first mobile status surface that depends on Supabase-synced heartbeat, schedule, and completion data when those sync paths exist.
+- WEB2 defines the first read-only screens and status cards, but no webapp code, dependencies, runtime sync, or controls exist.
 - The old Tampermonkey script and old webapp remain fallback/backup references only.
 - Workplace Perakam target-detection smoke testing passed in W2 on the intended network with packaged `ALILOS.exe`.
 
@@ -70,6 +72,7 @@ The active implementation focus appears to be hardening the guarded manual-confi
 - S3B schedule/completion schema migration is drafted.
 - S3D schedule/completion write-path decision is documented: prefer Edge Function/API proxy plus explicit device pairing/token.
 - WEB1 web companion plan is documented: read-only first, same-repo `webapp/` boundary by default only after approval, and no web command/control in WEB1.
+- WEB2 web companion UI design is documented: mobile-first single-column read-only screens, explicit stale/offline/sync warnings, and no command buttons.
 - Heartbeat remains disabled by default.
 - Real Supabase writes are deferred until auth/pairing/write-path authorization is decided.
 
@@ -154,7 +157,7 @@ The active implementation focus appears to be hardening the guarded manual-confi
 - Next recommended major track: O operational readiness / release-candidate checklist. S3E Edge Function/API schema contract planning remains a later option only after explicit approval.
 - O1 operational readiness checklist is documented in `docs/OPERATIONAL_READINESS.md`: monitored `manual-confirm`/`dry-run` local use is acceptable; fully unattended real execution remains no-go.
 - O3 real-machine observation passed for packaged launch, scripted window hide/show, clean quit, sanitized logs, launch-at-login disabled, and completion records `0`; visual tray-menu click verification, real sign-in/reboot launch-at-login, and full sleep/wake remain pending.
-- O operational readiness is mostly complete after O4 consolidation. Current go/no-go: go for monitored local `manual-confirm`, `dry-run`, or `notify-only`; no-go for unattended real execution. Next options are RC real-world observation tasks, S3E Edge Function/API contract planning, or WEB2 static/read-only web companion UI design, each only with explicit approval.
+- O operational readiness is mostly complete after O4 consolidation. Current go/no-go: go for monitored local `manual-confirm`, `dry-run`, or `notify-only`; no-go for unattended real execution. Next options are RC real-world observation tasks, S3E Edge Function/API contract planning, or WEB3 authenticated read-only web companion status planning, each only with explicit approval.
 
 ## W Workplace Validation Track
 

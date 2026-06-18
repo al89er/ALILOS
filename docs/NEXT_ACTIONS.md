@@ -14,7 +14,7 @@
 - O1 operational readiness checklist is documented in `docs/OPERATIONAL_READINESS.md`.
 - O3 real-machine observation passed for packaged launch, scripted hide/show, clean quit, sanitized logs, launch-at-login disabled, and completion records `0`.
 - O4 consolidated the O track as mostly complete. Current go/no-go: monitored `manual-confirm`, `dry-run`, and `notify-only` are acceptable; fully unattended real execution remains no-go.
-- Next track options: RC small real-world observation tasks when physically ready, S3E Edge Function/API schedule/completion contract planning only after explicit approval, or WEB2 static/read-only web companion UI design only after explicit approval.
+- Next track options: RC small real-world observation tasks when physically ready, S3E Edge Function/API schedule/completion contract planning only after explicit approval, or WEB3 authenticated read-only web companion status planning only after explicit approval.
 - Keep `docs/PHASE_4D_MANUAL_CONFIRM_DESIGN.md` as historical design context, but update or supersede stale sections before relying on it for current behavior.
 - For Phase 6A dry-run testing, set `automation.executionMode` to `dry-run` only in local config and confirm that due actions are simulated, not clicked.
 
@@ -47,7 +47,7 @@ Before unattended daily use:
 
 Recommended next major track:
 
-- RC small real-world observation tasks when physically ready. S3E Edge Function/API schedule/completion contract planning and WEB2 static/read-only web companion UI design remain later options only after explicit approval.
+- RC small real-world observation tasks when physically ready. S3E Edge Function/API schedule/completion contract planning and WEB3 authenticated read-only web companion status planning remain later options only after explicit approval.
 
 ## Suggested Next Implementation Phase
 
@@ -221,6 +221,7 @@ WEB1 web companion planning:
 
 - `docs/WEB_COMPANION_PLAN.md` defines the future mobile/PWA companion as a status/control surface only.
 - WEB1 is read-only: show heartbeat/status when available, stale/offline warnings, and placeholders until schedule/completion sync exists.
+- WEB2 defines the static/read-only UI design: home/status dashboard, device detail, schedule, completion/verification, warnings/events, and settings/info placeholder screens.
 - Future web controls require later approval and must go through the Supabase/Edge Function/API control-plane boundary.
 - The default repo plan is same-repo under a future isolated `webapp/` boundary, with separate repo still available if deployment/build complexity or secret-boundary risk grows.
 - Android/mobile use should be browser/PWA-based, not Electron.
