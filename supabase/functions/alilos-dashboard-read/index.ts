@@ -63,7 +63,8 @@ Deno.serve(async (request) => {
     return jsonResponse({ success: false, error: validation.error }, 400);
   }
 
-  const { deviceId, dateKey } = validation.payload;
+  const { deviceId, dateKey, monthKey } = validation.payload;
+  const monthRange = monthBounds(monthKey);
   const requestedAt = new Date().toISOString();
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
     auth: {
@@ -86,7 +87,7 @@ Deno.serve(async (request) => {
     return jsonResponse({ success: false, error: "device-not-registered" }, 404);
   }
 
-  const [heartbeat, schedules, skips, completions, commands] = await Promise.all([
+  const [heartbeat, schedules, skips, completions, commands, eventLogs] = await Promise.all([
     supabase
       .from("heartbeats")
       .select("app_status, network_status, perakam_page_status, telegram_status, last_seen_at, status_text, last_error_text, updated_at")
@@ -102,7 +103,9 @@ Deno.serve(async (request) => {
       .from("skip_dates")
       .select("skip_date, action_key, reason, source, updated_at")
       .eq("device_id", deviceId)
-      .eq("skip_date", dateKey)
+      .gte("skip_date", monthRange.start)
+      .lt("skip_date", monthRange.end)
+      .order("skip_date", { ascending: true })
       .order("action_key", { ascending: true }),
     supabase
       .from("completion_records")
@@ -115,7 +118,13 @@ Deno.serve(async (request) => {
       .select("id, command_type, status, requested_at, claimed_at, completed_at, result_summary, updated_at")
       .eq("device_id", deviceId)
       .order("updated_at", { ascending: false })
-      .limit(20)
+      .limit(20),
+    supabase
+      .from("event_logs")
+      .select("event_time, event_type, severity, action_key, schedule_date, message, created_at")
+      .eq("device_id", deviceId)
+      .order("event_time", { ascending: false })
+      .limit(30)
   ]);
 
   if (heartbeat.error) {
@@ -133,11 +142,15 @@ Deno.serve(async (request) => {
   if (commands.error) {
     return jsonResponse({ success: false, error: "command-read-failed" }, 500);
   }
+  if (eventLogs.error) {
+    return jsonResponse({ success: false, error: "event-log-read-failed" }, 500);
+  }
 
   return jsonResponse({
     success: true,
     requestedAt,
     dateKey,
+    monthKey,
     device: {
       deviceId,
       label: readNullableText(device.display_name, 120) ?? "A.L.I.L.O.S. desktop",
@@ -185,6 +198,15 @@ Deno.serve(async (request) => {
       updatedAt: readIsoDate(row.updated_at)
     })),
     commandSync: summarizeCommands(commands.data ?? []),
+    eventLogs: (eventLogs.data ?? []).map((row) => ({
+      eventTime: readIsoDate(row.event_time),
+      eventType: readNullableText(row.event_type, 80) ?? "event",
+      severity: readSeverity(row.severity) ?? "info",
+      actionKey: readNullableActionKey(row.action_key),
+      scheduleDate: readDate(row.schedule_date),
+      message: readNullableText(row.message, 500) ?? "Sanitized event.",
+      createdAt: readIsoDate(row.created_at)
+    })),
     safety: {
       readOnly: true,
       webAutomation: false,
@@ -230,19 +252,20 @@ function summarizeCommands(rows: JsonObject[]): JsonObject {
   };
 }
 
-function validateRequestBody(value: unknown): { ok: true; payload: { deviceId: string; dateKey: string } } | { ok: false; error: string } {
+function validateRequestBody(value: unknown): { ok: true; payload: { deviceId: string; dateKey: string; monthKey: string } } | { ok: false; error: string } {
   if (!isPlainObject(value) || containsForbiddenKeyOrValue(value)) {
     return { ok: false, error: "invalid-body" };
   }
 
   const deviceId = readUuid(value.deviceId);
   const dateKey = readDate(value.dateKey) ?? todayDateKey();
+  const monthKey = readMonthKey(value.monthKey) ?? dateKey.slice(0, 7);
 
   if (!deviceId) {
     return { ok: false, error: "invalid-device-id" };
   }
 
-  return { ok: true, payload: { deviceId, dateKey } };
+  return { ok: true, payload: { deviceId, dateKey, monthKey } };
 }
 
 function containsForbiddenKeyOrValue(value: unknown): boolean {
@@ -312,6 +335,11 @@ function readDate(value: unknown): string | null {
   return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : null;
 }
 
+function readMonthKey(value: unknown): string | null {
+  const text = String(value ?? "").trim();
+  return /^\d{4}-(0[1-9]|1[0-2])$/.test(text) ? text : null;
+}
+
 function readTime(value: unknown): string | null {
   const text = String(value ?? "").trim();
   return /^\d{2}:\d{2}$/.test(text) ? text : null;
@@ -343,6 +371,11 @@ function readCommandStatus(value: unknown): "pending" | "claimed" | "succeeded" 
     : null;
 }
 
+function readSeverity(value: unknown): "debug" | "info" | "warn" | "error" | null {
+  const text = String(value ?? "").trim();
+  return text === "debug" || text === "info" || text === "warn" || text === "error" ? text : null;
+}
+
 function readIsoDate(value: unknown): string | null {
   if (value === undefined || value === null || value === "") {
     return null;
@@ -371,6 +404,16 @@ function shortId(value: string): string {
 
 function todayDateKey(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+function monthBounds(value: string): { start: string; end: string } {
+  const [year, month] = value.split("-").map((part) => Number(part));
+  const start = new Date(Date.UTC(year, month - 1, 1));
+  const end = new Date(Date.UTC(year, month, 1));
+  return {
+    start: start.toISOString().slice(0, 10),
+    end: end.toISOString().slice(0, 10)
+  };
 }
 
 function isPlainObject(value: unknown): value is JsonObject {

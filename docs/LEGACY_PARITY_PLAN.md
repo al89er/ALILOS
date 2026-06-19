@@ -43,8 +43,8 @@ Telegram remains useful as an existing local notification/fallback path, but Tel
 | Supabase skip dates | Partially implemented | PARITY5 desktop/Edge Function sync exists and is disabled by default; PARITY9 does not add skip/unskip controls yet. |
 | Supabase schedules/completions | Partially implemented | PARITY6 desktop/Edge Function sync exists and is disabled by default; it backs up local rows and surfaces remote completion warnings only. |
 | Supabase command requests/results | Partially implemented | PARITY7 dry-run/non-clicking command processing exists and is disabled by default; configured-action command execution is still missing/deferred. |
-| Webapp monitoring | Partially implemented | PARITY8 adds a same-repo read-only static PWA shell and dashboard-read proxy; deployment/auth pairing remains future work. |
-| Webapp manual controls | Partially implemented | PARITY9 adds safe status refresh, dry-run/check, recalculate today schedule, and cancel confirmation controls only. Skip/unskip and guarded configured-action controls remain deferred. |
+| Webapp monitoring | Partially implemented | PARITY8 adds a same-repo read-only static PWA shell and dashboard-read proxy; PARITY9B aligns it to Dashboard, Skip dates, and Log history tabs. Deployment/auth pairing remains future work. |
+| Webapp manual controls | Partially implemented | PARITY9 adds safe status refresh, dry-run/check, recalculate today schedule, and cancel confirmation controls only. PARITY9B skip-date calendar is read-only; skip/unskip and guarded configured-action controls remain deferred. |
 | Telegram monitoring/commands | Paused | Existing Telegram code/config stays secondary; not required for completion. |
 | Background operation | Implemented | Tray/background packaged app works; field validation remains. |
 | Separate Playwright browser | Implemented | Persistent Playwright browser is separate from normal browser use. |
@@ -174,6 +174,22 @@ PARITY8 does not add command creation UI, skip/unskip controls, mode switches, c
 Production use requires the deployed command Edge Function, a placeholder-configured webapp using publishable/anon credentials, and desktop parity command sync explicitly enabled with both `paritySync.enabled` and `paritySync.commandSyncEnabled`. The buttons do not imply immediate execution when the desktop is offline or sync is disabled.
 
 PARITY9 does not add skip/unskip, runtime mode switching, configured-site login, captive portal login, credential fields, service-role keys in the webapp, direct table grants, arbitrary command input, raw JSON editors, browser automation, remote `perform-configured-action`, or unattended execution.
+
+## PARITY9B Webapp Tab Workflow Result
+
+`webapp/` now follows the existing three-tab mental model:
+
+- Dashboard
+- Skip dates
+- Log history
+
+The Dashboard tab shows morning/evening action cards, desktop/device status, configured website/session/network status, schedule/completion status, safe non-clicking controls, command sync status, and safety notices.
+
+The Skip dates tab shows a month-based read-only calendar. Highlighted cells represent synced or mock skipped dates. Calendar skip/unskip toggles are not wired in PARITY9B and should be a separate safe phase.
+
+The Log history tab shows recent sanitized event-log summaries from the dashboard read proxy when available, with sanitized mock fallback rows otherwise. It must not display raw sensitive data, full/tokenized URLs, raw HTML, screenshots, credentials, or service-role keys.
+
+`supabase/functions/alilos-dashboard-read/index.ts` can now return monthly skip-date rows and recent sanitized `event_logs` rows. It remains read-only, uses service-role only server-side, and does not change direct table grants or RLS posture.
 
 PARITY3 does not poll or process command requests, implement webapp code, add secrets, or enable unattended execution. Supabase keys for this path must be publishable/anon only; service-role-looking keys are rejected from local parity-sync config.
 

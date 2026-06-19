@@ -18,96 +18,142 @@
         <span id="connection-pill" class="pill neutral">Static shell</span>
       </header>
 
+      <nav class="tabbar" aria-label="Webapp sections">
+        <button type="button" class="tab-button active" data-tab-target="dashboard-panel">Dashboard</button>
+        <button type="button" class="tab-button" data-tab-target="skip-panel">Skip dates</button>
+        <button type="button" class="tab-button" data-tab-target="logs-panel">Log history</button>
+      </nav>
+
       <section class="notice">
         <strong>Safe web controls.</strong>
         <span>These controls only request non-clicking desktop checks. They do not perform a real website click.</span>
       </section>
 
-      <section class="panel primary" aria-labelledby="device-title">
-        <div class="section-heading">
-          <h2 id="device-title">Device Status</h2>
-          <span id="device-freshness" class="status-text">Waiting for data</span>
-        </div>
-        <div class="status-row">
-          <span id="online-dot" class="dot unknown"></span>
-          <div>
-            <strong id="device-label">A.L.I.L.O.S. desktop</strong>
-            <span id="device-id">Device id not configured</span>
+      <section id="dashboard-panel" class="tab-panel active" data-tab-panel>
+        <section class="action-grid" aria-label="Morning and evening actions">
+          <article class="action-card" id="morning-card">
+            <span>Morning action</span>
+            <strong id="morning-time">--</strong>
+            <small id="morning-state">Schedule unavailable</small>
+          </article>
+          <article class="action-card" id="evening-card">
+            <span>Evening action</span>
+            <strong id="evening-time">--</strong>
+            <small id="evening-state">Schedule unavailable</small>
+          </article>
+        </section>
+
+        <section class="panel primary" aria-labelledby="device-title">
+          <div class="section-heading">
+            <h2 id="device-title">Device Status</h2>
+            <span id="device-freshness" class="status-text">Waiting for data</span>
           </div>
-        </div>
-        <dl class="metric-grid">
-          <div><dt>Last heartbeat</dt><dd id="last-heartbeat">--</dd></div>
-          <div><dt>App mode</dt><dd id="app-mode">unknown</dd></div>
-          <div><dt>Browser</dt><dd id="browser-status">unknown</dd></div>
-          <div><dt>Configured site</dt><dd id="site-status">unknown</dd></div>
-          <div><dt>Network</dt><dd id="network-status">unknown</dd></div>
-          <div><dt>Captive portal</dt><dd id="portal-status">unknown</dd></div>
-        </dl>
-        <p id="last-error" class="muted">No sanitized error reported.</p>
+          <div class="status-row">
+            <span id="online-dot" class="dot unknown"></span>
+            <div>
+              <strong id="device-label">A.L.I.L.O.S. desktop</strong>
+              <span id="device-id">Device id not configured</span>
+            </div>
+          </div>
+          <dl class="metric-grid">
+            <div><dt>Last heartbeat</dt><dd id="last-heartbeat">--</dd></div>
+            <div><dt>App mode</dt><dd id="app-mode">unknown</dd></div>
+            <div><dt>Browser</dt><dd id="browser-status">unknown</dd></div>
+            <div><dt>Configured site</dt><dd id="site-status">unknown</dd></div>
+            <div><dt>Network</dt><dd id="network-status">unknown</dd></div>
+            <div><dt>Captive portal</dt><dd id="portal-status">unknown</dd></div>
+          </dl>
+          <p id="last-error" class="muted">No sanitized error reported.</p>
+        </section>
+
+        <section class="panel" aria-labelledby="schedule-title">
+          <div class="section-heading">
+            <h2 id="schedule-title">Schedule And Completion</h2>
+            <span id="schedule-freshness" class="status-text">Unavailable</span>
+          </div>
+          <div id="schedule-list" class="list"></div>
+          <p id="next-action" class="muted">Next scheduled action unavailable.</p>
+          <div id="completion-list" class="list stacked"></div>
+          <p id="completion-freshness" class="muted">Completion state unknown.</p>
+        </section>
+
+        <section class="panel" aria-labelledby="controls-title">
+          <div class="section-heading">
+            <h2 id="controls-title">Safe Controls</h2>
+            <span class="status-text">No real click</span>
+          </div>
+          <div class="command-grid">
+            <button type="button" data-command-type="request-status-refresh">Refresh status</button>
+            <button type="button" data-command-type="request-dry-run">Run dry-run/check</button>
+            <button type="button" data-command-type="recalculate-today-schedule">Recalculate today</button>
+            <button type="button" data-command-type="cancel-confirmation">Cancel confirmation</button>
+          </div>
+          <p id="command-message" class="muted">Desktop must be online with command sync enabled. Submission does not imply immediate execution.</p>
+        </section>
+
+        <section class="panel" aria-labelledby="command-title">
+          <div class="section-heading">
+            <h2 id="command-title">Command Sync</h2>
+            <span class="status-text">Safe commands only</span>
+          </div>
+          <dl class="metric-grid compact">
+            <div><dt>Pending</dt><dd id="cmd-pending">0</dd></div>
+            <div><dt>Claimed</dt><dd id="cmd-claimed">0</dd></div>
+            <div><dt>Completed</dt><dd id="cmd-completed">0</dd></div>
+            <div><dt>Rejected/failed</dt><dd id="cmd-rejected">0</dd></div>
+          </dl>
+          <p id="command-latest" class="muted">Safe command results unavailable until desktop sync reports back.</p>
+        </section>
+
+        <section class="panel safety" aria-labelledby="safety-title">
+          <h2 id="safety-title">Safety Notices</h2>
+          <ul>
+            <li>Desktop must be online before any future supervised action can run.</li>
+            <li>Safe controls create requests only; the desktop agent performs all local checks.</li>
+            <li>This webapp cannot log in to Perakam or Fortinet.</li>
+            <li>Credentials and browser sessions remain local to the desktop.</li>
+            <li>Remote configured-action command is not implemented yet.</li>
+          </ul>
+        </section>
       </section>
 
-      <section class="panel" aria-labelledby="schedule-title">
-        <div class="section-heading">
-          <h2 id="schedule-title">Schedule Summary</h2>
-          <span id="schedule-freshness" class="status-text">Unavailable</span>
-        </div>
-        <div id="schedule-list" class="list"></div>
-        <p id="next-action" class="muted">Next scheduled action unavailable.</p>
+      <section id="skip-panel" class="tab-panel" data-tab-panel hidden>
+        <section class="panel" aria-labelledby="skip-title">
+          <div class="section-heading">
+            <div>
+              <h2 id="skip-title">Skip Dates</h2>
+              <p id="skip-freshness" class="muted">Unavailable</p>
+            </div>
+            <div class="month-controls">
+              <button type="button" id="prev-month" aria-label="Previous month">Prev</button>
+              <strong id="calendar-month">Month</strong>
+              <button type="button" id="next-month" aria-label="Next month">Next</button>
+            </div>
+          </div>
+          <div class="calendar" aria-label="Skip date calendar">
+            <div class="weekday">Sun</div>
+            <div class="weekday">Mon</div>
+            <div class="weekday">Tue</div>
+            <div class="weekday">Wed</div>
+            <div class="weekday">Thu</div>
+            <div class="weekday">Fri</div>
+            <div class="weekday">Sat</div>
+            <div id="calendar-grid" class="calendar-grid"></div>
+          </div>
+          <p id="skip-note" class="muted">Calendar is read-only in PARITY9B. Interactive skip/unskip is a next phase.</p>
+          <div id="skip-list" class="list stacked"></div>
+        </section>
       </section>
 
-      <section class="panel" aria-labelledby="skip-title">
-        <div class="section-heading">
-          <h2 id="skip-title">Skip State</h2>
-          <span id="skip-freshness" class="status-text">Unavailable</span>
-        </div>
-        <div id="skip-list" class="list"></div>
-      </section>
-
-      <section class="panel" aria-labelledby="completion-title">
-        <div class="section-heading">
-          <h2 id="completion-title">Completion State</h2>
-          <span id="completion-freshness" class="status-text">Unknown</span>
-        </div>
-        <div id="completion-list" class="list"></div>
-      </section>
-
-      <section class="panel" aria-labelledby="command-title">
-        <div class="section-heading">
-          <h2 id="command-title">Command Sync</h2>
-          <span class="status-text">Safe commands only</span>
-        </div>
-        <dl class="metric-grid compact">
-          <div><dt>Pending</dt><dd id="cmd-pending">0</dd></div>
-          <div><dt>Claimed</dt><dd id="cmd-claimed">0</dd></div>
-          <div><dt>Completed</dt><dd id="cmd-completed">0</dd></div>
-          <div><dt>Rejected/failed</dt><dd id="cmd-rejected">0</dd></div>
-        </dl>
-        <p id="command-latest" class="muted">Safe command results unavailable until desktop sync reports back.</p>
-      </section>
-
-      <section class="panel" aria-labelledby="controls-title">
-        <div class="section-heading">
-          <h2 id="controls-title">Safe Controls</h2>
-          <span class="status-text">No real click</span>
-        </div>
-        <div class="command-grid">
-          <button type="button" data-command-type="request-status-refresh">Refresh status</button>
-          <button type="button" data-command-type="request-dry-run">Run dry-run/check</button>
-          <button type="button" data-command-type="recalculate-today-schedule">Recalculate today</button>
-          <button type="button" data-command-type="cancel-confirmation">Cancel confirmation</button>
-        </div>
-        <p id="command-message" class="muted">Desktop must be online with command sync enabled. Submission does not imply immediate execution.</p>
-      </section>
-
-      <section class="panel safety" aria-labelledby="safety-title">
-        <h2 id="safety-title">Safety Notices</h2>
-        <ul>
-          <li>Desktop must be online before any future supervised action can run.</li>
-          <li>Safe controls create requests only; the desktop agent performs all local checks.</li>
-          <li>This webapp cannot log in to Perakam or Fortinet.</li>
-          <li>Credentials and browser sessions remain local to the desktop.</li>
-          <li>Remote configured-action command is not implemented yet.</li>
-        </ul>
+      <section id="logs-panel" class="tab-panel" data-tab-panel hidden>
+        <section class="panel" aria-labelledby="logs-title">
+          <div class="section-heading">
+            <h2 id="logs-title">Log History</h2>
+            <span id="log-freshness" class="status-text">Sanitized only</span>
+          </div>
+          <div id="log-list" class="log-list"></div>
+          <p class="muted">Only sanitized event summaries are shown. Raw page data, full URLs, and screenshots are not displayed.</p>
+        </section>
       </section>
     </main>
 

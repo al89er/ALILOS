@@ -22,6 +22,9 @@ test("dashboard read Edge Function keeps read access behind server-side proxy", 
   assert.match(source, /\.from\("skip_dates"\)/);
   assert.match(source, /\.from\("completion_records"\)/);
   assert.match(source, /\.from\("command_requests"\)/);
+  assert.match(source, /\.from\("event_logs"\)/);
+  assert.match(source, /monthKey/);
+  assert.match(source, /eventLogs/);
   assert.doesNotMatch(source, /grant\s+.*\s+to\s+(anon|authenticated)/i);
   assert.doesNotMatch(source, /\.insert\(|\.upsert\(|\.delete\(/);
 });
@@ -56,4 +59,6 @@ test("dashboard read Edge Function rejects sensitive fields and returns sanitize
   assert.match(source, /readOnly: true/);
   assert.match(source, /webAutomation: false/);
   assert.match(source, /remoteConfiguredActionImplemented: false/);
+  assert.match(source, /event-log-read-failed/);
+  assert.match(source, /readSeverity/);
 });

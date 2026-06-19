@@ -1,6 +1,6 @@
 # A.L.I.L.O.S. Web Monitor
 
-PARITY8 added a same-repo, static, read-only web/PWA dashboard shell under `webapp/`. PARITY9 adds safe non-clicking command controls.
+PARITY8 added a same-repo, static, read-only web/PWA dashboard shell under `webapp/`. PARITY9 adds safe non-clicking command controls. PARITY9B aligns the UI to the existing three-tab workflow: Dashboard, Skip dates, and Log history.
 
 ## Stack
 
@@ -9,6 +9,12 @@ PARITY8 added a same-repo, static, read-only web/PWA dashboard shell under `weba
 - No build step.
 - Supabase dashboard reads go through `/functions/v1/alilos-dashboard-read`.
 - Safe command creation goes through `/functions/v1/alilos-command-sync` with `create-command`.
+
+## Layout
+
+- Dashboard: morning/evening action cards, desktop/device status, configured website/session/network status, schedule/completion state, safe command controls, command sync state, and safety notices.
+- Skip dates: read-only calendar-style month view using synced skip rows when available. Interactive skip/unskip toggles are planned for a later phase.
+- Log history: recent sanitized event log summaries when available, with mock sanitized fallback rows.
 
 ## Configuration
 
@@ -23,6 +29,7 @@ Use placeholder names only:
 ## Boundaries
 
 - Safe command buttons only: status refresh, dry-run/check, recalculate today, and cancel confirmation.
+- Skip-date calendar cells are visual/read-only in PARITY9B.
 - No Perakam/Fortinet login.
 - No credentials.
 - No browser automation.

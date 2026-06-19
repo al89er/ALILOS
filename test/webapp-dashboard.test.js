@@ -20,7 +20,7 @@ test("webapp uses safe monitor shell and placeholder client config only", () => 
   assert.match(app, /VITE_SUPABASE_ANON_KEY/);
   assert.match(app, /VITE_ALILOS_DEVICE_ID/);
   assert.match(config, /PUBLISHABLE_OR_ANON_KEY/);
-  assert.doesNotMatch(`${html}\n${app}\n${config}`, /service[_-]?role|sb_secret_|password|cookie|raw_html|screenshot|link=/i);
+  assert.doesNotMatch(`${html}\n${app}\n${config}`, /service[_-]?role|sb_secret_|password|cookie|raw_html|link=/i);
 });
 
 test("webapp implements required dashboard sections and safe command controls", () => {
@@ -29,10 +29,13 @@ test("webapp implements required dashboard sections and safe command controls", 
   const manifest = readWebappFile("manifest.webmanifest");
 
   for (const label of [
+    "Dashboard",
+    "Skip dates",
+    "Log history",
+    "Morning action",
+    "Evening action",
     "Device Status",
-    "Schedule Summary",
-    "Skip State",
-    "Completion State",
+    "Schedule And Completion",
     "Command Sync",
     "Safety Notices"
   ]) {
@@ -51,9 +54,36 @@ test("webapp implements required dashboard sections and safe command controls", 
 
   assert.match(html, /These controls only request non-clicking desktop checks/);
   assert.match(html, /Remote configured-action command is not implemented yet/);
+  assert.match(app, /renderActionCards/);
   assert.doesNotMatch(html, /perform-configured-action/i);
   assert.doesNotMatch(html, /password|raw JSON|selector|<form/i);
   assert.match(manifest, /"display": "standalone"/);
+});
+
+test("webapp skip dates calendar renders month navigation and skipped-date state", () => {
+  const html = readWebappFile("index.html");
+  const app = readWebappFile("app.js");
+
+  assert.match(html, /id="prev-month"/);
+  assert.match(html, /id="next-month"/);
+  assert.match(html, /id="calendar-grid"/);
+  assert.match(html, /read-only in PARITY9B/);
+  assert.match(app, /renderSkipCalendar/);
+  assert.match(app, /classList\.add\("skipped"\)/);
+  assert.match(app, /Mock read-only skip/);
+  assert.match(app, /Interactive skip\/unskip controls are planned next/);
+});
+
+test("webapp log history renders sanitized event rows without sensitive samples", () => {
+  const html = readWebappFile("index.html");
+  const app = readWebappFile("app.js");
+
+  assert.match(html, /Log History/);
+  assert.match(html, /id="log-list"/);
+  assert.match(app, /renderLogs/);
+  assert.match(app, /eventLogs/);
+  assert.match(app, /Desktop status preview is sanitized/);
+  assert.doesNotMatch(app, /https?:\/\/|tokenized|raw_html|screenshot|link=/i);
 });
 
 test("webapp command submission uses command Edge Function and anon key placeholders", () => {

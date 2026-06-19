@@ -1,7 +1,10 @@
 const config = window.ALILOS_WEBAPP_CONFIG ?? {};
+const today = new Date();
 const state = {
-  data: sampleDashboard(),
-  source: "mock"
+  data: sampleDashboard(monthKey(today)),
+  source: "mock",
+  monthKey: monthKey(today),
+  activeTab: "dashboard-panel"
 };
 
 const ids = [
@@ -17,13 +20,24 @@ const ids = [
   "network-status",
   "portal-status",
   "last-error",
+  "morning-time",
+  "morning-state",
+  "evening-time",
+  "evening-state",
   "schedule-freshness",
   "schedule-list",
   "next-action",
-  "skip-freshness",
-  "skip-list",
   "completion-freshness",
   "completion-list",
+  "skip-freshness",
+  "calendar-month",
+  "calendar-grid",
+  "prev-month",
+  "next-month",
+  "skip-note",
+  "skip-list",
+  "log-freshness",
+  "log-list",
   "cmd-pending",
   "cmd-claimed",
   "cmd-completed",
@@ -34,9 +48,13 @@ const ids = [
 
 const elements = Object.fromEntries(ids.map((id) => [id, document.getElementById(id)]));
 const commandButtons = [...document.querySelectorAll("[data-command-type]")];
+const tabButtons = [...document.querySelectorAll("[data-tab-target]")];
+const tabPanels = [...document.querySelectorAll("[data-tab-panel]")];
 
 render();
+bindTabs();
 bindCommandButtons();
+bindMonthButtons();
 void loadDashboard();
 
 async function loadDashboard() {
@@ -56,7 +74,8 @@ async function loadDashboard() {
       },
       body: JSON.stringify({
         deviceId: config.VITE_ALILOS_DEVICE_ID,
-        dateKey: todayKey()
+        dateKey: todayKey(),
+        monthKey: state.monthKey
       })
     });
 
@@ -71,6 +90,28 @@ async function loadDashboard() {
     state.source = "mock";
     render(sanitizeText(error.message, 120) ?? "Live read unavailable; showing mock state.", "warn");
   }
+}
+
+function bindTabs() {
+  for (const button of tabButtons) {
+    button.addEventListener("click", () => {
+      state.activeTab = button.dataset.tabTarget;
+      renderTabs();
+    });
+  }
+}
+
+function bindMonthButtons() {
+  elements["prev-month"].addEventListener("click", () => {
+    state.monthKey = shiftMonth(state.monthKey, -1);
+    void loadDashboard();
+    render();
+  });
+  elements["next-month"].addEventListener("click", () => {
+    state.monthKey = shiftMonth(state.monthKey, 1);
+    void loadDashboard();
+    render();
+  });
 }
 
 function bindCommandButtons() {
@@ -136,6 +177,7 @@ function render(message = state.source === "live" ? "Live read proxy" : "Mock da
   const lastSeen = heartbeat?.lastSeenAt ?? data.device?.lastSeenAt ?? null;
   const freshness = heartbeatFreshness(lastSeen);
 
+  renderTabs();
   elements["connection-pill"].textContent = message;
   elements["connection-pill"].className = `pill ${tone}`;
   elements["device-freshness"].textContent = freshness.label;
@@ -150,10 +192,41 @@ function render(message = state.source === "live" ? "Live read proxy" : "Mock da
   elements["portal-status"].textContent = inferPortalStatus(heartbeat?.networkStatus);
   elements["last-error"].textContent = heartbeat?.lastErrorText ?? "No sanitized error reported.";
 
+  renderActionCards(data.schedules ?? [], data.completions ?? []);
   renderSchedules(data.schedules ?? []);
-  renderSkips(data.skips ?? []);
   renderCompletions(data.completions ?? []);
+  renderSkipCalendar(data.skips ?? []);
+  renderLogs(data.eventLogs ?? []);
   renderCommands(data.commandSync);
+}
+
+function renderTabs() {
+  for (const button of tabButtons) {
+    const active = button.dataset.tabTarget === state.activeTab;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-selected", String(active));
+  }
+  for (const panel of tabPanels) {
+    const active = panel.id === state.activeTab;
+    panel.classList.toggle("active", active);
+    panel.hidden = !active;
+  }
+}
+
+function renderActionCards(schedules, completions) {
+  renderActionCard("clock-in", "morning", schedules, completions);
+  renderActionCard("clock-out", "evening", schedules, completions);
+}
+
+function renderActionCard(actionKey, prefix, schedules, completions) {
+  const schedule = schedules.find((item) => item.actionKey === actionKey);
+  const completion = completions.find((item) => item.actionKey === actionKey);
+  elements[`${prefix}-time`].textContent = schedule?.targetTimeLocal ?? "--";
+  elements[`${prefix}-state`].textContent = completion
+    ? `${completion.state} - ${completion.verificationState ?? "verification unknown"}`
+    : schedule
+      ? `${schedule.status} - ${schedule.source}`
+      : "Schedule unavailable";
 }
 
 function renderSchedules(schedules) {
@@ -170,13 +243,45 @@ function renderSchedules(schedules) {
   elements["schedule-freshness"].textContent = latestTimestampLabel(schedules);
 }
 
-function renderSkips(skips) {
+function renderSkipCalendar(skips) {
+  const skippedDates = new Set(skips.map((item) => item.skipDate).filter(Boolean));
+  const current = parseMonthKey(state.monthKey);
+  const first = new Date(current.year, current.monthIndex, 1);
+  const daysInMonth = new Date(current.year, current.monthIndex + 1, 0).getDate();
+  const cells = [];
+
+  elements["calendar-month"].textContent = first.toLocaleString(undefined, { month: "long", year: "numeric" });
+  for (let index = 0; index < first.getDay(); index += 1) {
+    const filler = document.createElement("span");
+    filler.className = "calendar-day filler";
+    cells.push(filler);
+  }
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const dateKey = `${state.monthKey}-${String(day).padStart(2, "0")}`;
+    const cell = document.createElement("button");
+    cell.type = "button";
+    cell.disabled = true;
+    cell.className = "calendar-day";
+    cell.textContent = String(day);
+    if (dateKey === todayKey()) cell.classList.add("today");
+    if (skippedDates.has(dateKey)) {
+      cell.classList.add("skipped");
+      cell.setAttribute("aria-label", `${dateKey} skipped`);
+    } else {
+      cell.setAttribute("aria-label", `${dateKey} not skipped`);
+    }
+    cells.push(cell);
+  }
+
+  elements["calendar-grid"].replaceChildren(...cells);
   elements["skip-list"].replaceChildren(...(skips.length ? skips.map((item) => listItem(
-    item.actionKey ? actionLabel(item.actionKey) : "Whole day",
-    "Skipped",
+    item.skipDate,
+    item.actionKey ? `${actionLabel(item.actionKey)} skipped` : "Whole day skipped",
     `${item.reason ?? "No reason supplied"} - ${item.source} - ${formatTime(item.updatedAt)}`
-  )) : [listItem("Today not skipped", "No synced skip row", "Missing data never implies action readiness.")]));
+  )) : [listItem("No skipped dates", "Calendar has no synced skip rows", "Missing web data never implies action readiness.")]));
   elements["skip-freshness"].textContent = latestTimestampLabel(skips);
+  elements["skip-note"].textContent = "Read-only calendar. Interactive skip/unskip controls are planned next.";
 }
 
 function renderCompletions(completions) {
@@ -186,6 +291,18 @@ function renderCompletions(completions) {
     `${item.verificationState ?? "verification unknown"} - ${item.sanitizedReason ?? "No result summary"} - ${formatTime(item.updatedAt ?? item.verifiedAt ?? item.attemptedAt)}`
   )) : [listItem("Completion unknown", "No synced completion row", "Check the desktop before making decisions.")]));
   elements["completion-freshness"].textContent = latestTimestampLabel(completions);
+}
+
+function renderLogs(eventLogs) {
+  elements["log-list"].replaceChildren(...(eventLogs.length ? eventLogs.map((item) => logItem(item)) : [
+    logItem({
+      severity: "info",
+      eventType: "sync",
+      message: "No sanitized event logs are available.",
+      eventTime: null
+    })
+  ]));
+  elements["log-freshness"].textContent = eventLogs.length ? latestTimestampLabel(eventLogs.map((row) => ({ updatedAt: row.eventTime ?? row.createdAt }))) : "No synced logs";
 }
 
 function renderCommands(commandSync) {
@@ -216,9 +333,20 @@ function listItem(title, value, detail) {
   return item;
 }
 
+function logItem(log) {
+  const item = document.createElement("div");
+  item.className = `log-row ${log.severity ?? "info"}`;
+  item.innerHTML = `<span></span><strong></strong><p></p><time></time>`;
+  item.querySelector("span").textContent = String(log.severity ?? "info").toUpperCase();
+  item.querySelector("strong").textContent = String(log.eventType ?? "event");
+  item.querySelector("p").textContent = sanitizeText(log.message, 240) ?? "Sanitized event.";
+  item.querySelector("time").textContent = formatTime(log.eventTime ?? log.createdAt);
+  return item;
+}
+
 function sanitizeDashboard(value) {
   if (!value || typeof value !== "object" || value.success !== true) {
-    return sampleDashboard();
+    return sampleDashboard(state.monthKey);
   }
 
   return value;
@@ -248,7 +376,7 @@ function heartbeatFreshness(value) {
 
 function latestTimestampLabel(rows) {
   const latest = rows
-    .map((row) => row.updatedAt ?? row.verifiedAt ?? row.attemptedAt ?? null)
+    .map((row) => row.updatedAt ?? row.verifiedAt ?? row.attemptedAt ?? row.eventTime ?? row.createdAt ?? null)
     .filter(Boolean)
     .sort()
     .at(-1);
@@ -311,11 +439,31 @@ function todayKey() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
 
-function sampleDashboard() {
+function monthKey(value) {
+  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function parseMonthKey(value) {
+  const [year, month] = String(value).split("-").map(Number);
+  return {
+    year: Number.isInteger(year) ? year : today.getFullYear(),
+    monthIndex: Number.isInteger(month) ? Math.max(0, Math.min(11, month - 1)) : today.getMonth()
+  };
+}
+
+function shiftMonth(value, delta) {
+  const parsed = parseMonthKey(value);
+  const date = new Date(parsed.year, parsed.monthIndex + delta, 1);
+  return monthKey(date);
+}
+
+function sampleDashboard(inputMonthKey) {
   const now = new Date().toISOString();
+  const currentMonth = inputMonthKey ?? monthKey(today);
   return {
     success: true,
     dateKey: todayKey(),
+    monthKey: currentMonth,
     device: {
       deviceId: "00000000-0000-4000-8000-000000000000",
       label: "A.L.I.L.O.S. desktop",
@@ -333,8 +481,14 @@ function sampleDashboard() {
       { actionKey: "clock-in", targetTimeLocal: "07:45", windowStartLocal: "07:45", windowEndLocal: "07:50", source: "mock", status: "active", updatedAt: now },
       { actionKey: "clock-out", targetTimeLocal: "17:05", windowStartLocal: "17:05", windowEndLocal: "17:10", source: "mock", status: "active", updatedAt: now }
     ],
-    skips: [],
+    skips: [
+      { skipDate: `${currentMonth}-15`, actionKey: null, reason: "Mock read-only skip", source: "mock", updatedAt: now }
+    ],
     completions: [],
+    eventLogs: [
+      { eventTime: now, eventType: "desktop-status", severity: "info", message: "Desktop status preview is sanitized.", createdAt: now },
+      { eventTime: now, eventType: "sync", severity: "warn", message: "Live dashboard read is not configured.", createdAt: now }
+    ],
     commandSync: {
       counters: { pending: 0, claimed: 0, succeeded: 0, failed: 0, expired: 0, rejected: 0, cancelled: 0 },
       latest: null,
