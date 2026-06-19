@@ -1,9 +1,15 @@
 import type {
   AppConfig,
+  AttendanceActionType,
+  AttendanceCompletionRecord,
+  AttendanceCompletionState,
+  AttendanceVerificationStatus,
   ParityCommandStatus,
   ParityCommandType,
+  ParityCompletionPayload,
   ParityDeviceStatusPayload,
   ParityEventLogPayload,
+  ParitySchedulePayload,
   ParitySkipDatePayload,
   ParitySyncSnapshot
 } from "../shared/types";
@@ -54,6 +60,22 @@ interface SkipSyncListResponse {
   skips?: ParitySkipDatePayload[];
 }
 
+interface ScheduleCompletionRequestBody {
+  deviceId: string;
+  operation: "get-day-state" | "upsert-schedule" | "upsert-completion";
+  scheduleDate?: string;
+  actionDate?: string;
+  actionKey?: AttendanceActionType;
+  schedule?: Omit<ParitySchedulePayload, "deviceId" | "scheduleDate" | "actionKey">;
+  completion?: Omit<ParityCompletionPayload, "deviceId" | "actionDate" | "actionKey">;
+}
+
+interface ScheduleCompletionStateResponse {
+  success?: boolean;
+  schedules?: ParitySchedulePayload[];
+  completions?: ParityCompletionPayload[];
+}
+
 interface ParitySyncDependencies {
   buildDeviceStatusPayload: () => ParityDeviceStatusPayload;
   mergeRemoteSkippedDates?: (dates: string[]) => number;
@@ -63,8 +85,10 @@ interface ParitySyncDependencies {
 export class ParitySyncService {
   private heartbeatTimer: NodeJS.Timeout | null = null;
   private skipSyncTimer: NodeJS.Timeout | null = null;
+  private scheduleCompletionTimer: NodeJS.Timeout | null = null;
   private inFlight = false;
   private skipInFlight = false;
+  private scheduleCompletionInFlight = false;
   private lastStartedAt: string | null = null;
   private lastStoppedAt: string | null = null;
   private lastCheckedAt: string | null = null;
@@ -82,6 +106,17 @@ export class ParitySyncService {
   private skipFailureCount = 0;
   private skipRowsReceived = 0;
   private skipRowsApplied = 0;
+  private lastScheduleCompletionAttemptAt: string | null = null;
+  private lastScheduleCompletionSuccessAt: string | null = null;
+  private lastScheduleCompletionError: string | null = null;
+  private scheduleCompletionSyncCount = 0;
+  private scheduleUploadCount = 0;
+  private completionUploadCount = 0;
+  private fetchedScheduleRows = 0;
+  private fetchedCompletionRows = 0;
+  private scheduleCompletionWarningCount = 0;
+  private lastScheduleCompletionWarning: string | null = null;
+  private scheduleCompletionFailureCount = 0;
   private hasLoggedDisabled = false;
 
   constructor(
@@ -126,6 +161,14 @@ export class ParitySyncService {
 
       void this.syncSkipDates("startup");
     }
+
+    if (this.config.paritySync.scheduleCompletionSyncEnabled) {
+      this.scheduleCompletionTimer = setInterval(() => {
+        void this.syncScheduleCompletions("interval");
+      }, this.scheduleCompletionSyncIntervalMs());
+
+      void this.syncScheduleCompletions("startup");
+    }
   }
 
   stop(): void {
@@ -137,6 +180,11 @@ export class ParitySyncService {
     if (this.skipSyncTimer) {
       clearInterval(this.skipSyncTimer);
       this.skipSyncTimer = null;
+    }
+
+    if (this.scheduleCompletionTimer) {
+      clearInterval(this.scheduleCompletionTimer);
+      this.scheduleCompletionTimer = null;
     }
 
     if (this.lastStartedAt) {
@@ -152,7 +200,7 @@ export class ParitySyncService {
 
   getStatus(): ParitySyncSnapshot {
     const effectiveSettings = this.effectiveSettings();
-    const active = Boolean(this.heartbeatTimer || this.skipSyncTimer);
+    const active = Boolean(this.heartbeatTimer || this.skipSyncTimer || this.scheduleCompletionTimer);
     const enabled = this.config.paritySync.enabled;
     const configured = Boolean(effectiveSettings);
 
@@ -193,6 +241,21 @@ export class ParitySyncService {
         failureCount: this.skipFailureCount,
         rowsReceived: this.skipRowsReceived,
         rowsApplied: this.skipRowsApplied
+      },
+      scheduleCompletionSync: {
+        enabled: enabled && this.config.paritySync.scheduleCompletionSyncEnabled,
+        active: Boolean(this.scheduleCompletionTimer),
+        lastAttemptAt: this.lastScheduleCompletionAttemptAt,
+        lastSuccessAt: this.lastScheduleCompletionSuccessAt,
+        lastError: this.lastScheduleCompletionError,
+        syncCount: this.scheduleCompletionSyncCount,
+        scheduleUploadCount: this.scheduleUploadCount,
+        completionUploadCount: this.completionUploadCount,
+        fetchedScheduleRows: this.fetchedScheduleRows,
+        fetchedCompletionRows: this.fetchedCompletionRows,
+        warningCount: this.scheduleCompletionWarningCount,
+        lastWarning: this.lastScheduleCompletionWarning,
+        failureCount: this.scheduleCompletionFailureCount
       },
       note: this.note(enabled, configured, active)
     };
@@ -353,6 +416,101 @@ export class ParitySyncService {
     return this.getStatus();
   }
 
+  async syncScheduleCompletions(source = "manual", dateKey = localDateKey(new Date())): Promise<ParitySyncSnapshot> {
+    if (this.scheduleCompletionInFlight) {
+      return this.getStatus();
+    }
+
+    if (!this.config.paritySync.enabled || !this.config.paritySync.scheduleCompletionSyncEnabled) {
+      return this.getStatus();
+    }
+
+    const settings = this.effectiveSettings();
+    const sanitizedDate = sanitizeDateText(dateKey);
+    if (!settings || !sanitizedDate) {
+      this.lastScheduleCompletionError = null;
+      this.logger.info("Supabase schedule/completion sync not sent: URL, publishable key, device id, or date is not configured.");
+      return this.getStatus();
+    }
+
+    this.scheduleCompletionInFlight = true;
+    this.lastScheduleCompletionAttemptAt = new Date().toISOString();
+    this.lastCheckedAt = this.lastScheduleCompletionAttemptAt;
+
+    try {
+      const state = await this.scheduleCompletionRequest(settings, {
+        deviceId: this.config.paritySync.deviceId,
+        operation: "get-day-state",
+        scheduleDate: sanitizedDate
+      }) as ScheduleCompletionStateResponse;
+      const remoteSchedules = sanitizeScheduleRows(state.schedules ?? [], this.config.paritySync.deviceId);
+      const remoteCompletions = sanitizeCompletionRows(state.completions ?? [], this.config.paritySync.deviceId);
+      const localSchedules = buildLocalSchedulePayloads(this.config, this.config.paritySync.deviceId, sanitizedDate);
+      const localCompletions = buildLocalCompletionPayloads(this.config, this.config.paritySync.deviceId);
+      let scheduleUploads = 0;
+      let completionUploads = 0;
+
+      for (const schedule of localSchedules) {
+        await this.scheduleCompletionRequest(settings, {
+          deviceId: schedule.deviceId,
+          operation: "upsert-schedule",
+          scheduleDate: schedule.scheduleDate,
+          actionKey: schedule.actionKey,
+          schedule: {
+            targetTimeLocal: schedule.targetTimeLocal,
+            windowStartLocal: schedule.windowStartLocal,
+            windowEndLocal: schedule.windowEndLocal,
+            source: schedule.source,
+            status: schedule.status
+          }
+        });
+        scheduleUploads += 1;
+      }
+
+      for (const completion of localCompletions) {
+        await this.scheduleCompletionRequest(settings, {
+          deviceId: completion.deviceId,
+          operation: "upsert-completion",
+          actionDate: completion.actionDate,
+          actionKey: completion.actionKey,
+          completion: {
+            dedupeKey: completion.dedupeKey,
+            state: completion.state,
+            verificationState: completion.verificationState,
+            sanitizedReason: completion.sanitizedReason,
+            attemptedAt: completion.attemptedAt,
+            verifiedAt: completion.verifiedAt
+          }
+        });
+        completionUploads += 1;
+      }
+
+      const warning = findRemoteCompletionWarning(remoteCompletions, localCompletions, sanitizedDate);
+      if (warning) {
+        this.scheduleCompletionWarningCount += 1;
+        this.lastScheduleCompletionWarning = warning;
+        this.logger.warn(`Supabase schedule/completion sync warning: ${warning}`);
+      }
+
+      this.fetchedScheduleRows = remoteSchedules.length;
+      this.fetchedCompletionRows = remoteCompletions.length;
+      this.scheduleUploadCount += scheduleUploads;
+      this.completionUploadCount += completionUploads;
+      this.scheduleCompletionSyncCount += 1;
+      this.lastScheduleCompletionSuccessAt = new Date().toISOString();
+      this.lastScheduleCompletionError = null;
+      this.logger.info(`Supabase schedule/completion sync ${source} completed for ${sanitizedDate}; uploaded ${scheduleUploads} schedule row(s) and ${completionUploads} completion row(s). No configured-site action was attempted.`);
+    } catch (error) {
+      this.scheduleCompletionFailureCount += 1;
+      this.lastScheduleCompletionError = sanitizeError(error);
+      this.logger.warn(`Supabase schedule/completion sync failed: ${this.lastScheduleCompletionError}`);
+    } finally {
+      this.scheduleCompletionInFlight = false;
+    }
+
+    return this.getStatus();
+  }
+
   private logDisabledOnce(): void {
     if (this.hasLoggedDisabled) {
       return;
@@ -409,6 +567,27 @@ export class ParitySyncService {
     return response.json();
   }
 
+  private async scheduleCompletionRequest(settings: EffectiveParitySyncSettings, body: ScheduleCompletionRequestBody): Promise<unknown> {
+    const endpoint = new URL("/functions/v1/alilos-schedule-completion-sync", settings.supabaseUrl);
+    const fetchFn = this.dependencies.fetchFn ?? fetch;
+    const response = await fetchFn(endpoint.toString(), {
+      method: "POST",
+      headers: {
+        "apikey": settings.publishableKey,
+        "Authorization": `Bearer ${settings.publishableKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(sanitizeScheduleCompletionRequestBody(body))
+    });
+
+    if (!response.ok) {
+      throw new Error(`Supabase schedule/completion sync proxy returned HTTP ${response.status}.`);
+    }
+
+    return response.json();
+  }
+
+
   private effectiveSettings(): EffectiveParitySyncSettings | null {
     const supabaseUrl = parseSupabaseUrl(this.config.paritySync.supabaseUrl.trim() || this.envLocal.supabaseUrl.trim());
     const publishableKey = (this.config.paritySync.publishableKey.trim() || this.envLocal.publishableKey.trim()).trim();
@@ -444,6 +623,10 @@ export class ParitySyncService {
     return this.commandPollIntervalMs();
   }
 
+  private scheduleCompletionSyncIntervalMs(): number {
+    return this.commandPollIntervalMs();
+  }
+
   private note(enabled: boolean, configured: boolean, active: boolean): string {
     if (!enabled) {
       return "Parity sync is disabled by default.";
@@ -458,9 +641,14 @@ export class ParitySyncService {
     }
 
     if (active) {
-      return this.config.paritySync.skipSyncEnabled
-        ? "Parity status publishing and skip sync are active; command processing remains disabled."
-        : "Parity status publishing is active; command processing remains disabled.";
+      const activeFeatures = ["status publishing"];
+      if (this.config.paritySync.skipSyncEnabled) {
+        activeFeatures.push("skip sync");
+      }
+      if (this.config.paritySync.scheduleCompletionSyncEnabled) {
+        activeFeatures.push("schedule/completion sync");
+      }
+      return `Parity ${activeFeatures.join(", ")} active; command processing remains disabled.`;
     }
 
     return "Parity sync is configured but idle.";
@@ -528,6 +716,202 @@ function sanitizeSkipRow(row: ParitySkipDatePayload, expectedDeviceId: string): 
     reason: sanitizeStatusText(row.reason, 500),
     source: row.source === "webapp-command" || row.source === "manual-import" ? row.source : "desktop-local"
   };
+}
+
+function sanitizeScheduleCompletionRequestBody(body: ScheduleCompletionRequestBody): ScheduleCompletionRequestBody {
+  const sanitized: ScheduleCompletionRequestBody = {
+    deviceId: sanitizeUuidLike(body.deviceId),
+    operation: body.operation
+  };
+
+  const scheduleDate = sanitizeDateText(body.scheduleDate ?? null);
+  if (scheduleDate) {
+    sanitized.scheduleDate = scheduleDate;
+  }
+
+  const actionDate = sanitizeDateText(body.actionDate ?? null);
+  if (actionDate) {
+    sanitized.actionDate = actionDate;
+  }
+
+  const actionKey = sanitizeActionKey(body.actionKey);
+  if (actionKey) {
+    sanitized.actionKey = actionKey;
+  }
+
+  if (body.schedule) {
+    const schedule = sanitizeSchedulePayload({
+      deviceId: sanitized.deviceId,
+      scheduleDate: scheduleDate ?? "0000-00-00",
+      actionKey: actionKey ?? "clock-in",
+      ...body.schedule
+    });
+    if (schedule) {
+      sanitized.schedule = {
+        targetTimeLocal: schedule.targetTimeLocal,
+        windowStartLocal: schedule.windowStartLocal,
+        windowEndLocal: schedule.windowEndLocal,
+        source: schedule.source,
+        status: schedule.status
+      };
+    }
+  }
+
+  if (body.completion) {
+    const completion = sanitizeCompletionPayload({
+      deviceId: sanitized.deviceId,
+      actionDate: actionDate ?? "0000-00-00",
+      actionKey: actionKey ?? "clock-in",
+      ...body.completion
+    });
+    if (completion) {
+      sanitized.completion = {
+        dedupeKey: completion.dedupeKey,
+        state: completion.state,
+        verificationState: completion.verificationState,
+        sanitizedReason: completion.sanitizedReason,
+        attemptedAt: completion.attemptedAt,
+        verifiedAt: completion.verifiedAt
+      };
+    }
+  }
+
+  return sanitized;
+}
+
+function buildLocalSchedulePayloads(config: AppConfig, deviceId: string, dateKey: string): ParitySchedulePayload[] {
+  const schedule = config.scheduler.schedulesByDate[dateKey];
+  if (!schedule) {
+    return [];
+  }
+
+  const scheduleDate = sanitizeDateText(schedule.date) ?? dateKey;
+  const skipped = config.scheduler.skippedDates.includes(scheduleDate);
+  const status: ParitySchedulePayload["status"] = skipped ? "skipped" : "active";
+  const rows: ParitySchedulePayload[] = [
+    {
+      deviceId,
+      scheduleDate,
+      actionKey: "clock-in",
+      targetTimeLocal: sanitizeTimeText(schedule.clockInTime) ?? "00:00",
+      windowStartLocal: sanitizeTimeText(config.scheduler.clockInWindow.start),
+      windowEndLocal: sanitizeTimeText(config.scheduler.clockInWindow.end),
+      source: "local-generated",
+      status
+    },
+    {
+      deviceId,
+      scheduleDate,
+      actionKey: "clock-out",
+      targetTimeLocal: sanitizeTimeText(schedule.clockOutTime) ?? "00:00",
+      windowStartLocal: sanitizeTimeText(config.scheduler.clockOutWindow.start),
+      windowEndLocal: sanitizeTimeText(config.scheduler.clockOutWindow.end),
+      source: "local-generated",
+      status
+    }
+  ];
+
+  return rows.map(sanitizeSchedulePayload).filter((row): row is ParitySchedulePayload => Boolean(row));
+}
+
+function buildLocalCompletionPayloads(config: AppConfig, deviceId: string): ParityCompletionPayload[] {
+  return Object.values(config.attendance.completionsByDate)
+    .flat()
+    .map((record) => buildCompletionPayload(record, deviceId))
+    .filter((row): row is ParityCompletionPayload => Boolean(row));
+}
+
+function buildCompletionPayload(record: AttendanceCompletionRecord, deviceId: string): ParityCompletionPayload | null {
+  const actionDate = sanitizeDateText(record.dateKey);
+  const actionKey = sanitizeActionKey(record.action);
+  const state = sanitizeCompletionState(record.state);
+  if (!actionDate || !actionKey || !state) {
+    return null;
+  }
+
+  return sanitizeCompletionPayload({
+    deviceId,
+    actionDate,
+    actionKey,
+    dedupeKey: sanitizeStatusText(record.confirmationId || `${deviceId}:${actionDate}:${actionKey}`, 220),
+    state,
+    verificationState: sanitizeVerificationStatus(record.verification?.status ?? (state === "manually-verified" ? "manually-verified" : null)),
+    sanitizedReason: sanitizeStatusText(record.verification?.reason ?? state, 500),
+    attemptedAt: sanitizeNullableIsoText(record.completedAt),
+    verifiedAt: sanitizeNullableIsoText(record.manuallyVerifiedAt ?? record.verification?.checkedAt ?? null)
+  });
+}
+
+function sanitizeScheduleRows(rows: ParitySchedulePayload[], expectedDeviceId: string): ParitySchedulePayload[] {
+  return rows
+    .map((row) => sanitizeSchedulePayload(row))
+    .filter((row): row is ParitySchedulePayload => Boolean(row && row.deviceId === expectedDeviceId));
+}
+
+function sanitizeCompletionRows(rows: ParityCompletionPayload[], expectedDeviceId: string): ParityCompletionPayload[] {
+  return rows
+    .map((row) => sanitizeCompletionPayload(row))
+    .filter((row): row is ParityCompletionPayload => Boolean(row && row.deviceId === expectedDeviceId));
+}
+
+function sanitizeSchedulePayload(row: ParitySchedulePayload): ParitySchedulePayload | null {
+  const deviceId = sanitizeUuidLike(row.deviceId);
+  const scheduleDate = sanitizeDateText(row.scheduleDate);
+  const actionKey = sanitizeActionKey(row.actionKey);
+  const targetTimeLocal = sanitizeTimeText(row.targetTimeLocal);
+  const source = sanitizeScheduleSource(row.source);
+  const status = sanitizeScheduleStatus(row.status);
+
+  if (!scheduleDate || !actionKey || !targetTimeLocal || !source || !status) {
+    return null;
+  }
+
+  return {
+    deviceId,
+    scheduleDate,
+    actionKey,
+    targetTimeLocal,
+    windowStartLocal: sanitizeTimeText(row.windowStartLocal),
+    windowEndLocal: sanitizeTimeText(row.windowEndLocal),
+    source,
+    status
+  };
+}
+
+function sanitizeCompletionPayload(row: ParityCompletionPayload): ParityCompletionPayload | null {
+  const deviceId = sanitizeUuidLike(row.deviceId);
+  const actionDate = sanitizeDateText(row.actionDate);
+  const actionKey = sanitizeActionKey(row.actionKey);
+  const state = sanitizeCompletionState(row.state);
+
+  if (!actionDate || !actionKey || !state) {
+    return null;
+  }
+
+  return {
+    deviceId,
+    actionDate,
+    actionKey,
+    dedupeKey: sanitizeStatusText(row.dedupeKey, 220),
+    state,
+    verificationState: sanitizeVerificationStatus(row.verificationState),
+    sanitizedReason: sanitizeStatusText(row.sanitizedReason, 500),
+    attemptedAt: sanitizeNullableIsoText(row.attemptedAt),
+    verifiedAt: sanitizeNullableIsoText(row.verifiedAt)
+  };
+}
+
+function findRemoteCompletionWarning(remoteCompletions: ParityCompletionPayload[], localCompletions: ParityCompletionPayload[], dateKey: string): string | null {
+  const localKeys = new Set(
+    localCompletions
+      .filter((completion) => completion.actionDate === dateKey)
+      .map((completion) => `${completion.actionDate}:${completion.actionKey}`)
+  );
+  const remoteOnly = remoteCompletions.find((completion) => completion.actionDate === dateKey && !localKeys.has(`${completion.actionDate}:${completion.actionKey}`));
+
+  return remoteOnly
+    ? `Remote completion marker exists for ${remoteOnly.actionKey} on ${dateKey}; no local configured-site action will be triggered.`
+    : null;
 }
 
 function sanitizeDeviceStatusPayload(payload: ParityDeviceStatusPayload): ParityDeviceStatusPayload {
@@ -613,6 +997,46 @@ const FORBIDDEN_DETAIL_KEYS = new Set([
   "forms"
 ]);
 
+function sanitizeActionKey(value: AttendanceActionType | null | undefined): AttendanceActionType | null {
+  return value === "clock-in" || value === "clock-out" ? value : null;
+}
+
+function sanitizeTimeText(value: string | null | undefined): string | null {
+  const text = String(value ?? "").trim();
+  return /^\d{2}:\d{2}$/.test(text) ? text : null;
+}
+
+function sanitizeScheduleSource(value: ParitySchedulePayload["source"] | null | undefined): ParitySchedulePayload["source"] | null {
+  return value === "recovered-from-supabase" || value === "manual-reconciled" ? value : value === "local-generated" ? value : null;
+}
+
+function sanitizeScheduleStatus(value: ParitySchedulePayload["status"] | null | undefined): ParitySchedulePayload["status"] | null {
+  return value === "active" || value === "skipped" || value === "superseded" || value === "archived" ? value : null;
+}
+
+function sanitizeCompletionState(value: AttendanceCompletionState | null | undefined): AttendanceCompletionState | null {
+  return value === "not-attempted"
+    || value === "click-attempted"
+    || value === "click-succeeded-local"
+    || value === "verification-pending"
+    || value === "verified-success"
+    || value === "verification-unknown"
+    || value === "verification-failed"
+    || value === "manually-verified"
+    ? value
+    : null;
+}
+
+function sanitizeVerificationStatus(value: AttendanceVerificationStatus | null | undefined): AttendanceVerificationStatus | null {
+  return value === "pending"
+    || value === "verified-success"
+    || value === "verification-unknown"
+    || value === "verification-failed"
+    || value === "manually-verified"
+    ? value
+    : null;
+}
+
 function sanitizeUuidLike(value: string): string {
   const text = String(value ?? "").trim();
   return isValidDeviceId(text)
@@ -629,9 +1053,25 @@ function sanitizeIsoText(value: string): string {
   return Number.isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
 }
 
+function sanitizeNullableIsoText(value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
 function sanitizeDateText(value: string | null): string | null {
   const text = String(value ?? "").trim();
   return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : null;
+}
+
+function localDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function uniqueSorted(values: string[]): string[] {

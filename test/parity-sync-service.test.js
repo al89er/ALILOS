@@ -434,6 +434,204 @@ test("skip sync errors are sanitized and non-fatal", async () => {
   }
 });
 
+test("schedule/completion sync disabled does not call fetch", async () => {
+  const temp = createTempConfigStore();
+
+  try {
+    const config = temp.store.load();
+    config.paritySync.enabled = true;
+    config.paritySync.supabaseUrl = "https://example.supabase.co";
+    config.paritySync.publishableKey = "anon-publishable-key";
+    config.paritySync.scheduleCompletionSyncEnabled = false;
+    const logger = createLogger();
+    let fetchCalls = 0;
+    const service = new ParitySyncService(config, logger, { supabaseUrl: "", publishableKey: "" }, {
+      buildDeviceStatusPayload: () => createStatusPayload(),
+      fetchFn: async () => {
+        fetchCalls += 1;
+        return { ok: true, status: 200, json: async () => ({ success: true }) };
+      }
+    });
+
+    await service.syncScheduleCompletions("test", "2026-06-19");
+    const status = service.getStatus();
+
+    assert.equal(status.scheduleCompletionSync.enabled, false);
+    assert.equal(status.scheduleCompletionSync.syncCount, 0);
+    assert.equal(fetchCalls, 0);
+  } finally {
+    temp.cleanup();
+  }
+});
+
+test("schedule/completion sync missing config does not call fetch", async () => {
+  const temp = createTempConfigStore();
+
+  try {
+    const config = temp.store.load();
+    config.paritySync.enabled = true;
+    config.paritySync.scheduleCompletionSyncEnabled = true;
+    const logger = createLogger();
+    let fetchCalls = 0;
+    const service = new ParitySyncService(config, logger, { supabaseUrl: "", publishableKey: "" }, {
+      buildDeviceStatusPayload: () => createStatusPayload(),
+      fetchFn: async () => {
+        fetchCalls += 1;
+        return { ok: true, status: 200, json: async () => ({ success: true }) };
+      }
+    });
+
+    await service.syncScheduleCompletions("test", "2026-06-19");
+    const status = service.getStatus();
+
+    assert.equal(status.configured, false);
+    assert.equal(status.scheduleCompletionSync.syncCount, 0);
+    assert.equal(fetchCalls, 0);
+  } finally {
+    temp.cleanup();
+  }
+});
+
+test("schedule/completion sync uploads sanitized local rows without configured-site action", async () => {
+  const temp = createTempConfigStore();
+
+  try {
+    const config = temp.store.load();
+    config.paritySync.enabled = true;
+    config.paritySync.supabaseUrl = "https://example.supabase.co";
+    config.paritySync.publishableKey = "anon-publishable-key";
+    config.paritySync.scheduleCompletionSyncEnabled = true;
+    config.scheduler.schedulesByDate["2026-06-19"] = {
+      date: "2026-06-19",
+      clockInTime: "07:45",
+      clockOutTime: "17:05",
+      generatedAt: "2026-06-19T00:00:00.000Z"
+    };
+    config.attendance.completionsByDate["2026-06-19"] = [{
+      dateKey: "2026-06-19",
+      action: "clock-out",
+      confirmationId: "confirmation-123",
+      mappedTargetId: "a51",
+      completedAt: "2026-06-19T09:00:00.000Z",
+      generatedScheduleTime: "17:05",
+      sanitizedUrlAfterClick: "https://perakam.example/[redacted]",
+      state: "verification-pending",
+      verification: {
+        action: "clock-out",
+        dateKey: "2026-06-19",
+        localClickResult: "click-succeeded-local",
+        status: "verification-unknown",
+        reason: "Checked https://secret.example/path?token=abc link=opaque magic=secret",
+        sanitizedUrlAfterClick: null,
+        evidenceSnippets: [],
+        checkedAt: "2026-06-19T09:01:00.000Z"
+      },
+      manuallyVerifiedAt: null
+    }];
+    const logger = createLogger();
+    const requests = [];
+    const service = new ParitySyncService(config, logger, { supabaseUrl: "", publishableKey: "" }, {
+      buildDeviceStatusPayload: () => createStatusPayload(),
+      fetchFn: async (url, init) => {
+        requests.push({ url, init });
+        return { ok: true, status: 202, json: async () => ({ success: true, schedules: [], completions: [] }) };
+      }
+    });
+
+    await service.syncScheduleCompletions("test", "2026-06-19");
+    const status = service.getStatus();
+    const bodies = requests.map((request) => JSON.parse(request.init.body));
+    const serialized = JSON.stringify(bodies);
+
+    assert.equal(requests.every((request) => request.url === "https://example.supabase.co/functions/v1/alilos-schedule-completion-sync"), true);
+    assert.deepEqual(bodies.map((body) => body.operation), ["get-day-state", "upsert-schedule", "upsert-schedule", "upsert-completion"]);
+    assert.equal(bodies[1].schedule.targetTimeLocal, "07:45");
+    assert.equal(bodies[2].schedule.targetTimeLocal, "17:05");
+    assert.equal(bodies[3].completion.state, "verification-pending");
+    assert.equal(status.scheduleCompletionSync.scheduleUploadCount, 2);
+    assert.equal(status.scheduleCompletionSync.completionUploadCount, 1);
+    assert.equal(status.scheduleCompletionSync.syncCount, 1);
+    assert.equal(status.scheduleCompletionSync.failureCount, 0);
+    assert.doesNotMatch(serialized, /token=abc|link=opaque|magic=secret|magic=|link=/);
+    assert.match(logger.entries.at(-1).message, /No configured-site action was attempted/);
+  } finally {
+    temp.cleanup();
+  }
+});
+
+test("schedule/completion sync warns on remote-only completion and preserves local state", async () => {
+  const temp = createTempConfigStore();
+
+  try {
+    const config = temp.store.load();
+    config.paritySync.enabled = true;
+    config.paritySync.supabaseUrl = "https://example.supabase.co";
+    config.paritySync.publishableKey = "anon-publishable-key";
+    config.paritySync.scheduleCompletionSyncEnabled = true;
+    config.attendance.completionsByDate["2026-06-19"] = [];
+    const logger = createLogger();
+    const service = new ParitySyncService(config, logger, { supabaseUrl: "", publishableKey: "" }, {
+      buildDeviceStatusPayload: () => createStatusPayload(),
+      fetchFn: async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          schedules: [],
+          completions: [{
+            deviceId: config.paritySync.deviceId,
+            actionDate: "2026-06-19",
+            actionKey: "clock-in",
+            dedupeKey: "remote-marker",
+            state: "verified-success",
+            verificationState: "verified-success",
+            sanitizedReason: "remote marker",
+            attemptedAt: "2026-06-19T00:00:00.000Z",
+            verifiedAt: "2026-06-19T00:01:00.000Z"
+          }]
+        })
+      })
+    });
+
+    await service.syncScheduleCompletions("test", "2026-06-19");
+    const status = service.getStatus();
+
+    assert.deepEqual(config.attendance.completionsByDate["2026-06-19"], []);
+    assert.equal(status.scheduleCompletionSync.fetchedCompletionRows, 1);
+    assert.equal(status.scheduleCompletionSync.warningCount, 1);
+    assert.match(status.scheduleCompletionSync.lastWarning, /Remote completion marker exists/);
+  } finally {
+    temp.cleanup();
+  }
+});
+
+test("schedule/completion sync errors are sanitized and non-fatal", async () => {
+  const temp = createTempConfigStore();
+
+  try {
+    const config = temp.store.load();
+    config.paritySync.enabled = true;
+    config.paritySync.supabaseUrl = "https://example.supabase.co";
+    config.paritySync.publishableKey = "anon-publishable-key";
+    config.paritySync.scheduleCompletionSyncEnabled = true;
+    const logger = createLogger();
+    const service = new ParitySyncService(config, logger, { supabaseUrl: "", publishableKey: "" }, {
+      buildDeviceStatusPayload: () => createStatusPayload(),
+      fetchFn: async () => ({ ok: false, status: 403, json: async () => ({ success: false }) })
+    });
+
+    await service.syncScheduleCompletions("test", "2026-06-19");
+    const status = service.getStatus();
+
+    assert.equal(status.scheduleCompletionSync.syncCount, 0);
+    assert.equal(status.scheduleCompletionSync.failureCount, 1);
+    assert.match(status.scheduleCompletionSync.lastError, /HTTP 403/);
+    assert.doesNotMatch(status.scheduleCompletionSync.lastError, /Bearer|apikey|token=/i);
+  } finally {
+    temp.cleanup();
+  }
+});
+
 test("parity status publishing sanitizes payload and updates success counters", async () => {
   const temp = createTempConfigStore();
 

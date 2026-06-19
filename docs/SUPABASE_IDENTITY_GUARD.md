@@ -6,7 +6,7 @@ The guard exists to prevent accidental migrations, database pushes, function dep
 
 ## Planned Role
 
-Supabase is planned as the shared backend for the future webapp/PWA sync/control plane. It is not required for scheduled local desktop operation. This repository currently has the S2A status-only heartbeat schema migration, an S2B disabled-by-default heartbeat sender skeleton, an S3B schedule/completion schema migration, a PARITY2 skip/log/status/command schema migration, PARITY4 status publishing through an Edge Function, and PARITY5 skip sync through an Edge Function. Status and skip sync remain disabled by default. It still has no hosted webapp/PWA, runtime schedule/completion sync, or remote command/control queue processing.
+Supabase is planned as the shared backend for the future webapp/PWA sync/control plane. It is not required for scheduled local desktop operation. This repository currently has the S2A status-only heartbeat schema migration, an S2B disabled-by-default heartbeat sender skeleton, an S3B schedule/completion schema migration, a PARITY2 skip/log/status/command schema migration, PARITY4 status publishing through an Edge Function, PARITY5 skip sync through an Edge Function, and PARITY6 schedule/completion sync through an Edge Function. Status, skip, and schedule/completion sync remain disabled by default. It still has no hosted webapp/PWA or remote command/control queue processing.
 
 The agreed roadmap is:
 
@@ -55,7 +55,7 @@ PARITY2 payloads and details are constrained to sanitized JSON objects and must 
 
 ## PARITY3 Disabled Desktop Skeleton
 
-The desktop app includes a disabled-by-default `paritySync` config section and `ParitySyncService` skeleton. It reports local health/status only and keeps runtime writes and command processing disabled. When disabled, the service starts no sync timers. If explicitly enabled in local config later, the current implementation still performs no Supabase writes and no command execution.
+The desktop app includes a disabled-by-default `paritySync` config section and `ParitySyncService`. It reports local health/status and keeps all runtime writes and command processing disabled unless specific parity feature flags are explicitly enabled. When disabled, the service starts no sync timers. If explicitly enabled in local config later, only the approved status, skip, and schedule/completion proxy paths can write sanitized metadata; command execution remains unimplemented.
 
 Security boundaries:
 
@@ -96,6 +96,16 @@ The desktop uses only a publishable/anon key. The Edge Function uses `SUPABASE_S
 Desktop skip sync is disabled by default and requires both `paritySync.enabled` and `paritySync.skipSyncEnabled`. Remote skip rows can only affect scheduling skip state. They cannot trigger configured-site navigation, confirmation, clicking, command processing, credentials, or browser automation. Current local scheduling supports whole-day skipped dates, so remote action-specific rows are conservatively applied as whole-day skips. Remote absence does not remove local skips; disagreement preserves skips.
 
 Deployment and smoke testing are documented in `docs/PARITY_SKIP_SYNC_DEPLOYMENT.md`. No webapp or command queue processing is implemented in PARITY5.
+
+## PARITY6 Schedule/Completion Sync
+
+`supabase/functions/alilos-schedule-completion-sync/index.ts` is the server-side endpoint for daily schedule and completion-record sync. It accepts POST requests only and supports constrained `get-day-state`, `upsert-schedule`, and `upsert-completion` operations. It requires a valid registered `deviceId`, allowed `clock-in` / `clock-out` action keys, ISO local dates, known schedule sources/statuses, and known completion/verification states.
+
+The desktop uses only a publishable/anon key. The Edge Function uses `SUPABASE_SERVICE_ROLE_KEY` only from the server environment. Direct table privileges for `anon` and `authenticated` remain closed.
+
+Desktop schedule/completion sync is disabled by default and requires both `paritySync.enabled` and `paritySync.scheduleCompletionSyncEnabled`. It can upload local generated schedule rows and existing local completion records as sanitized backup metadata. It can fetch current-day remote state to surface warnings, but it does not execute remote state, process commands, recover schedules automatically, create local successful completion records from remote data, navigate the configured site, click anything, or change the local configured action decision path. If local and remote completion state disagree, the current behavior is warning-only and fails safe for human review; remote absence never deletes local completion records.
+
+Deployment and smoke testing are documented in `docs/PARITY_SCHEDULE_COMPLETION_SYNC_DEPLOYMENT.md`. No webapp or command queue processing is implemented in PARITY6.
 
 ## S1 Proposed Schema Outline
 

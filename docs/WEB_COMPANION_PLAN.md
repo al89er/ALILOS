@@ -574,7 +574,7 @@ Example:
 Existing/planned data sources:
 
 - `devices` and `heartbeats` exist in the S2A schema, but runtime heartbeat writes remain disabled/deferred.
-- `daily_schedules` and `completion_records` exist in the S3B schema, but runtime schedule/completion sync remains disabled/deferred.
+- `daily_schedules` and `completion_records` exist in the S3B schema, and PARITY6 adds disabled-by-default desktop/Edge Function sync for sanitized backup metadata.
 - S3D selects a future Edge Function/API proxy plus explicit device pairing/token for writes.
 
 WEB1 can show placeholders until real read data exists. It must not infer schedule or completion state independently of desktop-synced records.

@@ -176,7 +176,7 @@ PARITY1B corrected target: monitored desktop use is release-candidate ready for 
 - Real scheduled manual-confirm at actual clock-in/out time not tested.
 - Fully unattended real action remains not approved and not validated.
 - Installer and signing remain optional release decisions.
-- Supabase schedule/completion sync remains deferred until explicit S3 approval.
+- Supabase schedule/completion sync exists through the disabled-by-default PARITY6 Edge Function path. Keep it off for ordinary monitored desktop use unless a separate Supabase smoke test is explicitly approved.
 
 ## RC1 Monitored Real-World Observation Plan
 

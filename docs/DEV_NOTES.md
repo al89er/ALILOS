@@ -11,7 +11,8 @@
 - PARITY4B adds the Supabase Edge Function at `/functions/v1/alilos-parity-status`. The function requires a registered non-personal `device_id`, uses the service-role key only from the Edge Function environment, writes sanitized `heartbeats` and optional generated `event_logs`, and leaves direct `anon` / `authenticated` table privileges closed.
 - PARITY4C documents the deployment/smoke runbook in `docs/PARITY_STATUS_DEPLOYMENT.md` and a placeholder-only payload in `docs/examples/parity-status-smoke.json`; no deployment, secrets, RLS changes, command processing, webapp code, or default sync enablement are included.
 - PARITY5 adds disabled-by-default skip-date sync through `supabase/functions/alilos-skip-sync`. Remote rows are scheduling-only, preserve local skips on disagreement, and cannot trigger configured-site action, command processing, or webapp behavior.
-- Do not implement runtime sync, webapp code, migrations, command/control, captive portal reconnect, or unattended execution from these notes alone.
+- PARITY6 adds disabled-by-default schedule/completion sync through `supabase/functions/alilos-schedule-completion-sync`. It backs up sanitized local schedules/completion markers, surfaces remote-only completion markers as warnings, and cannot trigger configured-site action, command processing, or webapp behavior.
+- Do not implement webapp code, migrations, command/control, captive portal reconnect, or unattended execution from these notes alone.
 - Credentials stay local: configured website credentials and future captive portal credentials must not be sent to Supabase or the webapp, and must not appear in logs/docs. Service-role keys never ship in desktop or webapp clients.
 
 ## Install
@@ -59,7 +60,7 @@ These are local safety checks. They are not runtime app checks.
 | `src/worker/automation-monitor.ts` | Phase 6A due-action monitoring and simulated dry-run telemetry. |
 | `src/worker/automation-audit.ts` | Bounded sanitized automation audit event persistence. |
 | `src/worker/heartbeat-service.ts` | Disabled-by-default sanitized Supabase heartbeat sender/status. |
-| `src/worker/parity-sync-service.ts` | Disabled-by-default Supabase parity-sync skeleton; read-only status and no runtime writes or command processing. |
+| `src/worker/parity-sync-service.ts` | Disabled-by-default Supabase parity-sync service; status publishing, skip sync, and schedule/completion sync remain gated and command processing is unimplemented. |
 | `src/worker/confirmation-service.ts` | Manual-confirm action state machine and safety checks. |
 | `src/worker/test-click-service.ts` | Guarded non-primary test-click pipeline. |
 | `src/worker/network-monitor.ts` | Internet, Perakam reachability, captive portal monitoring. |
@@ -163,6 +164,7 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 - PARITY4B status proxy is added under `supabase/functions/alilos-parity-status`; it performs the server-side `devices` check, `heartbeats` upsert, and optional sanitized `event_logs` insert.
 - PARITY4C deployment/smoke documentation is added. Use it before any live Edge Function deploy or desktop parity sync smoke.
 - PARITY5 skip sync is added under `supabase/functions/alilos-skip-sync`; `ParitySyncService` can list, upsert, and delete skip rows only when `skipSyncEnabled` is explicitly true.
+- PARITY6 schedule/completion sync is added under `supabase/functions/alilos-schedule-completion-sync`; `ParitySyncService` can fetch current-day remote state and upload sanitized local schedules/completion rows only when `scheduleCompletionSyncEnabled` is explicitly true.
 - S3D schedule/completion write-path decision is documented: future writes should use an Edge Function/API proxy plus explicit device pairing/token.
 - WEB1 web/PWA companion planning is documented in `docs/WEB_COMPANION_PLAN.md`.
 - WEB2 static/read-only web companion UI design is documented in `docs/WEB_COMPANION_PLAN.md`.
@@ -170,7 +172,7 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 - WEB4 read-only web companion data contracts are documented in `docs/WEB_COMPANION_PLAN.md`.
 - RC1 monitored real-world observation plan is documented in `docs/OPERATIONAL_READINESS.md`.
 - Parity sync remains disabled by default and command processing remains unimplemented.
-- Schedule/completion sync, command processing, and webapp access remain deferred until auth/pairing/write-path authorization is expanded beyond status and skip sync.
+- Command processing and webapp access remain deferred until auth/pairing/control-path authorization is expanded beyond status, skip, and schedule/completion sync.
 
 ### Desktop Operational Blockers
 
@@ -269,7 +271,7 @@ Operational notes after W validation:
 - RC3 packaged validation passed. The latest `ALILOS.exe` includes the helper and safety label; recalculation alone did not open browser/Perakam, click Perakam, create a completion record, or create an execution result. Validation and packaging passed.
 - Local Perakam auto-login is enabled on the test machine and succeeded during W4/W5 without credential-value logging. Intentionally decide whether it should be enabled or disabled before future tests.
 - Fully unattended real attendance action is not approved or validated.
-- Supabase heartbeat/write path remains disabled/deferred; do not start S3 schedule/completion runtime sync without explicit approval.
+- Supabase parity sync remains disabled by default; do not enable status, skip, or schedule/completion sync against a live project without explicit approval and the deployment runbooks.
 - Installer and signed release remain optional release decisions, not blockers for local unpacked operation.
 
 Safe defaults:
@@ -359,8 +361,8 @@ RC1 notes:
 - Keep service-role keys server-side only. Never put a service-role key in desktop, renderer, user-editable config, logs, docs, or desktop `.env.local`.
 - Allowed future payload fields are stable non-personal `device_id`, local date, action key, schedule target/window, completion state, verification state, sanitized reason/status, and timestamps.
 - Forbidden future payload fields are Perakam credentials, cookies, raw HTML, screenshots, staff ID/name, Telegram token/chat ID, full URLs, tokenized query strings, opaque `link=` values, and service-role keys.
-- S3D rollout order is docs decision, Edge Function/API schema contract, disabled runtime client skeleton, dry-run payload logging without network writes, non-sensitive write-path smoke test, supervised backup, recovery testing, then no unattended execution approval unless explicitly decided later.
-- Remaining decisions before implementation: upsert latest row vs append-only audit details, user confirmation on disagreement, exact route shape, token issuance, token rotation, and revocation flow.
+- PARITY6 implements the schedule/completion Edge Function/API contract and disabled runtime client skeleton. It is not a recovery engine: remote-only completion markers are warning-only, remote absence does not delete local rows, and local scheduling remains authoritative for action decisions.
+- Remaining decisions before broader implementation: append-only audit details, user confirmation on disagreement, token issuance, token rotation, revocation flow, supervised backup smoke testing, recovery testing, and no unattended execution approval unless explicitly decided later.
 
 ## Planning The Web Companion Safely
 

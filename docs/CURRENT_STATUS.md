@@ -41,6 +41,7 @@
 - PARITY4B adds the Supabase Edge Function proxy for sanitized desktop parity status. It requires an existing `devices.device_id`, upserts `heartbeats`, optionally inserts sanitized `event_logs`, keeps service-role use server-side only, and does not process commands or implement a webapp.
 - PARITY4C documents safe deployment and smoke testing in `docs/PARITY_STATUS_DEPLOYMENT.md`, with placeholder-only curl JSON in `docs/examples/parity-status-smoke.json`.
 - PARITY5 adds disabled-by-default Supabase skip-date sync through `/functions/v1/alilos-skip-sync`. Remote skip rows affect scheduling only, merge conservatively by preserving local skips, and do not process commands or implement a webapp.
+- PARITY6 adds disabled-by-default Supabase schedule/completion sync through `/functions/v1/alilos-schedule-completion-sync`. It uploads sanitized local schedules and completion markers only when explicitly enabled, surfaces remote-only completion markers as warnings, and does not process commands or implement a webapp.
 - WEB1 docs-only web/PWA companion planning is documented in `docs/WEB_COMPANION_PLAN.md`.
 - WEB2 static/read-only web companion UI design is documented in `docs/WEB_COMPANION_PLAN.md`.
 - WEB3 legacy webapp relationship is documented in `docs/WEB_COMPANION_PLAN.md`.
@@ -58,7 +59,7 @@
 - Existing Phase 4D design docs are stale relative to current implementation because guarded execution and auto-login have since been implemented.
 - Settings can edit selected operational values only. Generated schedules, completion records, automation audit events, raw logs, target mappings, credentials, cookies/session data, screenshots, raw HTML, and personal identifiers remain outside editable settings.
 - Supabase heartbeat has a Settings-tab project URL editor and disabled-by-default sender skeleton, but the phone-webapp receiver/dashboard is still not implemented in this repository.
-- Supabase is not required for local scheduled operation. The repository has the S2A heartbeat schema migration, S2B sender skeleton, S3A docs-only schedule/completion sync plan, S3B schema-only schedule/completion migration, PARITY2 schema-only skip/log/status/command support, PARITY3 disabled desktop sync skeleton, PARITY4 gated status publishing, PARITY4B server-side status proxy, and PARITY5 disabled skip-date sync. Hosted webapp/PWA and remote command/control queue processing are not implemented.
+- Supabase is not required for local scheduled operation. The repository has the S2A heartbeat schema migration, S2B sender skeleton, S3A docs-only schedule/completion sync plan, S3B schema-only schedule/completion migration, PARITY2 schema-only skip/log/status/command support, PARITY3 disabled desktop sync skeleton, PARITY4 gated status publishing, PARITY4B server-side status proxy, PARITY5 disabled skip-date sync, and PARITY6 disabled schedule/completion sync. Hosted webapp/PWA and remote command/control queue processing are not implemented.
 - The future web/PWA companion remains unimplemented. WEB1 plans a read-only-first mobile status surface that depends on Supabase-synced heartbeat, schedule, and completion data when those sync paths exist.
 - WEB2 defines the first read-only screens and status cards, but no webapp code, dependencies, runtime sync, or controls exist.
 - WEB4 defines display-safe data groups and fake payload examples, but authenticated read policies and runtime sync remain deferred.
@@ -96,8 +97,9 @@ The active implementation focus appears to be hardening the guarded manual-confi
 - PARITY4B status proxy is added at `/functions/v1/alilos-parity-status`; it accepts sanitized desktop status posts, rejects forbidden keys/values, requires an existing device id, and writes `heartbeats` plus optional `event_logs` server-side only.
 - PARITY4C deployment/smoke runbook is documented. It does not deploy the function, add secrets, commit project refs/keys/device ids, enable desktop sync by default, or change RLS.
 - PARITY5 skip sync is implemented but disabled by default. It requires the deployed `alilos-skip-sync` Edge Function, uses publishable/anon desktop credentials only, and adds remote skip dates to local scheduling without deleting local skips on disagreement.
+- PARITY6 schedule/completion sync is implemented but disabled by default. It requires the deployed `alilos-schedule-completion-sync` Edge Function, uses publishable/anon desktop credentials only, uploads sanitized local backup metadata, and treats remote-only completion markers as warnings rather than local successful completions.
 - Parity sync remains disabled by default. When explicitly enabled, the desktop still uses only a publishable/anon key and performs no command/control.
-- Schedule/completion sync, command processing, and webapp reads remain deferred until auth/pairing/write-path authorization is expanded beyond status and skip sync.
+- Command processing and webapp reads remain deferred until auth/pairing/control-path authorization is explicitly expanded beyond status, skip, and schedule/completion sync.
 
 ### Desktop Operational Blockers
 
@@ -164,12 +166,13 @@ The active implementation focus appears to be hardening the guarded manual-confi
 - `dry-run` mode records simulated action results and never calls the real target click method.
 - Supabase heartbeat payloads include sanitized app/worker/execution/network/Perakam/Telegram status metadata and exclude schedules, completion records, credentials, Telegram identifiers, personal identifiers, raw HTML, screenshots, cookies, and full sensitive URLs.
 - Future Supabase payloads must continue excluding configured-site username/password, cookies/session data, raw page HTML, screenshots, staff ID/name, Telegram token/chat ID, full URLs, tokenized query strings, and opaque `link=` values.
-- S3B adds schema-only `daily_schedules` and `completion_records` tables for future sanitized backup/recovery. Generated schedules and completion records remain local-only at runtime today, and any write-path/sync implementation still needs explicit approval.
+- S3B adds `daily_schedules` and `completion_records` tables for sanitized backup/recovery. PARITY6 can write sanitized backup metadata only when explicitly enabled; generated schedules and completion records remain locally authoritative for runtime action decisions.
 - S3A recovery order is local-first: use valid local schedule, recover from Supabase only if local state is missing/corrupt, generate only if neither exists, save local first, then attempt Supabase backup; Supabase unavailable means local operation continues.
 - S3A duplicate prevention fails safe: local or Supabase completion/attempt evidence blocks repeat execution, local/Supabase disagreement blocks repeat until resolved, and Supabase absence/failure never forces an action.
 - S3B keeps RLS enabled and revokes direct `anon` / `authenticated` table privileges. No broad public policies, service role assumptions, runtime sync, or command/control are added.
 - S3D selects a hybrid Edge Function/API proxy plus device pairing/token for future schedule/completion writes. Direct desktop table writes remain rejected as the default path.
 - S3D payload boundaries allow only stable non-personal device id, local date, action key, schedule target/window, completion and verification state, sanitized reason/status, and timestamps. Perakam credentials, cookies, raw HTML, screenshots, staff identity, Telegram secrets, full URLs, tokenized query strings, opaque `link=` values, and service-role keys remain forbidden.
+- PARITY6 implements the schedule/completion Edge Function and disabled desktop client for that boundary. It does not recover missing local schedules automatically, create local success records from remote data, or allow remote data to trigger configured-site actions.
 - Remaining S3 decisions are latest-row upsert vs append-only audit history details, user confirmation on local/Supabase disagreement, and exact Edge Function/API contract and rollout sequencing.
 - No remote command/control is implemented. Future command queue/control work is S5 and requires explicit approval before implementation.
 - Renderer tabs are UI-only; all existing DOM IDs and preload calls remain the behavior boundary.

@@ -351,6 +351,45 @@ export interface ParitySkipSyncSnapshot {
   rowsApplied: number;
 }
 
+export interface ParitySchedulePayload {
+  deviceId: string;
+  scheduleDate: string;
+  actionKey: AttendanceActionType;
+  targetTimeLocal: string;
+  windowStartLocal: string | null;
+  windowEndLocal: string | null;
+  source: "local-generated" | "recovered-from-supabase" | "manual-reconciled";
+  status: "active" | "skipped" | "superseded" | "archived";
+}
+
+export interface ParityCompletionPayload {
+  deviceId: string;
+  actionDate: string;
+  actionKey: AttendanceActionType;
+  dedupeKey: string | null;
+  state: AttendanceCompletionState;
+  verificationState: AttendanceVerificationStatus | null;
+  sanitizedReason: string | null;
+  attemptedAt: string | null;
+  verifiedAt: string | null;
+}
+
+export interface ParityScheduleCompletionSyncSnapshot {
+  enabled: boolean;
+  active: boolean;
+  lastAttemptAt: string | null;
+  lastSuccessAt: string | null;
+  lastError: string | null;
+  syncCount: number;
+  scheduleUploadCount: number;
+  completionUploadCount: number;
+  fetchedScheduleRows: number;
+  fetchedCompletionRows: number;
+  warningCount: number;
+  lastWarning: string | null;
+  failureCount: number;
+}
+
 export interface ParityCommandRequestPayload {
   id: string;
   deviceId: string;
@@ -398,6 +437,7 @@ export interface ParitySyncSnapshot {
   publishCount: number;
   failureCount: number;
   skipSync: ParitySkipSyncSnapshot;
+  scheduleCompletionSync: ParityScheduleCompletionSyncSnapshot;
   note: string;
 }
 
