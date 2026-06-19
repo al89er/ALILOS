@@ -222,6 +222,44 @@ dd {
   line-height: 1.45;
 }
 
+.command-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+button {
+  min-height: 44px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid rgba(37, 99, 235, 0.28);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 720;
+  text-align: left;
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+#command-message[data-tone="good"] {
+  color: var(--good);
+}
+
+#command-message[data-tone="warn"] {
+  color: var(--warn);
+}
+
+#command-message[data-tone="bad"] {
+  color: var(--bad);
+}
+
 .safety ul {
   margin: 10px 0 0;
   padding-left: 18px;
@@ -243,5 +281,9 @@ dd {
 
   .pill {
     width: fit-content;
+  }
+
+  .command-grid {
+    grid-template-columns: 1fr;
   }
 }

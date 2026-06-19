@@ -6,7 +6,7 @@ The guard exists to prevent accidental migrations, database pushes, function dep
 
 ## Planned Role
 
-Supabase is planned as the shared backend for the webapp/PWA sync/control plane. It is not required for scheduled local desktop operation. This repository currently has the S2A status-only heartbeat schema migration, an S2B disabled-by-default heartbeat sender skeleton, an S3B schedule/completion schema migration, a PARITY2 skip/log/status/command schema migration, PARITY4 status publishing through an Edge Function, PARITY5 skip sync through an Edge Function, PARITY6 schedule/completion sync through an Edge Function, PARITY7 dry-run/non-clicking command sync through an Edge Function, and PARITY8 read-only web monitoring through an Edge Function. Status, skip, schedule/completion, and command sync remain disabled by default. It still has no web command buttons or configured-action command execution.
+Supabase is planned as the shared backend for the webapp/PWA sync/control plane. It is not required for scheduled local desktop operation. This repository currently has the S2A status-only heartbeat schema migration, an S2B disabled-by-default heartbeat sender skeleton, an S3B schedule/completion schema migration, a PARITY2 skip/log/status/command schema migration, PARITY4 status publishing through an Edge Function, PARITY5 skip sync through an Edge Function, PARITY6 schedule/completion sync through an Edge Function, PARITY7 dry-run/non-clicking command sync through an Edge Function, PARITY8 read-only web monitoring through an Edge Function, and PARITY9 safe web command creation through an Edge Function. Status, skip, schedule/completion, and command sync remain disabled by default on the desktop. It still has no remote configured-action command execution.
 
 The agreed roadmap is:
 
@@ -38,7 +38,7 @@ Do not store these values in Supabase:
 - Captive portal usernames/passwords or hidden portal form values.
 - Service-role keys in desktop or webapp clients.
 
-Remote configured-action command execution is not implemented. PARITY7 command sync can only process dry-run/non-clicking requests when explicitly enabled, and any configured-action command remains rejected/deferred until a later explicit approval phase.
+Remote configured-action command execution is not implemented. PARITY7/PARITY9 command sync can only create and process safe dry-run/non-clicking requests when explicitly enabled, and any configured-action command remains rejected/deferred until a later explicit approval phase.
 
 ## PARITY2 Schema
 
@@ -109,7 +109,7 @@ Deployment and smoke testing are documented in `docs/PARITY_SCHEDULE_COMPLETION_
 
 ## PARITY7 Command Sync
 
-`supabase/functions/alilos-command-sync/index.ts` is the server-side endpoint for command request/result processing. It accepts POST requests only and supports constrained `list-pending`, `claim-command`, `complete-command`, and `append-command-event` operations. It requires a valid registered `deviceId`, valid command ids where required, sanitized JSON result/event details, and PARITY7 command types limited to:
+`supabase/functions/alilos-command-sync/index.ts` is the server-side endpoint for command request/result processing. It accepts POST requests only and supports constrained `create-command`, `list-pending`, `claim-command`, `complete-command`, and `append-command-event` operations. It requires a valid registered `deviceId`, valid command ids where required, sanitized JSON result/event details, and command types limited to:
 
 - `request-status-refresh`
 - `request-dry-run`
@@ -118,9 +118,9 @@ Deployment and smoke testing are documented in `docs/PARITY_SCHEDULE_COMPLETION_
 
 The desktop uses only a publishable/anon key. The Edge Function uses `SUPABASE_SERVICE_ROLE_KEY` only from the server environment. Direct table privileges for `anon` and `authenticated` remain closed.
 
-Desktop command sync is disabled by default and requires both `paritySync.enabled` and `paritySync.commandSyncEnabled`. Commands must be claimed before processing, expired commands are marked expired, unsupported or unsafe payloads are rejected, and API failures are non-fatal to local desktop operation. `perform-configured-action` and remote confirmation creation remain explicitly rejected/deferred. No command may include arbitrary selectors, scripts, forms, full URLs, tokenized URLs, credentials, cookies, raw HTML, screenshots, opaque `link=` values, or service-role keys.
+Desktop command sync is disabled by default and requires both `paritySync.enabled` and `paritySync.commandSyncEnabled`. PARITY9 web controls may create only pending safe commands through the Edge Function using publishable/anon credentials; expiry is generated server-side and responses are sanitized. Commands must be claimed before processing, expired commands are marked expired, unsupported or unsafe payloads are rejected, and API failures are non-fatal to local desktop operation. `perform-configured-action` and remote confirmation creation remain explicitly rejected/deferred. No command may include arbitrary selectors, scripts, forms, full URLs, tokenized URLs, credentials, cookies, raw HTML, screenshots, opaque `link=` values, or service-role keys.
 
-Deployment and smoke testing are documented in `docs/PARITY_COMMAND_SYNC_DEPLOYMENT.md`. No webapp is implemented in PARITY7.
+Deployment and smoke testing are documented in `docs/PARITY_COMMAND_SYNC_DEPLOYMENT.md`. Direct table privileges for `anon` and `authenticated` remain closed.
 
 ## PARITY8 Dashboard Read Proxy
 
@@ -137,7 +137,7 @@ The function may read:
 
 It must not write rows, create commands, expose raw payloads, echo secrets, or grant direct table access. The webapp uses only publishable/anon credentials and placeholder config names. Service-role use stays server-side only in the Edge Function environment. Direct `anon` / `authenticated` table privileges remain closed.
 
-PARITY8 does not implement command creation UI, configured-action execution, configured-site login, captive portal login, credential handling, arbitrary automation, push notifications, or unattended execution.
+PARITY8/PARITY9 do not implement configured-action execution, configured-site login, captive portal login, credential handling, arbitrary automation, push notifications, direct table grants, or unattended execution.
 
 ## S1 Proposed Schema Outline
 

@@ -1,13 +1,14 @@
 # A.L.I.L.O.S. Web Monitor
 
-PARITY8 adds a same-repo, static, read-only web/PWA dashboard shell under `webapp/`.
+PARITY8 added a same-repo, static, read-only web/PWA dashboard shell under `webapp/`. PARITY9 adds safe non-clicking command controls.
 
 ## Stack
 
 - Plain HTML, CSS, and JavaScript.
 - No frontend dependencies.
 - No build step.
-- Supabase access goes through the read-only Edge Function proxy at `/functions/v1/alilos-dashboard-read`.
+- Supabase dashboard reads go through `/functions/v1/alilos-dashboard-read`.
+- Safe command creation goes through `/functions/v1/alilos-command-sync` with `create-command`.
 
 ## Configuration
 
@@ -21,11 +22,11 @@ Use placeholder names only:
 
 ## Boundaries
 
-- Read-only dashboard only.
-- No command creation UI.
+- Safe command buttons only: status refresh, dry-run/check, recalculate today, and cancel confirmation.
 - No Perakam/Fortinet login.
 - No credentials.
 - No browser automation.
 - No service-role key in the webapp.
 - No direct table writes or table grants.
+- No remote `perform-configured-action`.
 - Missing live data falls back to a static mock state and must not imply action readiness.

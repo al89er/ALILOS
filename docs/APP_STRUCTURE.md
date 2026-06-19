@@ -87,7 +87,7 @@ Supabase Edge Functions live under `supabase/functions`:
 | `alilos-parity-status/index.ts` | POST-only parity status proxy. It accepts sanitized desktop `deviceStatus` plus optional generated events, rejects forbidden keys/tokenized values, requires an existing `devices.device_id`, upserts `heartbeats`, inserts optional sanitized `event_logs`, and keeps service-role use server-side only. |
 | `alilos-skip-sync/index.ts` | POST-only skip-date sync proxy. It supports constrained `list-skips`, `upsert-skip`, and `delete-skip`, rejects forbidden keys/tokenized values, requires an existing `devices.device_id`, writes only `skip_dates`, and keeps service-role use server-side only. |
 | `alilos-schedule-completion-sync/index.ts` | POST-only schedule/completion sync proxy. It supports constrained `get-day-state`, `upsert-schedule`, and `upsert-completion`, rejects forbidden keys/tokenized values, requires an existing `devices.device_id`, writes only `daily_schedules` and `completion_records`, and keeps service-role use server-side only. |
-| `alilos-command-sync/index.ts` | POST-only command request/result proxy. It supports constrained `list-pending`, `claim-command`, `complete-command`, and `append-command-event`, rejects forbidden keys/tokenized values, requires an existing `devices.device_id`, writes only `command_requests` and `command_events`, and keeps service-role use server-side only. |
+| `alilos-command-sync/index.ts` | POST-only command request/result proxy. It supports constrained `create-command`, `list-pending`, `claim-command`, `complete-command`, and `append-command-event`, rejects forbidden keys/tokenized values, requires an existing `devices.device_id`, writes only `command_requests` and `command_events`, and keeps service-role use server-side only. |
 | `alilos-dashboard-read/index.ts` | POST-only read dashboard proxy. It returns sanitized device, heartbeat, schedule, skip, completion, and command status summaries for one registered device without changing RLS/table grants. |
 
 The desktop and webapp still use only publishable/anon credentials. Direct `anon` / `authenticated` table privileges remain closed. Skip sync affects scheduling only; schedule/completion sync backs up sanitized metadata and surfaces warnings only; command sync is limited to dry-run/non-clicking commands and rejects configured-action execution. All desktop parity sync features are disabled by default.
@@ -98,13 +98,13 @@ The desktop and webapp still use only publishable/anon credentials. Direct `anon
 
 | File | Responsibility |
 | --- | --- |
-| `index.html` | Static mobile-first dashboard shell with device, schedule, skip, completion, command sync, and safety sections. |
+| `index.html` | Static mobile-first dashboard shell with device, schedule, skip, completion, command sync, safe controls, and safety sections. |
 | `styles.css` | Dependency-free responsive layout and status styling. |
-| `app.js` | Fetches `/functions/v1/alilos-dashboard-read` with publishable/anon credentials when configured; otherwise shows static mock state. |
+| `app.js` | Fetches `/functions/v1/alilos-dashboard-read` and submits safe `create-command` requests to `/functions/v1/alilos-command-sync` with publishable/anon credentials when configured; otherwise shows static mock state. |
 | `config.example.js` | Placeholder-only config shape for `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and `VITE_ALILOS_DEVICE_ID`. |
 | `manifest.webmanifest` | Minimal PWA manifest. |
 
-The webapp has no command creation buttons, no configured-site login, no credential fields, no service-role key, and no browser automation.
+The webapp has only safe/non-clicking command buttons. It has no configured-action execution button, no configured-site login, no credential fields, no service-role key, and no browser automation.
 
 ## Renderer
 

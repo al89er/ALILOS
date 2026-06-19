@@ -1,17 +1,17 @@
 # Web Companion Plan
 
-WEB1-WEB4 documented the future mobile-friendly browser/PWA companion. PARITY8 now creates the first read-only implementation under `webapp/`. It still does not create command buttons, Supabase writes, Electron runtime changes, direct desktop table write policies, configured-site login, credential handling, or unattended real execution approval.
+WEB1-WEB4 documented the future mobile-friendly browser/PWA companion. PARITY8 created the first read-only implementation under `webapp/`. PARITY9 adds safe non-clicking command controls for status refresh, dry-run/check, schedule recalculation, and cancel confirmation. It still does not add remote configured-action execution, Supabase table grants, Electron runtime behavior changes, configured-site login, credential handling, or unattended real execution approval.
 
 PARITY1B corrected target: the webapp/PWA plus Supabase control plane are required for the complete product milestone. Telegram is paused/deprioritized and is not a parity requirement. See `docs/LEGACY_PARITY_PLAN.md` for the full matrix and PARITY2-PARITY13 build sequence.
 
-PARITY2 adds schema-only tables for future skip dates, sanitized events, command requests, and command events. PARITY7 implements dry-run/non-clicking command processing, and PARITY8 implements the read-only web monitor. Web controls and configured-action command execution remain unimplemented until later approved PARITY steps.
+PARITY2 adds schema-only tables for future skip dates, sanitized events, command requests, and command events. PARITY7 implements dry-run/non-clicking command processing, PARITY8 implements the read-only web monitor, and PARITY9 adds safe web command creation for the PARITY7 non-clicking command types. Configured-action command execution remains unimplemented until a later approved PARITY step.
 
 PARITY8 implementation note:
 
 - `webapp/` is a dependency-free static HTML/CSS/JavaScript read-only monitor.
 - Live data comes from `/functions/v1/alilos-dashboard-read` when the Edge Function is deployed and the webapp has placeholder-style config values supplied locally/at hosting time.
 - The UI falls back to mock/unavailable state when live reads are not configured or unavailable.
-- No controls are implemented in PARITY8.
+- PARITY9 safe controls submit `create-command` requests to `/functions/v1/alilos-command-sync`; they do not run browser automation, send credentials, or perform configured-site clicks.
 
 ## Architecture Split
 
@@ -563,9 +563,9 @@ Example:
 ### WEB4 Contract Boundaries
 
 - Web companion may display state.
+- PARITY9 may submit only safe non-clicking command requests for status refresh, dry-run/check, recalculate today schedule, and cancel pending confirmation.
 - Web companion may not trigger Perakam or Fortinet actions.
-- No command queue in WEB4.
-- No skip/unskip, mode switch, refresh command, or confirmation controls in WEB4.
+- No skip/unskip, mode switch, guarded configured-action command, or confirmation execution controls in WEB4/PARITY9.
 - No unattended execution pathway.
 
 ### Future Contract Dependencies
@@ -588,11 +588,11 @@ WEB1 can show placeholders until real read data exists. It must not infer schedu
 
 ## Future Supervised Controls
 
-These are not part of WEB1. They require explicit later approval, command/control design, and desktop-side safety handling:
+These are not part of WEB1-WEB4. PARITY9 implements only the already approved non-clicking command buttons. Other controls require explicit later approval, command/control design, and desktop-side safety handling:
 
 - Skip/unskip today or tomorrow.
 - Request `notify-only` or `manual-confirm` mode.
-- Request status refresh.
+- Request status refresh. Implemented in PARITY9 as a safe non-clicking command.
 - Acknowledge warnings.
 - Supervised confirmation workflow, only if explicitly approved later.
 
@@ -674,6 +674,7 @@ The web/PWA should represent these states clearly:
 2. WEB2 static/read-only UI design.
 3. WEB3 authenticated read-only status.
 4. WEB4 schedule/completion display after sync exists.
-5. WEB5 supervised command queue design only.
-6. WEB6 supervised controls after explicit approval.
-7. No unattended execution unless explicitly approved later.
+5. PARITY9 safe non-clicking command buttons for status refresh, dry-run/check, recalculate today schedule, and cancel confirmation.
+6. WEB5/PARITY10 guarded configured-action command design only after explicit approval.
+7. WEB6 supervised controls after explicit approval.
+8. No unattended execution unless explicitly approved later.

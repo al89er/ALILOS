@@ -28,12 +28,15 @@ const ids = [
   "cmd-claimed",
   "cmd-completed",
   "cmd-rejected",
-  "command-latest"
+  "command-latest",
+  "command-message"
 ];
 
 const elements = Object.fromEntries(ids.map((id) => [id, document.getElementById(id)]));
+const commandButtons = [...document.querySelectorAll("[data-command-type]")];
 
 render();
+bindCommandButtons();
 void loadDashboard();
 
 async function loadDashboard() {
@@ -70,6 +73,63 @@ async function loadDashboard() {
   }
 }
 
+function bindCommandButtons() {
+  for (const button of commandButtons) {
+    button.addEventListener("click", () => {
+      void submitSafeCommand(button.dataset.commandType);
+    });
+  }
+}
+
+async function submitSafeCommand(commandType) {
+  if (!SAFE_COMMAND_TYPES.has(commandType)) {
+    setCommandMessage("Unsupported command rejected by webapp.", "bad");
+    return;
+  }
+
+  if (!isConfigured(config)) {
+    setCommandMessage("Command not submitted: configure Supabase URL, anon key, and device id first.", "warn");
+    return;
+  }
+
+  setButtonsDisabled(true);
+  setCommandMessage(`Submitting ${commandLabel(commandType)}...`, "neutral");
+
+  try {
+    const endpoint = new URL("/functions/v1/alilos-command-sync", config.VITE_SUPABASE_URL);
+    const response = await fetch(endpoint.toString(), {
+      method: "POST",
+      headers: {
+        apikey: config.VITE_SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${config.VITE_SUPABASE_ANON_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        deviceId: config.VITE_ALILOS_DEVICE_ID,
+        operation: "create-command",
+        commandType,
+        payload: {
+          requestedFrom: "webapp",
+          noConfiguredSiteAction: true
+        }
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Command proxy returned HTTP ${response.status}.`);
+    }
+
+    const result = await response.json();
+    const id = result?.command?.id ? shortId(result.command.id) : "pending";
+    setCommandMessage(`${commandLabel(commandType)} submitted as ${id}. Desktop must be online with command sync enabled.`, "good");
+    await loadDashboard();
+  } catch (error) {
+    setCommandMessage(sanitizeText(error.message, 160) ?? "Command submission failed.", "bad");
+  } finally {
+    setButtonsDisabled(false);
+  }
+}
+
 function render(message = state.source === "live" ? "Live read proxy" : "Mock data", tone = state.source === "live" ? "good" : "neutral") {
   const data = state.data;
   const heartbeat = data.heartbeat;
@@ -100,7 +160,7 @@ function renderSchedules(schedules) {
   elements["schedule-list"].replaceChildren(...(schedules.length ? schedules.map((item) => listItem(
     actionLabel(item.actionKey),
     `${item.targetTimeLocal} (${item.status})`,
-    `Window ${item.windowStartLocal ?? "--"}-${item.windowEndLocal ?? "--"} · ${item.source} · ${formatTime(item.updatedAt)}`
+    `Window ${item.windowStartLocal ?? "--"}-${item.windowEndLocal ?? "--"} - ${item.source} - ${formatTime(item.updatedAt)}`
   )) : [listItem("Schedule unavailable", "No synced rows", "Desktop remains source of truth.")]));
 
   const next = schedules.find((item) => item.status === "active") ?? schedules[0] ?? null;
@@ -114,7 +174,7 @@ function renderSkips(skips) {
   elements["skip-list"].replaceChildren(...(skips.length ? skips.map((item) => listItem(
     item.actionKey ? actionLabel(item.actionKey) : "Whole day",
     "Skipped",
-    `${item.reason ?? "No reason supplied"} · ${item.source} · ${formatTime(item.updatedAt)}`
+    `${item.reason ?? "No reason supplied"} - ${item.source} - ${formatTime(item.updatedAt)}`
   )) : [listItem("Today not skipped", "No synced skip row", "Missing data never implies action readiness.")]));
   elements["skip-freshness"].textContent = latestTimestampLabel(skips);
 }
@@ -123,7 +183,7 @@ function renderCompletions(completions) {
   elements["completion-list"].replaceChildren(...(completions.length ? completions.map((item) => listItem(
     actionLabel(item.actionKey),
     item.state,
-    `${item.verificationState ?? "verification unknown"} · ${item.sanitizedReason ?? "No result summary"} · ${formatTime(item.updatedAt ?? item.verifiedAt ?? item.attemptedAt)}`
+    `${item.verificationState ?? "verification unknown"} - ${item.sanitizedReason ?? "No result summary"} - ${formatTime(item.updatedAt ?? item.verifiedAt ?? item.attemptedAt)}`
   )) : [listItem("Completion unknown", "No synced completion row", "Check the desktop before making decisions.")]));
   elements["completion-freshness"].textContent = latestTimestampLabel(completions);
 }
@@ -136,8 +196,15 @@ function renderCommands(commandSync) {
   elements["cmd-rejected"].textContent = String((counters.rejected ?? 0) + (counters.failed ?? 0) + (counters.expired ?? 0));
   elements["command-latest"].textContent = commandSync?.latest
     ? `Latest ${commandSync.latest.commandType}: ${commandSync.latest.status}. ${commandSync.latest.resultSummary ?? "No raw details shown."}`
-    : "Command buttons are not available in PARITY8.";
+    : "Safe command controls can submit requests, but no command result is synced yet.";
 }
+
+const SAFE_COMMAND_TYPES = new Set([
+  "request-status-refresh",
+  "request-dry-run",
+  "recalculate-today-schedule",
+  "cancel-confirmation"
+]);
 
 function listItem(title, value, detail) {
   const item = document.createElement("div");
@@ -197,6 +264,32 @@ function inferPortalStatus(networkStatus) {
   if (text.includes("captive")) return "possible/detected";
   if (text.includes("online")) return "not detected";
   return "unknown";
+}
+
+function commandLabel(value) {
+  switch (value) {
+    case "request-status-refresh":
+      return "Status refresh";
+    case "request-dry-run":
+      return "Dry-run/check";
+    case "recalculate-today-schedule":
+      return "Schedule recalculation";
+    case "cancel-confirmation":
+      return "Confirmation cancellation";
+    default:
+      return "Command";
+  }
+}
+
+function setCommandMessage(message, tone) {
+  elements["command-message"].textContent = message;
+  elements["command-message"].dataset.tone = tone;
+}
+
+function setButtonsDisabled(disabled) {
+  for (const button of commandButtons) {
+    button.disabled = disabled;
+  }
 }
 
 function formatTime(value) {

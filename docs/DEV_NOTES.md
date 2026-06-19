@@ -14,7 +14,8 @@
 - PARITY6 adds disabled-by-default schedule/completion sync through `supabase/functions/alilos-schedule-completion-sync`. It backs up sanitized local schedules/completion markers, surfaces remote-only completion markers as warnings, and cannot trigger configured-site action, command processing, or webapp behavior.
 - PARITY7 adds disabled-by-default command request/result processing through `supabase/functions/alilos-command-sync`. It only handles `request-status-refresh`, `request-dry-run`, `recalculate-today-schedule`, and `cancel-confirmation`; `perform-configured-action` and remote confirmation creation are explicitly rejected/deferred.
 - PARITY8 adds a dependency-free static read-only web/PWA monitor under `webapp/` and the `supabase/functions/alilos-dashboard-read` read proxy. It has no command buttons and falls back to mock data when live read config/data is unavailable.
-- Do not implement webapp controls, migrations, configured-action command execution, captive portal reconnect, or unattended execution from these notes alone.
+- PARITY9 adds safe web command controls for status refresh, dry-run/check, recalculate today schedule, and cancel confirmation. They create allowlisted pending commands only; they do not perform configured-site clicks.
+- Do not implement migrations, configured-action command execution, captive portal reconnect, or unattended execution from these notes alone.
 - Credentials stay local: configured website credentials and future captive portal credentials must not be sent to Supabase or the webapp, and must not appear in logs/docs. Service-role keys never ship in desktop or webapp clients.
 
 ## Install
@@ -117,9 +118,11 @@ Each line is a JSON object with timestamp, level, and message. The renderer disp
 
 ## Webapp
 
-`webapp/` contains the PARITY8 read-only monitor. It is plain HTML/CSS/JavaScript with no package install, no build step, no service-role key, and no direct table access. Runtime config is represented by placeholder names in `webapp/config.example.js`: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and `VITE_ALILOS_DEVICE_ID`. Real local `webapp/config.js` is ignored by Git.
+`webapp/` contains the PARITY8 monitor plus PARITY9 safe non-clicking controls. It is plain HTML/CSS/JavaScript with no package install, no build step, no service-role key, and no direct table access. Runtime config is represented by placeholder names in `webapp/config.example.js`: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and `VITE_ALILOS_DEVICE_ID`. Real local `webapp/config.js` is ignored by Git.
 
 Live data comes from `/functions/v1/alilos-dashboard-read` when deployed and configured. Missing config, unavailable Supabase, or missing synced data shows static/mock unavailable states and must not imply action readiness.
+
+Safe command creation goes to `/functions/v1/alilos-command-sync` with `operation: "create-command"` and only the PARITY7 non-clicking command types. The webapp has no `perform-configured-action` button, credential forms, arbitrary command input, raw JSON editor, service-role key, or browser automation.
 
 This tab layout is renderer-only. Do not change target IDs, confirmation behavior, persisted key names, or browser/controller behavior when adjusting tab placement.
 
@@ -374,7 +377,7 @@ RC1 notes:
 
 ## Planning The Web Companion Safely
 
-- WEB1 was docs-only; PARITY8 now creates the first `webapp/` read-only shell. Do not add frontend dependencies, migrations, `.env.local`, secrets, command/control, or Electron runtime changes from the old plan alone.
+- WEB1 was docs-only; PARITY8 created the first `webapp/` monitoring shell, and PARITY9 adds safe non-clicking command controls. Do not add frontend dependencies, migrations, `.env.local`, secrets, configured-action command execution, or Electron runtime changes from the old plan alone.
 - The Electron desktop app remains the only local browser/session/action assistant. The web/PWA companion is a mobile status/control surface only.
 - WEB1 starts read-only: heartbeat/status when available, stale/offline warnings, placeholders until schedule/completion sync exists, and no control commands.
 - Future supervised controls require later explicit approval and must go through the Supabase/Edge Function/API control-plane boundary.
@@ -389,7 +392,7 @@ RC1 notes:
 - Prefer rebuilding the ALILOS web companion or using an isolated future `webapp/` boundary. Compare legacy behavior later using sanitized screenshots or written summaries only.
 - WEB4 data contracts are read-only and display-safe. They cover desktop/device heartbeat, Perakam/browser/session, network/captive portal, daily schedule, completion/verification, warnings/events, and sync capability/status.
 - WEB4 sample payloads must stay fake and non-sensitive. Missing web data must show unavailable/unknown/deferred states and must never imply action readiness.
-- WEB4 does not add command queue, skip/unskip, mode switch, refresh command, confirmation control, runtime sync, or authenticated read/RLS implementation.
+- WEB4 does not add command queue, skip/unskip, mode switch, configured-action command, confirmation execution control, runtime sync, or authenticated read/RLS implementation. PARITY9 separately adds only safe status refresh, dry-run/check, recalculate today schedule, and cancel confirmation command buttons.
 
 ## Avoiding Accidental Real Actions
 

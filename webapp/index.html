@@ -13,14 +13,14 @@
       <header class="topbar">
         <div>
           <h1>A.L.I.L.O.S.</h1>
-          <p>Read-only desktop monitor</p>
+          <p>Safe desktop monitor</p>
         </div>
         <span id="connection-pill" class="pill neutral">Static shell</span>
       </header>
 
       <section class="notice">
-        <strong>Read-only dashboard.</strong>
-        <span>No web automation, credentials, or command buttons are available here.</span>
+        <strong>Safe web controls.</strong>
+        <span>These controls only request non-clicking desktop checks. They do not perform a real website click.</span>
       </section>
 
       <section class="panel primary" aria-labelledby="device-title">
@@ -74,7 +74,7 @@
       <section class="panel" aria-labelledby="command-title">
         <div class="section-heading">
           <h2 id="command-title">Command Sync</h2>
-          <span class="status-text">Read-only</span>
+          <span class="status-text">Safe commands only</span>
         </div>
         <dl class="metric-grid compact">
           <div><dt>Pending</dt><dd id="cmd-pending">0</dd></div>
@@ -82,16 +82,31 @@
           <div><dt>Completed</dt><dd id="cmd-completed">0</dd></div>
           <div><dt>Rejected/failed</dt><dd id="cmd-rejected">0</dd></div>
         </dl>
-        <p id="command-latest" class="muted">Command buttons are not available in PARITY8.</p>
+        <p id="command-latest" class="muted">Safe command results unavailable until desktop sync reports back.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="controls-title">
+        <div class="section-heading">
+          <h2 id="controls-title">Safe Controls</h2>
+          <span class="status-text">No real click</span>
+        </div>
+        <div class="command-grid">
+          <button type="button" data-command-type="request-status-refresh">Refresh status</button>
+          <button type="button" data-command-type="request-dry-run">Run dry-run/check</button>
+          <button type="button" data-command-type="recalculate-today-schedule">Recalculate today</button>
+          <button type="button" data-command-type="cancel-confirmation">Cancel confirmation</button>
+        </div>
+        <p id="command-message" class="muted">Desktop must be online with command sync enabled. Submission does not imply immediate execution.</p>
       </section>
 
       <section class="panel safety" aria-labelledby="safety-title">
         <h2 id="safety-title">Safety Notices</h2>
         <ul>
           <li>Desktop must be online before any future supervised action can run.</li>
+          <li>Safe controls create requests only; the desktop agent performs all local checks.</li>
           <li>This webapp cannot log in to Perakam or Fortinet.</li>
           <li>Credentials and browser sessions remain local to the desktop.</li>
-          <li>Remote configured action is not implemented in this dashboard.</li>
+          <li>Remote configured-action command is not implemented yet.</li>
         </ul>
       </section>
     </main>

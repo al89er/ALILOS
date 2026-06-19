@@ -40,11 +40,11 @@ Telegram remains useful as an existing local notification/fallback path, but Tel
 | Skip next action | Partially implemented | Local skip dates exist; webapp/Supabase command path missing. |
 | Local logs | Implemented | JSON-line logs under Electron userData. |
 | Supabase logs | Partially implemented | PARITY2 schema exists; PARITY4 can publish conservative parity status events only when enabled and `logUploadEnabled` is true. |
-| Supabase skip dates | Partially implemented | PARITY5 desktop/Edge Function sync exists and is disabled by default; webapp controls are still missing. |
+| Supabase skip dates | Partially implemented | PARITY5 desktop/Edge Function sync exists and is disabled by default; PARITY9 does not add skip/unskip controls yet. |
 | Supabase schedules/completions | Partially implemented | PARITY6 desktop/Edge Function sync exists and is disabled by default; it backs up local rows and surfaces remote completion warnings only. |
 | Supabase command requests/results | Partially implemented | PARITY7 dry-run/non-clicking command processing exists and is disabled by default; configured-action command execution is still missing/deferred. |
 | Webapp monitoring | Partially implemented | PARITY8 adds a same-repo read-only static PWA shell and dashboard-read proxy; deployment/auth pairing remains future work. |
-| Webapp manual controls | Missing | Future skip/status/recalculate/dry-run/guarded action controls through Supabase. |
+| Webapp manual controls | Partially implemented | PARITY9 adds safe status refresh, dry-run/check, recalculate today schedule, and cancel confirmation controls only. Skip/unskip and guarded configured-action controls remain deferred. |
 | Telegram monitoring/commands | Paused | Existing Telegram code/config stays secondary; not required for completion. |
 | Background operation | Implemented | Tray/background packaged app works; field validation remains. |
 | Separate Playwright browser | Implemented | Persistent Playwright browser is separate from normal browser use. |
@@ -159,6 +159,21 @@ The desktop command poller remains disabled by default and requires both `parity
 `supabase/functions/alilos-dashboard-read/index.ts` adds the read-only Edge Function/API proxy for live dashboard data. It reads sanitized device, heartbeat, schedule, skip, completion, and command summary rows for one registered device with service-role use kept server-side only. Direct `anon` / `authenticated` table privileges remain closed.
 
 PARITY8 does not add command creation UI, skip/unskip controls, mode switches, configured-site login, captive portal login, browser automation, service-role keys in the webapp, direct table grants, or remote configured-action execution. Missing config or unavailable live data falls back to static mock/unavailable states and must not imply action readiness.
+
+## PARITY9 Safe Web Command Controls Result
+
+`webapp/` now includes safe non-clicking command buttons for:
+
+- status refresh
+- dry-run/check
+- recalculate today's schedule
+- cancel pending confirmation
+
+`supabase/functions/alilos-command-sync/index.ts` supports `create-command` for those allowlisted command types only. The function requires an existing registered device, rejects unsupported command types such as `perform-configured-action` and remote confirmation creation, rejects arbitrary payloads and forbidden keys/strings, generates expiry server-side, and returns only sanitized command id/status/timestamps.
+
+Production use requires the deployed command Edge Function, a placeholder-configured webapp using publishable/anon credentials, and desktop parity command sync explicitly enabled with both `paritySync.enabled` and `paritySync.commandSyncEnabled`. The buttons do not imply immediate execution when the desktop is offline or sync is disabled.
+
+PARITY9 does not add skip/unskip, runtime mode switching, configured-site login, captive portal login, credential fields, service-role keys in the webapp, direct table grants, arbitrary command input, raw JSON editors, browser automation, remote `perform-configured-action`, or unattended execution.
 
 PARITY3 does not poll or process command requests, implement webapp code, add secrets, or enable unattended execution. Supabase keys for this path must be publishable/anon only; service-role-looking keys are rejected from local parity-sync config.
 

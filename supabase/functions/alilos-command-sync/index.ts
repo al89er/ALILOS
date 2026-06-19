@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 type JsonObject = Record<string, unknown>;
-type Operation = "list-pending" | "claim-command" | "complete-command" | "append-command-event";
+type Operation = "list-pending" | "create-command" | "claim-command" | "complete-command" | "append-command-event";
 type ActionKey = "clock-in" | "clock-out";
 type CommandType =
   | "request-status-refresh"
@@ -12,12 +12,16 @@ type CommandType =
   | "recalculate-today-schedule";
 type CommandStatus = "pending" | "claimed" | "succeeded" | "failed" | "expired" | "rejected" | "cancelled";
 type FinalCommandStatus = "succeeded" | "failed" | "expired" | "rejected" | "cancelled";
-type CommandEventType = "claimed" | "progress" | "succeeded" | "failed" | "expired" | "rejected" | "cancelled";
+type CommandEventType = "created" | "claimed" | "progress" | "succeeded" | "failed" | "expired" | "rejected" | "cancelled";
 
 interface CommandSyncRequest {
   deviceId: string;
   operation: Operation;
   commandId: string | null;
+  commandType: CommandType | null;
+  actionKey: ActionKey | null;
+  scheduleDate: string | null;
+  commandPayload: Record<string, string | number | boolean | null>;
   status: FinalCommandStatus | null;
   summary: string | null;
   details: Record<string, string | number | boolean | null>;
@@ -28,7 +32,7 @@ interface CommandSyncRequest {
   } | null;
 }
 
-const OPERATIONS = new Set(["list-pending", "claim-command", "complete-command", "append-command-event"]);
+const OPERATIONS = new Set(["list-pending", "create-command", "claim-command", "complete-command", "append-command-event"]);
 const ACTION_KEYS = new Set(["clock-in", "clock-out"]);
 const COMMAND_TYPES = new Set([
   "request-status-refresh",
@@ -44,8 +48,14 @@ const PARITY7_ALLOWED_COMMAND_TYPES = new Set([
   "cancel-confirmation",
   "recalculate-today-schedule"
 ]);
+const CREATE_COMMAND_TYPES = new Set([
+  "request-status-refresh",
+  "request-dry-run",
+  "cancel-confirmation",
+  "recalculate-today-schedule"
+]);
 const FINAL_STATUSES = new Set(["succeeded", "failed", "expired", "rejected", "cancelled"]);
-const EVENT_TYPES = new Set(["claimed", "progress", "succeeded", "failed", "expired", "rejected", "cancelled"]);
+const EVENT_TYPES = new Set(["created", "claimed", "progress", "succeeded", "failed", "expired", "rejected", "cancelled"]);
 const FORBIDDEN_KEY_NAMES = new Set([
   "credential",
   "credentials",
@@ -152,6 +162,51 @@ Deno.serve(async (request) => {
       acceptedAt,
       commands: (data ?? []).map((row) => commandRowToPayload(row, acceptedAt))
     }, 200);
+  }
+
+  if (payload.operation === "create-command") {
+    if (!payload.commandType || !CREATE_COMMAND_TYPES.has(payload.commandType)) {
+      return jsonResponse({ success: false, error: "unsupported-command-type" }, 400);
+    }
+
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    const { data, error } = await supabase
+      .from("command_requests")
+      .insert({
+        device_id: payload.deviceId,
+        command_type: payload.commandType,
+        action_key: payload.actionKey,
+        schedule_date: payload.scheduleDate,
+        payload: payload.commandPayload,
+        status: "pending",
+        requested_by: "webapp",
+        requested_at: acceptedAt,
+        expires_at: expiresAt
+      })
+      .select("id, status, requested_at, expires_at")
+      .single();
+
+    if (error || !data) {
+      return jsonResponse({ success: false, error: "command-create-failed" }, 500);
+    }
+
+    await appendCommandEvent(supabase, payload.deviceId, readUuid(data.id) ?? "00000000-0000-4000-8000-000000000000", "created", "Safe web command created.", {
+      commandType: payload.commandType,
+      source: "webapp",
+      noConfiguredSiteAction: true
+    });
+
+    return jsonResponse({
+      success: true,
+      operation: payload.operation,
+      acceptedAt,
+      command: {
+        id: readUuid(data.id) ?? "00000000-0000-4000-8000-000000000000",
+        status: readCommandStatus(data.status) ?? "pending",
+        requestedAt: readIsoDate(data.requested_at) ?? acceptedAt,
+        expiresAt: readIsoDate(data.expires_at) ?? expiresAt
+      }
+    }, 202);
   }
 
   if (!payload.commandId) {
@@ -297,6 +352,10 @@ function validateRequestBody(value: unknown): { ok: true; payload: CommandSyncRe
   const deviceId = readUuid(body.deviceId);
   const operation = readOperation(body.operation);
   const commandId = body.commandId === undefined || body.commandId === null ? null : readUuid(body.commandId);
+  const commandType = body.commandType === undefined || body.commandType === null ? null : readCommandType(body.commandType);
+  const actionKey = body.actionKey === undefined || body.actionKey === null ? null : readNullableActionKey(body.actionKey);
+  const scheduleDate = body.scheduleDate === undefined || body.scheduleDate === null ? null : readNullableDate(body.scheduleDate);
+  const commandPayload = body.payload === undefined || body.payload === null ? {} : readJsonDetails(body.payload);
   const status = body.status === undefined || body.status === null ? null : readFinalStatus(body.status);
   const summary = body.summary === undefined || body.summary === null ? null : readNullableText(body.summary, 500);
   const details = body.details === undefined || body.details === null ? {} : readJsonDetails(body.details);
@@ -312,6 +371,22 @@ function validateRequestBody(value: unknown): { ok: true; payload: CommandSyncRe
 
   if (body.commandId !== undefined && body.commandId !== null && !commandId) {
     return { ok: false, error: "invalid-command-id" };
+  }
+
+  if (body.commandType !== undefined && body.commandType !== null && !commandType) {
+    return { ok: false, error: "invalid-command-type" };
+  }
+
+  if (body.actionKey !== undefined && body.actionKey !== null && !actionKey) {
+    return { ok: false, error: "invalid-action-key" };
+  }
+
+  if (body.scheduleDate !== undefined && body.scheduleDate !== null && !scheduleDate) {
+    return { ok: false, error: "invalid-schedule-date" };
+  }
+
+  if (!commandPayload) {
+    return { ok: false, error: "invalid-payload" };
   }
 
   if (body.status !== undefined && body.status !== null && !status) {
@@ -334,6 +409,10 @@ function validateRequestBody(value: unknown): { ok: true; payload: CommandSyncRe
     return { ok: false, error: "missing-command-id" };
   }
 
+  if (operation === "create-command" && !commandType) {
+    return { ok: false, error: "missing-command-type" };
+  }
+
   if (operation === "complete-command" && (!status || !summary)) {
     return { ok: false, error: "missing-result-fields" };
   }
@@ -342,7 +421,7 @@ function validateRequestBody(value: unknown): { ok: true; payload: CommandSyncRe
     return { ok: false, error: "missing-event-fields" };
   }
 
-  return { ok: true, payload: { deviceId, operation, commandId, status, summary, details, event } };
+  return { ok: true, payload: { deviceId, operation, commandId, commandType, actionKey, scheduleDate, commandPayload, status, summary, details, event } };
 }
 
 function readCommandEvent(value: unknown): CommandSyncRequest["event"] | null {

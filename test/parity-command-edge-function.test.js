@@ -17,6 +17,7 @@ test("command sync Edge Function exposes constrained command operations only", (
   assert.match(source, /SUPABASE_SERVICE_ROLE_KEY/);
   assert.match(source, /service-role-client-key-rejected/);
   assert.match(source, /"list-pending"/);
+  assert.match(source, /"create-command"/);
   assert.match(source, /"claim-command"/);
   assert.match(source, /"complete-command"/);
   assert.match(source, /"append-command-event"/);
@@ -25,7 +26,24 @@ test("command sync Edge Function exposes constrained command operations only", (
   assert.match(source, /\.from\("command_events"\)/);
   assert.match(source, /device-not-registered/);
   assert.match(source, /PARITY7_ALLOWED_COMMAND_TYPES/);
+  assert.match(source, /CREATE_COMMAND_TYPES/);
   assert.doesNotMatch(source, /grant\s+.*\s+to\s+(anon|authenticated)/i);
+});
+
+test("command sync Edge Function create-command only allows safe non-clicking commands", () => {
+  const source = readFunctionSource();
+  const createSet = source.match(/const CREATE_COMMAND_TYPES = new Set\(\[([\s\S]*?)\]\);/)[1];
+
+  assert.match(createSet, /"request-status-refresh"/);
+  assert.match(createSet, /"request-dry-run"/);
+  assert.match(createSet, /"recalculate-today-schedule"/);
+  assert.match(createSet, /"cancel-confirmation"/);
+  assert.doesNotMatch(createSet, /"perform-configured-action"/);
+  assert.doesNotMatch(createSet, /"request-confirmation"/);
+  assert.match(source, /\.insert\(\{/);
+  assert.match(source, /requested_by: "webapp"/);
+  assert.match(source, /expiresAt = new Date\(Date\.now\(\) \+ 10 \* 60 \* 1000\)/);
+  assert.match(source, /unsupported-command-type/);
 });
 
 test("command sync Edge Function rejects sensitive markers and arbitrary web command data", () => {
