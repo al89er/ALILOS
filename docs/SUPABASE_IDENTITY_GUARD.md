@@ -6,7 +6,7 @@ The guard exists to prevent accidental migrations, database pushes, function dep
 
 ## Planned Role
 
-Supabase is planned as a shared backend for a future monitoring/control plane. It is not required for scheduled local desktop operation. This repository currently has the S2A status-only heartbeat schema migration, an S2B disabled-by-default heartbeat sender skeleton, and an S3B schedule/completion schema migration. It still has no hosted webapp/PWA, runtime schedule/completion sync, or remote command/control queue.
+Supabase is planned as the shared backend for the future webapp/PWA sync/control plane. It is not required for scheduled local desktop operation. This repository currently has the S2A status-only heartbeat schema migration, an S2B disabled-by-default heartbeat sender skeleton, and an S3B schedule/completion schema migration. It still has no hosted webapp/PWA, runtime schedule/completion sync, skip/log/status/command sync, or remote command/control queue.
 
 The agreed roadmap is:
 
@@ -16,9 +16,11 @@ The agreed roadmap is:
 - S3: Durable schedule/completion backup ledger.
 - S4: Phone webapp/PWA status dashboard.
 - S5: Command queue/control only after explicit approval.
-- S6: Telegram reduced to fallback.
+- Telegram is paused/deprioritized and is not required for completion.
 
-The local desktop agent remains local-first and Windows/desktop-only. Android/mobile access should be through a hosted webapp/PWA, and that webapp may later live under `webapp/` in this repo after explicit approval. Telegram remains active now and may become fallback later. The old Tampermonkey script and old webapp remain fallback/backup references.
+The local desktop agent remains local-first and Windows/desktop-only. Android/mobile access should be through a hosted webapp/PWA, and that webapp may later live under `webapp/` in this repo after explicit approval. The old Tampermonkey script and old webapp remain fallback/backup references.
+
+PARITY1B target sync groups are device heartbeat/status, sanitized logs/events, skip dates, daily schedules, completion records, command requests, and command results. The webapp may monitor status and request supervised controls, but it must not log into the configured website, store credentials, execute browser automation in the phone browser, send arbitrary selectors/scripts/forms, or bypass desktop guardrails.
 
 ## Data Boundary
 
@@ -33,6 +35,8 @@ Do not store these values in Supabase:
 - Staff ID/name.
 - Telegram token/chat ID.
 - Full URLs, tokenized query strings, or opaque `link=` values.
+- Captive portal usernames/passwords or hidden portal form values.
+- Service-role keys in desktop or webapp clients.
 
 Remote command/control is not implemented. Any command queue or control-plane action requires a later explicit approval phase before schema, runtime code, or webapp behavior is added.
 

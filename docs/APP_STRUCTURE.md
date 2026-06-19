@@ -1,5 +1,7 @@
 # App Structure
 
+PARITY1B corrected target: A.L.I.L.O.S. is a generic automated scheduled website clicker with a background Electron desktop agent, separate Playwright browser, startup/background operation, local auto-login, stale recovery, future captive portal reconnect, Supabase sync/control plane, and webapp monitoring/control. Telegram is paused/deprioritized and is not required for completion. See `docs/LEGACY_PARITY_PLAN.md`.
+
 There is no web/PWA companion app in this repository yet. WEB1-WEB3 planning lives in `docs/WEB_COMPANION_PLAN.md`; a future web companion may live under an isolated `webapp/` boundary only after explicit approval. The legacy/current `al89er/perakamwaktu` webapp is reference/fallback only and is not imported into this repo.
 
 ## Runtime And Scripts
@@ -9,7 +11,7 @@ Detected from `package.json`:
 | Item | Value |
 | --- | --- |
 | App name | `alilos` |
-| Runtime | Electron `^33.2.1` |
+| Runtime | Electron `39.8.10` |
 | Language | TypeScript `^5.7.2` |
 | Browser automation | Playwright `^1.60.0` |
 | Main entry | `dist/main/main.js` |
@@ -36,7 +38,7 @@ Main process files live in `src/main`:
 | `config-store.ts` | Loads/saves local JSON config and normalizes defaults/migrations. |
 | `logger.ts` | Appends JSON-line logs under user data and returns recent entries. |
 | `secret-store.ts` | Wraps Electron `safeStorage` for local password encryption/decryption. |
-| `telegram-service.ts` | Telegram send, polling, command prefix handling, chat authorization, token/error sanitization. |
+| `telegram-service.ts` | Secondary Telegram send, polling, command prefix handling, chat authorization, token/error sanitization. Telegram is paused/deprioritized for the completion target. |
 
 The main process creates the renderer window with context isolation enabled and Node integration disabled. The preload script is loaded from `dist/preload/preload.js`.
 

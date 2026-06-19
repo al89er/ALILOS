@@ -2,6 +2,8 @@
 
 WEB1 is a docs-only plan for a future mobile-friendly browser/PWA companion. It does not create webapp code, frontend dependencies, migrations, `.env.local`, secrets, Supabase write enablement, command/control, Electron runtime changes, direct desktop table write policies, or unattended real execution approval.
 
+PARITY1B corrected target: the webapp/PWA plus Supabase control plane are required for the complete product milestone. Telegram is paused/deprioritized and is not a parity requirement. See `docs/LEGACY_PARITY_PLAN.md` for the full matrix and PARITY2-PARITY13 build sequence.
+
 ## Architecture Split
 
 - Electron desktop remains the only local browser/session/action assistant.
@@ -10,6 +12,7 @@ WEB1 is a docs-only plan for a future mobile-friendly browser/PWA companion. It 
 - Supabase plus the future Edge Function/API proxy is the control-plane boundary.
 - Desktop remains local-first and must continue normal local operation when the web companion, Supabase, or Edge Function/API is unavailable.
 - Android/mobile access should be browser/PWA-based, not Electron.
+- The webapp must not directly log into the configured website, store configured website credentials, store captive portal credentials, execute browser automation in the phone browser, or send arbitrary selectors, scripts, or forms.
 
 ## WEB1 Initial Mode
 
@@ -21,6 +24,7 @@ Initial web/PWA scope:
 - Show stale/offline warnings when the latest heartbeat is old or missing.
 - Show planned schedule only after schedule sync exists.
 - Show completion/verification state only after completion sync exists.
+- Later approved control scope includes skip/unskip, dry-run/check, recalculate today's schedule, guarded configured action command/status, and result review through Supabase command requests/results.
 - Show clear placeholders for unavailable/deferred sync data.
 - Add no control commands in WEB1.
 

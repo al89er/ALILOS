@@ -1,5 +1,12 @@
 # Next Actions
 
+## PARITY1B Corrected Target
+
+- Use `docs/LEGACY_PARITY_PLAN.md` as the current completion target and parity matrix.
+- Complete app means: desktop scheduled click engine, local auto-login/stale recovery, captive portal local reconnect, Supabase skip/log/status/schedule/completion/command sync, webapp/PWA monitoring/control, no normal-browser interference, and no sensitive data in Supabase/logs.
+- Telegram is paused/deprioritized. Keep existing Telegram behavior secondary; do not make Telegram parity a completion blocker.
+- Fastest build sequence: PARITY2 Supabase skips/logs/status/commands schema, PARITY3 disabled desktop sync skeleton, PARITY4 heartbeat/status/log publishing, PARITY5 skip-date sync, PARITY6 schedule/completion sync, PARITY7 dry-run command processing, PARITY8 read-only webapp monitoring, PARITY9 webapp skip/status/recalculate/dry-run controls, PARITY10 guarded configured-action command, PARITY11 startup/sleep-wake field validation, PARITY12 captive portal local reconnect, PARITY13 end-to-end validation.
+
 ## Immediate Next Safe Steps
 
 - Run `npm run typecheck` after any future TypeScript code change.
@@ -18,7 +25,7 @@
 - RC2 accelerated validation passed: due/grace reached, visible dashboard target detected, hidden sidebar duplicate ignored, dry-run passed, manual-confirm cancel passed, no real action, no false completion record.
 - RC3 packaged validation passed: latest `ALILOS.exe` includes the helper and safety label, recalculation alone did not open/click Perakam or create completion/execution records, and validation/package commands passed.
 - RC1 monitored real-world observation plan is documented in `docs/OPERATIONAL_READINESS.md`; it is one actual scheduled `manual-confirm` cycle with the user physically present.
-- Next track options: RC small real-world observation tasks when physically ready, S3E Edge Function/API schedule/completion contract planning only after explicit approval, or WEB5 authenticated read model/RLS planning only after explicit approval.
+- Next track options: PARITY2 Supabase schema planning for skips/logs/status/commands, RC small real-world observation tasks when physically ready, or PARITY11 startup/sleep-wake field validation. Do not implement runtime sync, webapp code, command/control, migrations, or captive portal reconnect without explicit approval.
 - Keep `docs/PHASE_4D_MANUAL_CONFIRM_DESIGN.md` as historical design context, but update or supersede stale sections before relying on it for current behavior.
 - For Phase 6A dry-run testing, set `automation.executionMode` to `dry-run` only in local config and confirm that due actions are simulated, not clicked.
 
@@ -60,7 +67,7 @@ Recommended next major track:
 - Add focused tests or test harnesses around pure logic first: scheduler status, app settings normalization, command prefix parsing, heartbeat payload shaping, automation audit deduplication, URL sanitization, and captive portal classification.
 - Add field-level validation polish to the Settings editor if manual testing shows users need inline messages beyond the current save-result errors.
 - Add backend/phone-webapp receiver integration only after the sanitized heartbeat payload contract is confirmed.
-- Keep Supabase/webapp work phased: S0 architecture documentation, S1 schema and identity planning, S2 status-only heartbeat, S3 durable schedule/completion backup ledger, S4 phone webapp/PWA status dashboard, S5 command queue/control only after explicit approval, and S6 Telegram reduced to fallback.
+- Keep Supabase/webapp work phased according to `docs/LEGACY_PARITY_PLAN.md`: Supabase schema first, disabled sync skeleton next, then sanitized status/log/skip/schedule/completion sync, dry-run command processing, webapp monitoring/control, guarded configured-action commands, field validation, and captive portal local reconnect.
 - Treat the old Tampermonkey script and old webapp as fallback/backup references while the Electron desktop agent remains Windows/desktop-only.
 - Plan Android/mobile access through a hosted webapp/PWA, not Electron. A future webapp may live under `webapp/` in this repo after explicit approval.
 - WEB1 planning lives in `docs/WEB_COMPANION_PLAN.md`: read-only first, no control commands, no Perakam/Fortinet login, and no bypass of the desktop manual-confirm safety model.

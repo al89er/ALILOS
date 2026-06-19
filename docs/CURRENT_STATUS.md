@@ -1,5 +1,13 @@
 # Current Status
 
+## PARITY1B Corrected Target
+
+- The final intended product is a generic automated scheduled website clicker: background desktop agent, separate Playwright browser, startup/background operation, local auto-login, stale recovery, captive portal reconnect, Supabase sync/control plane, and webapp monitoring/control.
+- Completion is now defined as desktop scheduled click engine plus local auto-login/stale recovery plus captive portal local reconnect plus Supabase skip/log/status/schedule/completion/command sync plus webapp/PWA monitoring/control.
+- Telegram is paused/deprioritized. Existing Telegram code/config may remain disabled or secondary, but Telegram parity is not required for the complete milestone.
+- The authoritative parity matrix and fastest PARITY2-PARITY13 build sequence are in `docs/LEGACY_PARITY_PLAN.md`.
+- Credential boundary remains local-first: configured website credentials and future captive portal credentials stay local only; Supabase/webapp/logs/docs must not store credentials, cookies, raw HTML, screenshots, full/tokenized URLs, opaque `link=` values, Telegram secrets, or service-role keys.
+
 ## Completed Work
 
 - Electron + TypeScript app shell with a single-instance lock, BrowserWindow, tray show/hide/quit behavior, and local dashboard.
@@ -24,7 +32,7 @@
 - Phase UI-3 / Config-1 Telegram bootstrap completed: `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` in `.env.local` can supply missing Telegram secrets at runtime without exposing or auto-persisting them.
 - Phase TEST-1 fixture harness completed: `npm test` validates sanitized Perakam fixture structure/redaction assumptions without live Perakam access.
 - Project identity guard files/scripts are present in the working tree.
-- Architecture direction documented for future Supabase/webapp work: local-first Windows desktop agent now, hosted phone webapp/PWA later, Supabase as a future shared monitoring/control plane, and Telegram active now with possible fallback role later.
+- Architecture direction documented for future Supabase/webapp work: local-first Windows desktop agent now, hosted phone webapp/PWA later, Supabase as the future sync/control plane, and Telegram paused/deprioritized as a secondary path.
 - S3A docs-only Supabase schedule/completion sync planning is documented for durable backup/recovery of generated daily schedules and completion records.
 - S3B schema-only Supabase migration is drafted for `daily_schedules` and `completion_records`.
 - WEB1 docs-only web/PWA companion planning is documented in `docs/WEB_COMPANION_PLAN.md`.
@@ -37,7 +45,7 @@
 
 - `BackgroundWorker` is still a heartbeat scaffold. The real implemented behavior is in specialized services such as scheduler, reminder, browser controller, confirmation service, and network monitor.
 - Post-click verification is heuristic/read-only. It can mark success, failure, or unknown and asks for visual confirmation when server-side acceptance cannot be confirmed.
-- Perakam auto-login exists for Perakam only. Captive portal login remains detection-only.
+- Configured-site auto-login exists for the current Perakam profile. Captive portal reconnect is part of the final product target but remains missing; current captive portal behavior is detection-only.
 - P1 added minimal `electron-builder` metadata and `npm run package:win` for a Windows unpacked directory package proof at `release/win-unpacked`.
 - P2 packaged-app smoke testing is documented but still pending on the intended Windows environment.
 - Automated coverage is limited to the Perakam sanitized fixture harness. Runtime behavior still relies on TypeScript checks/build and manual smoke tests.

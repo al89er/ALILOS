@@ -1,5 +1,13 @@
 # Dev Notes
 
+## PARITY1B Completion Target
+
+- A.L.I.L.O.S. is targeting a generic automated scheduled website clicker: desktop agent, separate Playwright browser, startup/background operation, local auto-login, stale recovery, captive portal reconnect, Supabase sync/control plane, and webapp monitoring/control.
+- Telegram is paused/deprioritized. Existing Telegram code remains a secondary local notification/command path, but Telegram parity is not required for completion.
+- `docs/LEGACY_PARITY_PLAN.md` is the current parity matrix and fastest PARITY2-PARITY13 sequence.
+- Do not implement runtime sync, webapp code, migrations, command/control, captive portal reconnect, or unattended execution from these notes alone.
+- Credentials stay local: configured website credentials and future captive portal credentials must not be sent to Supabase or the webapp, and must not appear in logs/docs. Service-role keys never ship in desktop or webapp clients.
+
 ## Install
 
 Use the checked-in lockfile:
@@ -38,7 +46,7 @@ These are local safety checks. They are not runtime app checks.
 | `src/main/main.ts` | Service wiring, IPC handlers, app lifecycle, snapshots, Perakam auto-login orchestration. |
 | `src/main/config-store.ts` | Config defaults, normalization, persistence. |
 | `src/main/logger.ts` | Local log file writer/reader. |
-| `src/main/telegram-service.ts` | Telegram notifications and prefixed commands. |
+| `src/main/telegram-service.ts` | Secondary Telegram notifications and prefixed commands; paused/deprioritized for the completion target. |
 | `src/worker/scheduler.ts` | Morning/evening action schedule generation and status. |
 | `src/worker/reminder-service.ts` | Reminder notification timing and suppression. |
 | `src/worker/browser-controller.ts` | Playwright browser, Perakam detection, DOM control detection/clicks, verification. |

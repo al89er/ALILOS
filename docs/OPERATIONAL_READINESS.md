@@ -1,6 +1,8 @@
 # ALILOS Operational Readiness Checklist
 
-This checklist is for safe local Windows desktop use after the P packaging/startup track and W workplace validation track. It does not approve unattended real attendance actions.
+This checklist is for safe local Windows desktop use after the P packaging/startup track and W workplace validation track. It does not approve unattended real configured website actions.
+
+PARITY1B corrected target: monitored desktop use is release-candidate ready for `manual-confirm`, `dry-run`, and `notify-only`, but complete product parity now requires Supabase sync/control plane, webapp/PWA monitoring/control, and future local captive portal reconnect. Telegram is paused/deprioritized and not required for completion. See `docs/LEGACY_PARITY_PLAN.md`.
 
 ## Current Readiness Status
 
@@ -40,7 +42,7 @@ This checklist is for safe local Windows desktop use after the P packaging/start
 - Confirm Perakam state is expected: login-required or dashboard.
 - Confirm the next scheduled action and generated times are visible.
 - Confirm skip state for today/tomorrow is intentional.
-- Confirm Telegram status if Telegram is being used.
+- Confirm Telegram status only if the secondary Telegram path is being used.
 - Confirm Supabase heartbeat/write path remains disabled/deferred unless a later approved task changes that.
 - Confirm local Perakam auto-login is intentionally enabled or disabled for the session.
 

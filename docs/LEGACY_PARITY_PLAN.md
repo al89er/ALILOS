@@ -1,0 +1,124 @@
+# Legacy Parity Plan
+
+PARITY1B corrects the final target for A.L.I.L.O.S. The complete product target is a generic automated scheduled website clicker, not Telegram-first and not tied only to Perakam.
+
+## Corrected Completion Definition
+
+A complete app means:
+
+- Desktop scheduled click engine complete.
+- Local configured-site auto-login and stale/wrong-page recovery complete.
+- Captive portal detection and local reconnect complete for the user's own work computer.
+- Supabase sync/control plane complete for skip dates, sanitized logs/events, device status, daily schedules, completion records, command requests, and command results.
+- Webapp/PWA monitoring/control complete.
+- Telegram paused/deferred and secondary to webapp plus Supabase.
+- Background desktop agent uses a separate Playwright browser and does not interfere with normal browser use.
+- No configured-site credentials, captive portal credentials, cookies, raw HTML, screenshots, staff identity, full/tokenized URLs, opaque `link=` values, Telegram secrets, or service-role keys are stored in Supabase, webapp, logs, or docs.
+
+## Current Product Target
+
+- Automated scheduled website clicker.
+- Background Electron desktop agent.
+- Separate Playwright browser for configured website automation.
+- Windows startup/background operation.
+- Local auto-login for the configured website using the user's local credentials.
+- Local stale recovery for wrong, timed-out, or stale configured website states.
+- Local captive portal detection and future captive portal reconnect.
+- Supabase sync/control plane.
+- Webapp monitoring/control.
+
+Telegram remains useful as an existing local notification/fallback path, but Telegram parity is not required for completion.
+
+## Parity Matrix
+
+| Capability | Status | Notes |
+| --- | --- | --- |
+| Scheduled configured action | Implemented | Local scheduler plus guarded configured action path exists. |
+| Random schedule windows | Implemented | Morning/evening windows generate persisted daily times. |
+| Weekend exclusion | Implemented | Weekend status suppresses due action. |
+| Skip dates | Implemented | Today/tomorrow skip controls exist locally. |
+| Skip next action | Partially implemented | Local skip dates exist; webapp/Supabase command path missing. |
+| Local logs | Implemented | JSON-line logs under Electron userData. |
+| Supabase logs | Missing | Future sanitized event/log sync. |
+| Supabase skip dates | Missing | Future skip-date sync. |
+| Supabase command requests/results | Missing | Future command queue/result records. |
+| Webapp monitoring | Missing | Planned PWA/mobile status dashboard only. |
+| Webapp manual controls | Missing | Future skip/status/recalculate/dry-run/guarded action controls through Supabase. |
+| Telegram monitoring/commands | Paused | Existing Telegram code/config stays secondary; not required for completion. |
+| Background operation | Implemented | Tray/background packaged app works; field validation remains. |
+| Separate Playwright browser | Implemented | Persistent Playwright browser is separate from normal browser use. |
+| No interference with normal browser | Implemented | Uses separate Playwright profile/browser; continue validating in packaged use. |
+| Launch at Windows startup | Partially implemented | Setting exists and simulated hidden startup passed; real reboot/sign-in validation pending. |
+| Configured-site auto-login | Implemented | Local encrypted credentials and recovery path exist for current configured site profile. |
+| Stale/wrong-page recovery | Partially implemented | Local stale/login classification and recovery exist; broader wrong-page field validation remains. |
+| Keep-alive replacement | Partially implemented | Auto-login/session recovery reduces need; final replacement needs field validation. |
+| Internet/network down detection | Implemented | Network monitor checks internet and configured-site reachability. |
+| Captive portal detection | Implemented | Fortinet-style portal detection is sanitized and detection-only today. |
+| Captive portal notification | Implemented | Local notification/status path exists for detected/suspected portals. |
+| Captive portal local auto-login/reconnect | Missing | Future local-only feature; no credentials in Supabase/webapp/logs. |
+| Completion/duplicate prevention | Implemented | Local completion state blocks repeat date/action execution. |
+| Sanitized logging | Implemented | Current checked patterns exclude credentials, cookies, raw HTML, full/tokenized URLs, and opaque `link=` values. |
+| Packaged Windows app | Implemented | `ALILOS.exe` package and smoke checks passed. |
+
+Status meanings: implemented means usable now; partially implemented means core local behavior exists but the final target needs sync, command, or field validation; missing means not built; deferred means intentionally later; needs field validation means code exists but real-world observation remains; paused means not part of the completion target.
+
+## Credential And Secret Boundary
+
+- Configured website credentials stay local only.
+- Captive portal credentials stay local only.
+- Supabase never stores configured website or captive portal credentials.
+- Webapp never receives configured website or captive portal credentials.
+- Logs never include credentials, cookies, raw HTML, screenshots, full/tokenized URLs, or opaque `link=` values.
+- Renderer should receive only status/availability metadata and should not expose secrets unnecessarily.
+- Telegram token/chat ID remain local-only if Telegram is used as a secondary channel.
+- Supabase service-role keys never ship in the desktop app or webapp.
+
+## Supabase And Webapp Role
+
+Supabase should sync:
+
+- Device heartbeat/status.
+- Sanitized logs/events.
+- Skip dates.
+- Daily schedules.
+- Completion records.
+- Command requests.
+- Command results.
+
+The webapp/PWA should support:
+
+- Mobile status dashboard.
+- Online/offline/stale status.
+- Next scheduled action.
+- Skip/unskip controls.
+- Dry-run/check command.
+- Recalculate today's schedule command.
+- Guarded configured action command/status.
+- Result review.
+
+The webapp/PWA must not:
+
+- Directly log into the configured website.
+- Store configured website credentials.
+- Store captive portal credentials.
+- Execute browser automation in the phone browser.
+- Send arbitrary selectors, scripts, or forms.
+- Bypass the desktop agent's local safety checks and configured action guardrails.
+
+## Fastest Build Sequence
+
+1. PARITY1B corrected target docs.
+2. PARITY2 Supabase schema for skips/logs/status/commands.
+3. PARITY3 desktop sync skeleton disabled by default.
+4. PARITY4 heartbeat/status/log publishing.
+5. PARITY5 Supabase skip-date sync.
+6. PARITY6 schedule/completion sync.
+7. PARITY7 command request/result processing in dry-run mode.
+8. PARITY8 webapp/PWA read-only monitoring.
+9. PARITY9 webapp skip/status/recalculate/dry-run controls.
+10. PARITY10 guarded configured-action command.
+11. PARITY11 launch-at-startup and sleep/wake field validation.
+12. PARITY12 captive portal local reconnect implementation.
+13. PARITY13 end-to-end webapp + Supabase + desktop validation.
+
+Do not add migrations, runtime sync, webapp code, captive portal reconnect, command/control, or unattended execution from this document alone. Each later PARITY step needs explicit approval.
