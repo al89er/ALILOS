@@ -43,6 +43,7 @@
 - PARITY5 adds disabled-by-default Supabase skip-date sync through `/functions/v1/alilos-skip-sync`. Remote skip rows affect scheduling only, merge conservatively by preserving local skips, and do not process commands or implement a webapp.
 - PARITY6 adds disabled-by-default Supabase schedule/completion sync through `/functions/v1/alilos-schedule-completion-sync`. It uploads sanitized local schedules and completion markers only when explicitly enabled, surfaces remote-only completion markers as warnings, and does not process commands or implement a webapp.
 - PARITY7 adds disabled-by-default dry-run/non-clicking command sync through `/functions/v1/alilos-command-sync`. It can process `request-status-refresh`, `request-dry-run`, `recalculate-today-schedule`, and `cancel-confirmation` only; `perform-configured-action` and remote confirmation creation remain rejected/deferred.
+- PARITY8 adds the first same-repo read-only web/PWA monitor under `webapp/` plus `/functions/v1/alilos-dashboard-read`. It shows sanitized device, schedule, skip, completion, and command-sync state with no command buttons.
 - WEB1 docs-only web/PWA companion planning is documented in `docs/WEB_COMPANION_PLAN.md`.
 - WEB2 static/read-only web companion UI design is documented in `docs/WEB_COMPANION_PLAN.md`.
 - WEB3 legacy webapp relationship is documented in `docs/WEB_COMPANION_PLAN.md`.
@@ -59,10 +60,10 @@
 - Automated coverage is limited to the Perakam sanitized fixture harness. Runtime behavior still relies on TypeScript checks/build and manual smoke tests.
 - Existing Phase 4D design docs are stale relative to current implementation because guarded execution and auto-login have since been implemented.
 - Settings can edit selected operational values only. Generated schedules, completion records, automation audit events, raw logs, target mappings, credentials, cookies/session data, screenshots, raw HTML, and personal identifiers remain outside editable settings.
-- Supabase heartbeat has a Settings-tab project URL editor and disabled-by-default sender skeleton, but the phone-webapp receiver/dashboard is still not implemented in this repository.
-- Supabase is not required for local scheduled operation. The repository has the S2A heartbeat schema migration, S2B sender skeleton, S3A docs-only schedule/completion sync plan, S3B schema-only schedule/completion migration, PARITY2 schema-only skip/log/status/command support, PARITY3 disabled desktop sync skeleton, PARITY4 gated status publishing, PARITY4B server-side status proxy, PARITY5 disabled skip-date sync, PARITY6 disabled schedule/completion sync, and PARITY7 disabled dry-run/non-clicking command sync. Hosted webapp/PWA and configured-action command execution are not implemented.
-- The future web/PWA companion remains unimplemented. WEB1 plans a read-only-first mobile status surface that depends on Supabase-synced heartbeat, schedule, and completion data when those sync paths exist.
-- WEB2 defines the first read-only screens and status cards, but no webapp code, dependencies, runtime sync, or controls exist.
+- Supabase heartbeat has a Settings-tab project URL editor and disabled-by-default sender skeleton. PARITY8 now adds a read-only web/PWA dashboard shell, but it depends on deployed Edge Functions and synced data for live status.
+- Supabase is not required for local scheduled operation. The repository has the S2A heartbeat schema migration, S2B sender skeleton, S3A docs-only schedule/completion sync plan, S3B schema-only schedule/completion migration, PARITY2 schema-only skip/log/status/command support, PARITY3 disabled desktop sync skeleton, PARITY4 gated status publishing, PARITY4B server-side status proxy, PARITY5 disabled skip-date sync, PARITY6 disabled schedule/completion sync, PARITY7 disabled dry-run/non-clicking command sync, and PARITY8 read-only web/PWA monitoring. Configured-action command execution is not implemented.
+- The web/PWA companion is implemented only as a read-only PARITY8 monitor. It has no controls and falls back to static mock data if the read proxy/config/data is unavailable.
+- WEB2 defines the first read-only screens and status cards; PARITY8 implements the first static read-only shell without controls or frontend dependencies.
 - WEB4 defines display-safe data groups and fake payload examples, but authenticated read policies and runtime sync remain deferred.
 - The old Tampermonkey script and the legacy/current `al89er/perakamwaktu` webapp remain fallback/backup references only and should not be merged into ALILOS automatically.
 - Workplace Perakam target-detection smoke testing passed in W2 on the intended network with packaged `ALILOS.exe`.
@@ -100,8 +101,9 @@ The active implementation focus appears to be hardening the guarded manual-confi
 - PARITY5 skip sync is implemented but disabled by default. It requires the deployed `alilos-skip-sync` Edge Function, uses publishable/anon desktop credentials only, and adds remote skip dates to local scheduling without deleting local skips on disagreement.
 - PARITY6 schedule/completion sync is implemented but disabled by default. It requires the deployed `alilos-schedule-completion-sync` Edge Function, uses publishable/anon desktop credentials only, uploads sanitized local backup metadata, and treats remote-only completion markers as warnings rather than local successful completions.
 - PARITY7 command sync is implemented but disabled by default. It requires the deployed `alilos-command-sync` Edge Function, uses publishable/anon desktop credentials only, handles dry-run/non-clicking requests, and explicitly rejects remote configured action execution.
+- PARITY8 read-only web monitoring is implemented. It requires the deployed `alilos-dashboard-read` Edge Function for live data, uses publishable/anon web credentials only, and does not change direct table privileges.
 - Parity sync remains disabled by default. When explicitly enabled, the desktop still uses only a publishable/anon key and no command can send arbitrary selectors, scripts, forms, URLs, credentials, cookies, raw HTML, screenshots, or opaque `link=` values.
-- Webapp reads and configured-action command execution remain deferred until auth/pairing/control-path authorization is explicitly expanded beyond status, skip, schedule/completion, and dry-run command sync.
+- Webapp command creation and configured-action command execution remain deferred until auth/pairing/control-path authorization is explicitly expanded beyond read-only monitoring, status, skip, schedule/completion, and dry-run command sync.
 
 ### Desktop Operational Blockers
 

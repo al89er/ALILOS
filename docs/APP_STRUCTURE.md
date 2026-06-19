@@ -2,7 +2,7 @@
 
 PARITY1B corrected target: A.L.I.L.O.S. is a generic automated scheduled website clicker with a background Electron desktop agent, separate Playwright browser, startup/background operation, local auto-login, stale recovery, future captive portal reconnect, Supabase sync/control plane, and webapp monitoring/control. Telegram is paused/deprioritized and is not required for completion. See `docs/LEGACY_PARITY_PLAN.md`.
 
-There is no web/PWA companion app in this repository yet. WEB1-WEB3 planning lives in `docs/WEB_COMPANION_PLAN.md`; a future web companion may live under an isolated `webapp/` boundary only after explicit approval. The legacy/current `al89er/perakamwaktu` webapp is reference/fallback only and is not imported into this repo.
+The first web/PWA companion shell now lives under `webapp/`. It is a static, read-only monitoring dashboard for PARITY8 and uses the Supabase dashboard-read Edge Function when configured. The legacy/current `al89er/perakamwaktu` webapp is reference/fallback only and is not imported into this repo.
 
 ## Runtime And Scripts
 
@@ -88,8 +88,23 @@ Supabase Edge Functions live under `supabase/functions`:
 | `alilos-skip-sync/index.ts` | POST-only skip-date sync proxy. It supports constrained `list-skips`, `upsert-skip`, and `delete-skip`, rejects forbidden keys/tokenized values, requires an existing `devices.device_id`, writes only `skip_dates`, and keeps service-role use server-side only. |
 | `alilos-schedule-completion-sync/index.ts` | POST-only schedule/completion sync proxy. It supports constrained `get-day-state`, `upsert-schedule`, and `upsert-completion`, rejects forbidden keys/tokenized values, requires an existing `devices.device_id`, writes only `daily_schedules` and `completion_records`, and keeps service-role use server-side only. |
 | `alilos-command-sync/index.ts` | POST-only command request/result proxy. It supports constrained `list-pending`, `claim-command`, `complete-command`, and `append-command-event`, rejects forbidden keys/tokenized values, requires an existing `devices.device_id`, writes only `command_requests` and `command_events`, and keeps service-role use server-side only. |
+| `alilos-dashboard-read/index.ts` | POST-only read dashboard proxy. It returns sanitized device, heartbeat, schedule, skip, completion, and command status summaries for one registered device without changing RLS/table grants. |
 
-The desktop still uses only publishable/anon credentials when parity sync is explicitly enabled. Direct `anon` / `authenticated` table privileges remain closed, and no webapp exists in this repository. Skip sync affects scheduling only; schedule/completion sync backs up sanitized metadata and surfaces warnings only; command sync is limited to dry-run/non-clicking commands and rejects configured-action execution. All parity sync features are disabled by default.
+The desktop and webapp still use only publishable/anon credentials. Direct `anon` / `authenticated` table privileges remain closed. Skip sync affects scheduling only; schedule/completion sync backs up sanitized metadata and surfaces warnings only; command sync is limited to dry-run/non-clicking commands and rejects configured-action execution. All desktop parity sync features are disabled by default.
+
+## Webapp
+
+`webapp/` contains the PARITY8 read-only web/PWA monitor:
+
+| File | Responsibility |
+| --- | --- |
+| `index.html` | Static mobile-first dashboard shell with device, schedule, skip, completion, command sync, and safety sections. |
+| `styles.css` | Dependency-free responsive layout and status styling. |
+| `app.js` | Fetches `/functions/v1/alilos-dashboard-read` with publishable/anon credentials when configured; otherwise shows static mock state. |
+| `config.example.js` | Placeholder-only config shape for `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and `VITE_ALILOS_DEVICE_ID`. |
+| `manifest.webmanifest` | Minimal PWA manifest. |
+
+The webapp has no command creation buttons, no configured-site login, no credential fields, no service-role key, and no browser automation.
 
 ## Renderer
 

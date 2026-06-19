@@ -43,7 +43,7 @@ Telegram remains useful as an existing local notification/fallback path, but Tel
 | Supabase skip dates | Partially implemented | PARITY5 desktop/Edge Function sync exists and is disabled by default; webapp controls are still missing. |
 | Supabase schedules/completions | Partially implemented | PARITY6 desktop/Edge Function sync exists and is disabled by default; it backs up local rows and surfaces remote completion warnings only. |
 | Supabase command requests/results | Partially implemented | PARITY7 dry-run/non-clicking command processing exists and is disabled by default; configured-action command execution is still missing/deferred. |
-| Webapp monitoring | Missing | Planned PWA/mobile status dashboard only. |
+| Webapp monitoring | Partially implemented | PARITY8 adds a same-repo read-only static PWA shell and dashboard-read proxy; deployment/auth pairing remains future work. |
 | Webapp manual controls | Missing | Future skip/status/recalculate/dry-run/guarded action controls through Supabase. |
 | Telegram monitoring/commands | Paused | Existing Telegram code/config stays secondary; not required for completion. |
 | Background operation | Implemented | Tray/background packaged app works; field validation remains. |
@@ -151,6 +151,14 @@ The desktop command poller remains disabled by default and requires both `parity
 - `cancel-confirmation`
 
 `perform-configured-action` and remote confirmation creation are explicitly rejected/deferred. Commands must be claimed before processing, expired commands are marked expired, unsupported or unsafe payloads are rejected, errors are sanitized/non-fatal, and no command can send arbitrary selectors, scripts, forms, URLs, credentials, cookies, raw HTML, screenshots, tokenized query strings, or opaque `link=` values.
+
+## PARITY8 Read-Only Webapp Result
+
+`webapp/` adds the first mobile-first read-only web/PWA monitoring dashboard. It is a static plain HTML/CSS/JavaScript app with no frontend dependencies and no build step. It displays device status, schedule summary, skip state, completion state, command sync state, and safety notices.
+
+`supabase/functions/alilos-dashboard-read/index.ts` adds the read-only Edge Function/API proxy for live dashboard data. It reads sanitized device, heartbeat, schedule, skip, completion, and command summary rows for one registered device with service-role use kept server-side only. Direct `anon` / `authenticated` table privileges remain closed.
+
+PARITY8 does not add command creation UI, skip/unskip controls, mode switches, configured-site login, captive portal login, browser automation, service-role keys in the webapp, direct table grants, or remote configured-action execution. Missing config or unavailable live data falls back to static mock/unavailable states and must not imply action readiness.
 
 PARITY3 does not poll or process command requests, implement webapp code, add secrets, or enable unattended execution. Supabase keys for this path must be publishable/anon only; service-role-looking keys are rejected from local parity-sync config.
 

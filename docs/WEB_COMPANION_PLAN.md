@@ -1,10 +1,17 @@
 # Web Companion Plan
 
-WEB1 is a docs-only plan for a future mobile-friendly browser/PWA companion. It does not create webapp code, frontend dependencies, migrations, `.env.local`, secrets, Supabase write enablement, command/control, Electron runtime changes, direct desktop table write policies, or unattended real execution approval.
+WEB1-WEB4 documented the future mobile-friendly browser/PWA companion. PARITY8 now creates the first read-only implementation under `webapp/`. It still does not create command buttons, Supabase writes, Electron runtime changes, direct desktop table write policies, configured-site login, credential handling, or unattended real execution approval.
 
 PARITY1B corrected target: the webapp/PWA plus Supabase control plane are required for the complete product milestone. Telegram is paused/deprioritized and is not a parity requirement. See `docs/LEGACY_PARITY_PLAN.md` for the full matrix and PARITY2-PARITY13 build sequence.
 
-PARITY2 adds schema-only tables for future skip dates, sanitized events, command requests, and command events. WEB code and command processing remain unimplemented until later approved PARITY steps.
+PARITY2 adds schema-only tables for future skip dates, sanitized events, command requests, and command events. PARITY7 implements dry-run/non-clicking command processing, and PARITY8 implements the read-only web monitor. Web controls and configured-action command execution remain unimplemented until later approved PARITY steps.
+
+PARITY8 implementation note:
+
+- `webapp/` is a dependency-free static HTML/CSS/JavaScript read-only monitor.
+- Live data comes from `/functions/v1/alilos-dashboard-read` when the Edge Function is deployed and the webapp has placeholder-style config values supplied locally/at hosting time.
+- The UI falls back to mock/unavailable state when live reads are not configured or unavailable.
+- No controls are implemented in PARITY8.
 
 ## Architecture Split
 

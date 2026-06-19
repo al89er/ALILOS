@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f8fafc" />
+    <title>A.L.I.L.O.S. Monitor</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <h1>A.L.I.L.O.S.</h1>
+          <p>Read-only desktop monitor</p>
+        </div>
+        <span id="connection-pill" class="pill neutral">Static shell</span>
+      </header>
+
+      <section class="notice">
+        <strong>Read-only dashboard.</strong>
+        <span>No web automation, credentials, or command buttons are available here.</span>
+      </section>
+
+      <section class="panel primary" aria-labelledby="device-title">
+        <div class="section-heading">
+          <h2 id="device-title">Device Status</h2>
+          <span id="device-freshness" class="status-text">Waiting for data</span>
+        </div>
+        <div class="status-row">
+          <span id="online-dot" class="dot unknown"></span>
+          <div>
+            <strong id="device-label">A.L.I.L.O.S. desktop</strong>
+            <span id="device-id">Device id not configured</span>
+          </div>
+        </div>
+        <dl class="metric-grid">
+          <div><dt>Last heartbeat</dt><dd id="last-heartbeat">--</dd></div>
+          <div><dt>App mode</dt><dd id="app-mode">unknown</dd></div>
+          <div><dt>Browser</dt><dd id="browser-status">unknown</dd></div>
+          <div><dt>Configured site</dt><dd id="site-status">unknown</dd></div>
+          <div><dt>Network</dt><dd id="network-status">unknown</dd></div>
+          <div><dt>Captive portal</dt><dd id="portal-status">unknown</dd></div>
+        </dl>
+        <p id="last-error" class="muted">No sanitized error reported.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="schedule-title">
+        <div class="section-heading">
+          <h2 id="schedule-title">Schedule Summary</h2>
+          <span id="schedule-freshness" class="status-text">Unavailable</span>
+        </div>
+        <div id="schedule-list" class="list"></div>
+        <p id="next-action" class="muted">Next scheduled action unavailable.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="skip-title">
+        <div class="section-heading">
+          <h2 id="skip-title">Skip State</h2>
+          <span id="skip-freshness" class="status-text">Unavailable</span>
+        </div>
+        <div id="skip-list" class="list"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="completion-title">
+        <div class="section-heading">
+          <h2 id="completion-title">Completion State</h2>
+          <span id="completion-freshness" class="status-text">Unknown</span>
+        </div>
+        <div id="completion-list" class="list"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="command-title">
+        <div class="section-heading">
+          <h2 id="command-title">Command Sync</h2>
+          <span class="status-text">Read-only</span>
+        </div>
+        <dl class="metric-grid compact">
+          <div><dt>Pending</dt><dd id="cmd-pending">0</dd></div>
+          <div><dt>Claimed</dt><dd id="cmd-claimed">0</dd></div>
+          <div><dt>Completed</dt><dd id="cmd-completed">0</dd></div>
+          <div><dt>Rejected/failed</dt><dd id="cmd-rejected">0</dd></div>
+        </dl>
+        <p id="command-latest" class="muted">Command buttons are not available in PARITY8.</p>
+      </section>
+
+      <section class="panel safety" aria-labelledby="safety-title">
+        <h2 id="safety-title">Safety Notices</h2>
+        <ul>
+          <li>Desktop must be online before any future supervised action can run.</li>
+          <li>This webapp cannot log in to Perakam or Fortinet.</li>
+          <li>Credentials and browser sessions remain local to the desktop.</li>
+          <li>Remote configured action is not implemented in this dashboard.</li>
+        </ul>
+      </section>
+    </main>
+
+    <script src="./config.js"></script>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

@@ -6,7 +6,7 @@ The guard exists to prevent accidental migrations, database pushes, function dep
 
 ## Planned Role
 
-Supabase is planned as the shared backend for the future webapp/PWA sync/control plane. It is not required for scheduled local desktop operation. This repository currently has the S2A status-only heartbeat schema migration, an S2B disabled-by-default heartbeat sender skeleton, an S3B schedule/completion schema migration, a PARITY2 skip/log/status/command schema migration, PARITY4 status publishing through an Edge Function, PARITY5 skip sync through an Edge Function, PARITY6 schedule/completion sync through an Edge Function, and PARITY7 dry-run/non-clicking command sync through an Edge Function. Status, skip, schedule/completion, and command sync remain disabled by default. It still has no hosted webapp/PWA or configured-action command execution.
+Supabase is planned as the shared backend for the webapp/PWA sync/control plane. It is not required for scheduled local desktop operation. This repository currently has the S2A status-only heartbeat schema migration, an S2B disabled-by-default heartbeat sender skeleton, an S3B schedule/completion schema migration, a PARITY2 skip/log/status/command schema migration, PARITY4 status publishing through an Edge Function, PARITY5 skip sync through an Edge Function, PARITY6 schedule/completion sync through an Edge Function, PARITY7 dry-run/non-clicking command sync through an Edge Function, and PARITY8 read-only web monitoring through an Edge Function. Status, skip, schedule/completion, and command sync remain disabled by default. It still has no web command buttons or configured-action command execution.
 
 The agreed roadmap is:
 
@@ -121,6 +121,23 @@ The desktop uses only a publishable/anon key. The Edge Function uses `SUPABASE_S
 Desktop command sync is disabled by default and requires both `paritySync.enabled` and `paritySync.commandSyncEnabled`. Commands must be claimed before processing, expired commands are marked expired, unsupported or unsafe payloads are rejected, and API failures are non-fatal to local desktop operation. `perform-configured-action` and remote confirmation creation remain explicitly rejected/deferred. No command may include arbitrary selectors, scripts, forms, full URLs, tokenized URLs, credentials, cookies, raw HTML, screenshots, opaque `link=` values, or service-role keys.
 
 Deployment and smoke testing are documented in `docs/PARITY_COMMAND_SYNC_DEPLOYMENT.md`. No webapp is implemented in PARITY7.
+
+## PARITY8 Dashboard Read Proxy
+
+`supabase/functions/alilos-dashboard-read/index.ts` is the server-side endpoint for read-only web/PWA monitoring. It accepts POST requests only, requires the standard Edge Function Authorization header from a publishable/anon key, rejects service-role-looking keys supplied by the client, validates a registered non-personal `deviceId`, and returns sanitized display summaries only.
+
+The function may read:
+
+- `devices`
+- `heartbeats`
+- `daily_schedules`
+- `skip_dates`
+- `completion_records`
+- `command_requests`
+
+It must not write rows, create commands, expose raw payloads, echo secrets, or grant direct table access. The webapp uses only publishable/anon credentials and placeholder config names. Service-role use stays server-side only in the Edge Function environment. Direct `anon` / `authenticated` table privileges remain closed.
+
+PARITY8 does not implement command creation UI, configured-action execution, configured-site login, captive portal login, credential handling, arbitrary automation, push notifications, or unattended execution.
 
 ## S1 Proposed Schema Outline
 

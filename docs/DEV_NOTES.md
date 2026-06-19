@@ -13,7 +13,8 @@
 - PARITY5 adds disabled-by-default skip-date sync through `supabase/functions/alilos-skip-sync`. Remote rows are scheduling-only, preserve local skips on disagreement, and cannot trigger configured-site action, command processing, or webapp behavior.
 - PARITY6 adds disabled-by-default schedule/completion sync through `supabase/functions/alilos-schedule-completion-sync`. It backs up sanitized local schedules/completion markers, surfaces remote-only completion markers as warnings, and cannot trigger configured-site action, command processing, or webapp behavior.
 - PARITY7 adds disabled-by-default command request/result processing through `supabase/functions/alilos-command-sync`. It only handles `request-status-refresh`, `request-dry-run`, `recalculate-today-schedule`, and `cancel-confirmation`; `perform-configured-action` and remote confirmation creation are explicitly rejected/deferred.
-- Do not implement webapp code, migrations, command/control, captive portal reconnect, or unattended execution from these notes alone.
+- PARITY8 adds a dependency-free static read-only web/PWA monitor under `webapp/` and the `supabase/functions/alilos-dashboard-read` read proxy. It has no command buttons and falls back to mock data when live read config/data is unavailable.
+- Do not implement webapp controls, migrations, configured-action command execution, captive portal reconnect, or unattended execution from these notes alone.
 - Credentials stay local: configured website credentials and future captive portal credentials must not be sent to Supabase or the webapp, and must not appear in logs/docs. Service-role keys never ship in desktop or webapp clients.
 
 ## Install
@@ -113,6 +114,12 @@ Each line is a JSON object with timestamp, level, and message. The renderer disp
 - Telegram: masked Telegram token/chat settings, command prefix summary, and test notification.
 - Logs: recent logs plus Phase 6A automation/heartbeat telemetry.
 - Settings: safe editor for worker, automation, scheduler window/reminder, Perakam dashboard URL, and heartbeat settings, plus read-only config/log paths and active setting summaries.
+
+## Webapp
+
+`webapp/` contains the PARITY8 read-only monitor. It is plain HTML/CSS/JavaScript with no package install, no build step, no service-role key, and no direct table access. Runtime config is represented by placeholder names in `webapp/config.example.js`: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and `VITE_ALILOS_DEVICE_ID`. Real local `webapp/config.js` is ignored by Git.
+
+Live data comes from `/functions/v1/alilos-dashboard-read` when deployed and configured. Missing config, unavailable Supabase, or missing synced data shows static/mock unavailable states and must not imply action readiness.
 
 This tab layout is renderer-only. Do not change target IDs, confirmation behavior, persisted key names, or browser/controller behavior when adjusting tab placement.
 
@@ -367,7 +374,7 @@ RC1 notes:
 
 ## Planning The Web Companion Safely
 
-- WEB1 is docs-only. Do not create `webapp/`, frontend dependencies, migrations, `.env.local`, secrets, runtime sync, command/control, or Electron runtime changes from the plan alone.
+- WEB1 was docs-only; PARITY8 now creates the first `webapp/` read-only shell. Do not add frontend dependencies, migrations, `.env.local`, secrets, command/control, or Electron runtime changes from the old plan alone.
 - The Electron desktop app remains the only local browser/session/action assistant. The web/PWA companion is a mobile status/control surface only.
 - WEB1 starts read-only: heartbeat/status when available, stale/offline warnings, placeholders until schedule/completion sync exists, and no control commands.
 - Future supervised controls require later explicit approval and must go through the Supabase/Edge Function/API control-plane boundary.
