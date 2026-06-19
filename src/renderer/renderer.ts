@@ -139,6 +139,7 @@ const skipToday = document.querySelector<HTMLButtonElement>("#skip-today");
 const unskipToday = document.querySelector<HTMLButtonElement>("#unskip-today");
 const skipTomorrow = document.querySelector<HTMLButtonElement>("#skip-tomorrow");
 const unskipTomorrow = document.querySelector<HTMLButtonElement>("#unskip-tomorrow");
+const recalculateTodaySchedule = document.querySelector<HTMLButtonElement>("#recalculate-today-schedule");
 const startBrowser = document.querySelector<HTMLButtonElement>("#start-browser");
 const stopBrowser = document.querySelector<HTMLButtonElement>("#stop-browser");
 const openPerakam = document.querySelector<HTMLButtonElement>("#open-perakam");
@@ -348,6 +349,7 @@ const elements = {
   unskipToday: requireElement(unskipToday, "unskip-today"),
   skipTomorrow: requireElement(skipTomorrow, "skip-tomorrow"),
   unskipTomorrow: requireElement(unskipTomorrow, "unskip-tomorrow"),
+  recalculateTodaySchedule: requireElement(recalculateTodaySchedule, "recalculate-today-schedule"),
   startBrowser: requireElement(startBrowser, "start-browser"),
   stopBrowser: requireElement(stopBrowser, "stop-browser"),
   openPerakam: requireElement(openPerakam, "open-perakam"),
@@ -728,6 +730,7 @@ elements.skipToday.addEventListener("click", () => runScheduleAction(() => windo
 elements.unskipToday.addEventListener("click", () => runScheduleAction(() => window.alilos.unskipToday()));
 elements.skipTomorrow.addEventListener("click", () => runScheduleAction(() => window.alilos.skipTomorrow()));
 elements.unskipTomorrow.addEventListener("click", () => runScheduleAction(() => window.alilos.unskipTomorrow()));
+elements.recalculateTodaySchedule.addEventListener("click", () => runScheduleAction(() => window.alilos.recalculateTodaySchedule()));
 elements.clockInRequestConfirmation.addEventListener("click", () => {
   void runConfirmationAction(() => window.alilos.createConfirmation("clock-in"));
 });
@@ -902,6 +905,7 @@ function setControlsDisabled(disabled: boolean): void {
   elements.unskipToday.disabled = disabled;
   elements.skipTomorrow.disabled = disabled;
   elements.unskipTomorrow.disabled = disabled;
+  elements.recalculateTodaySchedule.disabled = disabled;
 }
 
 function renderConfirmations(confirmations: RendererConfirmationDashboardSnapshot): void {

@@ -166,6 +166,7 @@ The active implementation focus appears to be hardening the guarded manual-confi
 - O3 real-machine observation passed for packaged launch, scripted window hide/show, clean quit, sanitized logs, launch-at-login disabled, and completion records `0`; visual tray-menu click verification, real sign-in/reboot launch-at-login, and full sleep/wake remain pending.
 - RC1 monitored observation is planned for one actual scheduled `manual-confirm` cycle; abort conditions include wrong target, unexpected unattended click, captive portal uncertainty, target ambiguity, unsanitized logs, crash, or user absence.
 - O operational readiness is mostly complete after O4 consolidation. Current go/no-go: go for monitored local `manual-confirm`, `dry-run`, or `notify-only`; no-go for unattended real execution. Next options are RC real-world observation tasks, S3E Edge Function/API contract planning, or WEB5 authenticated read model/RLS planning, each only with explicit approval.
+- RC2 adds a Schedule-tab helper to recalculate today's generated schedule from the configured windows. It is schedule-only, does not click Perakam, and is intended for accelerated `dry-run` or monitored `manual-confirm` validation after temporary near-future window changes.
 
 ## W Workplace Validation Track
 

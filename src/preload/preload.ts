@@ -9,6 +9,7 @@ const api: AlilosApi = {
   unskipToday: () => ipcRenderer.invoke("schedule:unskip-today"),
   skipTomorrow: () => ipcRenderer.invoke("schedule:skip-tomorrow"),
   unskipTomorrow: () => ipcRenderer.invoke("schedule:unskip-tomorrow"),
+  recalculateTodaySchedule: () => ipcRenderer.invoke("schedule:recalculate-today"),
   getAppSettings: () => ipcRenderer.invoke("settings:get"),
   saveAppSettings: (settings) => ipcRenderer.invoke("settings:save", settings),
   getTelegramSettings: () => ipcRenderer.invoke("telegram:get-settings"),

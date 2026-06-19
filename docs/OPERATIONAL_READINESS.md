@@ -64,6 +64,18 @@ This checklist is for safe local Windows desktop use after the P packaging/start
 - Confirm recent logs contain sanitized status only.
 - Keep execution mode as `dry-run` or `manual-confirm` unless a future explicit approval changes this.
 
+## Accelerated RC Schedule Testing
+
+- Use `dry-run` first.
+- In Settings, temporarily set a near-future evening window.
+- Save Settings, then use the Schedule tab control labeled `Recalculate today's schedule`.
+- Treat this as schedule recalculation only. It regenerates today's local schedule from the configured windows and does not click Perakam.
+- Observe `schedule-due`, page preparation, target detection, simulated dry-run, and confirmation-required audit events.
+- In `manual-confirm`, cancel the confirmation unless the action is legitimate and the user explicitly intends to perform it at that time.
+- Restore normal schedule windows after testing, save Settings, and recalculate today's schedule again.
+- Confirm no successful completion record was created unless a legitimate real action was intentionally performed outside this helper.
+- Confirm logs contain sanitized status only.
+
 ## Workplace And Network Checks
 
 - Confirm Perakam dashboard is reachable from the workplace network.

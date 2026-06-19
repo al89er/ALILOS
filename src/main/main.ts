@@ -288,6 +288,13 @@ app.whenReady().then(() => {
     await broadcastSnapshot();
     return buildSnapshot();
   });
+  ipcMain.handle("schedule:recalculate-today", async () => {
+    scheduler.recalculateToday();
+    reminderService.clearLogMarkersForDate(formatDateKey(new Date()));
+    logger.info("Today schedule recalculation requested from the UI. This is schedule-only and does not click Perakam.");
+    await broadcastSnapshot();
+    return buildSnapshot();
+  });
   ipcMain.handle("settings:get", () => buildAppSettingsSnapshot());
   ipcMain.handle("settings:save", async (_event, settings: Partial<AppSettingsInput> | null) => {
     const previousWorkerEnabled = config.worker.enabled;

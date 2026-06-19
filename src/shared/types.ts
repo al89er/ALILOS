@@ -817,6 +817,7 @@ export interface AlilosApi {
   unskipToday: () => Promise<DashboardSnapshot>;
   skipTomorrow: () => Promise<DashboardSnapshot>;
   unskipTomorrow: () => Promise<DashboardSnapshot>;
+  recalculateTodaySchedule: () => Promise<DashboardSnapshot>;
   getAppSettings: () => Promise<AppSettingsSnapshot>;
   saveAppSettings: (settings: AppSettingsInput) => Promise<AppSettingsSnapshot>;
   getTelegramSettings: () => Promise<TelegramSettingsSnapshot>;

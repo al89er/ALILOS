@@ -243,6 +243,7 @@ Operational notes after W validation:
 - O3 real-machine observation passed for packaged launch, scripted window hide/show, clean quit, sanitized logs, launch-at-login disabled, and completion records `0`. Visual tray-menu click verification, real sign-in/reboot launch-at-login, and full sleep/wake suspend-resume remain pending.
 - O4 consolidated the O track as mostly complete. Monitored `manual-confirm`, `dry-run`, and `notify-only` local use are acceptable; fully unattended real execution remains no-go. Next work should be RC observation tasks, S3E Edge Function/API contract planning, or WEB5 authenticated read model/RLS planning only after explicit approval.
 - RC1 is planned for one actual scheduled `manual-confirm` cycle with the user physically present. It is not approval for unattended execution or for Codex to perform a real action.
+- RC2 adds a schedule-only recalculation helper for accelerated near-future scheduler validation. It regenerates today's local generated schedule from the current windows, clears reminder markers for today, and does not touch Perakam, confirmations, completions, Supabase, Telegram, or Fortinet behavior.
 - Local Perakam auto-login is enabled on the test machine and succeeded during W4/W5 without credential-value logging. Intentionally decide whether it should be enabled or disabled before future tests.
 - Fully unattended real attendance action is not approved or validated.
 - Supabase heartbeat/write path remains disabled/deferred; do not start S3 schedule/completion runtime sync without explicit approval.

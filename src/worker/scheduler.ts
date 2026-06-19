@@ -59,6 +59,17 @@ export class Scheduler {
     this.unskipDate(formatDateKey(addDays(new Date(), 1)));
   }
 
+  recalculateToday(): DailySchedule {
+    const today = formatDateKey(new Date());
+    delete this.config.scheduler.schedulesByDate[today];
+    this.reusedDates.delete(today);
+    this.lastStatuses.delete(`${today}:clock-in`);
+    this.lastStatuses.delete(`${today}:clock-out`);
+    const schedule = this.getOrCreateSchedule(today, new Date());
+    this.logger.info(`Recalculated action schedule for ${today} from configured windows. No Perakam action was attempted.`);
+    return schedule;
+  }
+
   private getOrCreateSchedule(dateKey: string, now: Date): DailySchedule {
     const existing = this.config.scheduler.schedulesByDate[dateKey];
 
