@@ -6,7 +6,7 @@ The guard exists to prevent accidental migrations, database pushes, function dep
 
 ## Planned Role
 
-Supabase is planned as the shared backend for the future webapp/PWA sync/control plane. It is not required for scheduled local desktop operation. This repository currently has the S2A status-only heartbeat schema migration, an S2B disabled-by-default heartbeat sender skeleton, an S3B schedule/completion schema migration, a PARITY2 skip/log/status/command schema migration, PARITY4 status publishing through an Edge Function, PARITY5 skip sync through an Edge Function, and PARITY6 schedule/completion sync through an Edge Function. Status, skip, and schedule/completion sync remain disabled by default. It still has no hosted webapp/PWA or remote command/control queue processing.
+Supabase is planned as the shared backend for the future webapp/PWA sync/control plane. It is not required for scheduled local desktop operation. This repository currently has the S2A status-only heartbeat schema migration, an S2B disabled-by-default heartbeat sender skeleton, an S3B schedule/completion schema migration, a PARITY2 skip/log/status/command schema migration, PARITY4 status publishing through an Edge Function, PARITY5 skip sync through an Edge Function, PARITY6 schedule/completion sync through an Edge Function, and PARITY7 dry-run/non-clicking command sync through an Edge Function. Status, skip, schedule/completion, and command sync remain disabled by default. It still has no hosted webapp/PWA or configured-action command execution.
 
 The agreed roadmap is:
 
@@ -38,7 +38,7 @@ Do not store these values in Supabase:
 - Captive portal usernames/passwords or hidden portal form values.
 - Service-role keys in desktop or webapp clients.
 
-Remote command/control is not implemented. Any command queue or control-plane action requires a later explicit approval phase before schema, runtime code, or webapp behavior is added.
+Remote configured-action command execution is not implemented. PARITY7 command sync can only process dry-run/non-clicking requests when explicitly enabled, and any configured-action command remains rejected/deferred until a later explicit approval phase.
 
 ## PARITY2 Schema
 
@@ -106,6 +106,21 @@ The desktop uses only a publishable/anon key. The Edge Function uses `SUPABASE_S
 Desktop schedule/completion sync is disabled by default and requires both `paritySync.enabled` and `paritySync.scheduleCompletionSyncEnabled`. It can upload local generated schedule rows and existing local completion records as sanitized backup metadata. It can fetch current-day remote state to surface warnings, but it does not execute remote state, process commands, recover schedules automatically, create local successful completion records from remote data, navigate the configured site, click anything, or change the local configured action decision path. If local and remote completion state disagree, the current behavior is warning-only and fails safe for human review; remote absence never deletes local completion records.
 
 Deployment and smoke testing are documented in `docs/PARITY_SCHEDULE_COMPLETION_SYNC_DEPLOYMENT.md`. No webapp or command queue processing is implemented in PARITY6.
+
+## PARITY7 Command Sync
+
+`supabase/functions/alilos-command-sync/index.ts` is the server-side endpoint for command request/result processing. It accepts POST requests only and supports constrained `list-pending`, `claim-command`, `complete-command`, and `append-command-event` operations. It requires a valid registered `deviceId`, valid command ids where required, sanitized JSON result/event details, and PARITY7 command types limited to:
+
+- `request-status-refresh`
+- `request-dry-run`
+- `recalculate-today-schedule`
+- `cancel-confirmation`
+
+The desktop uses only a publishable/anon key. The Edge Function uses `SUPABASE_SERVICE_ROLE_KEY` only from the server environment. Direct table privileges for `anon` and `authenticated` remain closed.
+
+Desktop command sync is disabled by default and requires both `paritySync.enabled` and `paritySync.commandSyncEnabled`. Commands must be claimed before processing, expired commands are marked expired, unsupported or unsafe payloads are rejected, and API failures are non-fatal to local desktop operation. `perform-configured-action` and remote confirmation creation remain explicitly rejected/deferred. No command may include arbitrary selectors, scripts, forms, full URLs, tokenized URLs, credentials, cookies, raw HTML, screenshots, opaque `link=` values, or service-role keys.
+
+Deployment and smoke testing are documented in `docs/PARITY_COMMAND_SYNC_DEPLOYMENT.md`. No webapp is implemented in PARITY7.
 
 ## S1 Proposed Schema Outline
 

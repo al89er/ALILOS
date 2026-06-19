@@ -42,6 +42,7 @@
 - PARITY4C documents safe deployment and smoke testing in `docs/PARITY_STATUS_DEPLOYMENT.md`, with placeholder-only curl JSON in `docs/examples/parity-status-smoke.json`.
 - PARITY5 adds disabled-by-default Supabase skip-date sync through `/functions/v1/alilos-skip-sync`. Remote skip rows affect scheduling only, merge conservatively by preserving local skips, and do not process commands or implement a webapp.
 - PARITY6 adds disabled-by-default Supabase schedule/completion sync through `/functions/v1/alilos-schedule-completion-sync`. It uploads sanitized local schedules and completion markers only when explicitly enabled, surfaces remote-only completion markers as warnings, and does not process commands or implement a webapp.
+- PARITY7 adds disabled-by-default dry-run/non-clicking command sync through `/functions/v1/alilos-command-sync`. It can process `request-status-refresh`, `request-dry-run`, `recalculate-today-schedule`, and `cancel-confirmation` only; `perform-configured-action` and remote confirmation creation remain rejected/deferred.
 - WEB1 docs-only web/PWA companion planning is documented in `docs/WEB_COMPANION_PLAN.md`.
 - WEB2 static/read-only web companion UI design is documented in `docs/WEB_COMPANION_PLAN.md`.
 - WEB3 legacy webapp relationship is documented in `docs/WEB_COMPANION_PLAN.md`.
@@ -59,7 +60,7 @@
 - Existing Phase 4D design docs are stale relative to current implementation because guarded execution and auto-login have since been implemented.
 - Settings can edit selected operational values only. Generated schedules, completion records, automation audit events, raw logs, target mappings, credentials, cookies/session data, screenshots, raw HTML, and personal identifiers remain outside editable settings.
 - Supabase heartbeat has a Settings-tab project URL editor and disabled-by-default sender skeleton, but the phone-webapp receiver/dashboard is still not implemented in this repository.
-- Supabase is not required for local scheduled operation. The repository has the S2A heartbeat schema migration, S2B sender skeleton, S3A docs-only schedule/completion sync plan, S3B schema-only schedule/completion migration, PARITY2 schema-only skip/log/status/command support, PARITY3 disabled desktop sync skeleton, PARITY4 gated status publishing, PARITY4B server-side status proxy, PARITY5 disabled skip-date sync, and PARITY6 disabled schedule/completion sync. Hosted webapp/PWA and remote command/control queue processing are not implemented.
+- Supabase is not required for local scheduled operation. The repository has the S2A heartbeat schema migration, S2B sender skeleton, S3A docs-only schedule/completion sync plan, S3B schema-only schedule/completion migration, PARITY2 schema-only skip/log/status/command support, PARITY3 disabled desktop sync skeleton, PARITY4 gated status publishing, PARITY4B server-side status proxy, PARITY5 disabled skip-date sync, PARITY6 disabled schedule/completion sync, and PARITY7 disabled dry-run/non-clicking command sync. Hosted webapp/PWA and configured-action command execution are not implemented.
 - The future web/PWA companion remains unimplemented. WEB1 plans a read-only-first mobile status surface that depends on Supabase-synced heartbeat, schedule, and completion data when those sync paths exist.
 - WEB2 defines the first read-only screens and status cards, but no webapp code, dependencies, runtime sync, or controls exist.
 - WEB4 defines display-safe data groups and fake payload examples, but authenticated read policies and runtime sync remain deferred.
@@ -98,8 +99,9 @@ The active implementation focus appears to be hardening the guarded manual-confi
 - PARITY4C deployment/smoke runbook is documented. It does not deploy the function, add secrets, commit project refs/keys/device ids, enable desktop sync by default, or change RLS.
 - PARITY5 skip sync is implemented but disabled by default. It requires the deployed `alilos-skip-sync` Edge Function, uses publishable/anon desktop credentials only, and adds remote skip dates to local scheduling without deleting local skips on disagreement.
 - PARITY6 schedule/completion sync is implemented but disabled by default. It requires the deployed `alilos-schedule-completion-sync` Edge Function, uses publishable/anon desktop credentials only, uploads sanitized local backup metadata, and treats remote-only completion markers as warnings rather than local successful completions.
-- Parity sync remains disabled by default. When explicitly enabled, the desktop still uses only a publishable/anon key and performs no command/control.
-- Command processing and webapp reads remain deferred until auth/pairing/control-path authorization is explicitly expanded beyond status, skip, and schedule/completion sync.
+- PARITY7 command sync is implemented but disabled by default. It requires the deployed `alilos-command-sync` Edge Function, uses publishable/anon desktop credentials only, handles dry-run/non-clicking requests, and explicitly rejects remote configured action execution.
+- Parity sync remains disabled by default. When explicitly enabled, the desktop still uses only a publishable/anon key and no command can send arbitrary selectors, scripts, forms, URLs, credentials, cookies, raw HTML, screenshots, or opaque `link=` values.
+- Webapp reads and configured-action command execution remain deferred until auth/pairing/control-path authorization is explicitly expanded beyond status, skip, schedule/completion, and dry-run command sync.
 
 ### Desktop Operational Blockers
 

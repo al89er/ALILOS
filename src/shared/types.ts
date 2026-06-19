@@ -390,6 +390,21 @@ export interface ParityScheduleCompletionSyncSnapshot {
   failureCount: number;
 }
 
+export interface ParityCommandSyncSnapshot {
+  enabled: boolean;
+  active: boolean;
+  lastAttemptAt: string | null;
+  lastSuccessAt: string | null;
+  lastError: string | null;
+  receivedCount: number;
+  claimedCount: number;
+  completedCount: number;
+  rejectedCount: number;
+  failedCount: number;
+  expiredCount: number;
+  currentCommandId: string | null;
+}
+
 export interface ParityCommandRequestPayload {
   id: string;
   deviceId: string;
@@ -438,6 +453,7 @@ export interface ParitySyncSnapshot {
   failureCount: number;
   skipSync: ParitySkipSyncSnapshot;
   scheduleCompletionSync: ParityScheduleCompletionSyncSnapshot;
+  commandSync: ParityCommandSyncSnapshot;
   note: string;
 }
 

@@ -5,7 +5,7 @@
 - Use `docs/LEGACY_PARITY_PLAN.md` as the current completion target and parity matrix.
 - Complete app means: desktop scheduled click engine, local auto-login/stale recovery, captive portal local reconnect, Supabase skip/log/status/schedule/completion/command sync, webapp/PWA monitoring/control, no normal-browser interference, and no sensitive data in Supabase/logs.
 - Telegram is paused/deprioritized. Keep existing Telegram behavior secondary; do not make Telegram parity a completion blocker.
-- Fastest build sequence: PARITY2 Supabase skips/logs/status/commands schema, PARITY3 disabled desktop sync skeleton, PARITY4 heartbeat/status/log publishing, PARITY4B status proxy, PARITY4C deployment/smoke runbook, PARITY5 skip-date sync, PARITY6 schedule/completion sync, PARITY7 dry-run command processing, PARITY8 read-only webapp monitoring, PARITY9 webapp skip/status/recalculate/dry-run controls, PARITY10 guarded configured-action command, PARITY11 startup/sleep-wake field validation, PARITY12 captive portal local reconnect, PARITY13 end-to-end validation. PARITY4 status publishing, PARITY4B proxy, PARITY4C runbook, PARITY5 skip sync, and PARITY6 schedule/completion sync are implemented but desktop sync remains disabled by default; continue with PARITY7 only after explicit approval.
+- Fastest build sequence: PARITY2 Supabase skips/logs/status/commands schema, PARITY3 disabled desktop sync skeleton, PARITY4 heartbeat/status/log publishing, PARITY4B status proxy, PARITY4C deployment/smoke runbook, PARITY5 skip-date sync, PARITY6 schedule/completion sync, PARITY7 dry-run command processing, PARITY8 read-only webapp monitoring, PARITY9 webapp skip/status/recalculate/dry-run controls, PARITY10 guarded configured-action command, PARITY11 startup/sleep-wake field validation, PARITY12 captive portal local reconnect, PARITY13 end-to-end validation. PARITY4 status publishing, PARITY4B proxy, PARITY4C runbook, PARITY5 skip sync, PARITY6 schedule/completion sync, and PARITY7 dry-run/non-clicking command sync are implemented but desktop sync remains disabled by default.
 
 ## Immediate Next Safe Steps
 
@@ -25,7 +25,7 @@
 - RC2 accelerated validation passed: due/grace reached, visible dashboard target detected, hidden sidebar duplicate ignored, dry-run passed, manual-confirm cancel passed, no real action, no false completion record.
 - RC3 packaged validation passed: latest `ALILOS.exe` includes the helper and safety label, recalculation alone did not open/click Perakam or create completion/execution records, and validation/package commands passed.
 - RC1 monitored real-world observation plan is documented in `docs/OPERATIONAL_READINESS.md`; it is one actual scheduled `manual-confirm` cycle with the user physically present.
-- Next track options: deploy/smoke PARITY4B/PARITY5/PARITY6 Edge Functions when physically ready and explicitly approved, PARITY7 dry-run command-processing planning/implementation after approval, RC small real-world observation tasks, or PARITY11 startup/sleep-wake field validation. Do not implement command/control execution, webapp code, additional migrations, or captive portal reconnect without explicit approval.
+- Next track options: deploy/smoke PARITY4B/PARITY5/PARITY6/PARITY7 Edge Functions when physically ready and explicitly approved, start PARITY8 read-only webapp monitoring after approval, RC small real-world observation tasks, or PARITY11 startup/sleep-wake field validation. Do not implement configured-action command execution, webapp code, additional migrations, or captive portal reconnect without explicit approval.
 - Keep `docs/PHASE_4D_MANUAL_CONFIRM_DESIGN.md` as historical design context, but update or supersede stale sections before relying on it for current behavior.
 - For Phase 6A dry-run testing, set `automation.executionMode` to `dry-run` only in local config and confirm that due actions are simulated, not clicked.
 
@@ -46,9 +46,10 @@ Current Supabase status:
 - PARITY4C deployment/smoke runbook added in `docs/PARITY_STATUS_DEPLOYMENT.md`; use placeholder-only `docs/examples/parity-status-smoke.json` for curl shape.
 - PARITY5 skip sync added at `/functions/v1/alilos-skip-sync`; it is disabled by default, supports list/upsert/delete skip rows through the proxy, and remote skip rows affect scheduling only.
 - PARITY6 schedule/completion sync added at `/functions/v1/alilos-schedule-completion-sync`; it is disabled by default, supports current-day state fetch plus schedule/completion upserts through the proxy, and remote-only completion rows surface warnings only.
+- PARITY7 command sync added at `/functions/v1/alilos-command-sync`; it is disabled by default, supports list/claim/complete/event command processing through the proxy, and only handles dry-run/non-clicking commands.
 - S3D write-path decision documented: prefer Edge Function/API proxy plus explicit device pairing/token.
 - Parity sync remains disabled by default.
-- Command processing and webapp access remain deferred until auth/pairing/control-path authorization is expanded beyond status, skip, and schedule/completion sync.
+- Configured-action command execution and webapp access remain deferred until auth/pairing/control-path authorization is expanded beyond status, skip, schedule/completion, and dry-run command sync.
 
 Desktop operational blockers:
 

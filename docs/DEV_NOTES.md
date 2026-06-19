@@ -12,6 +12,7 @@
 - PARITY4C documents the deployment/smoke runbook in `docs/PARITY_STATUS_DEPLOYMENT.md` and a placeholder-only payload in `docs/examples/parity-status-smoke.json`; no deployment, secrets, RLS changes, command processing, webapp code, or default sync enablement are included.
 - PARITY5 adds disabled-by-default skip-date sync through `supabase/functions/alilos-skip-sync`. Remote rows are scheduling-only, preserve local skips on disagreement, and cannot trigger configured-site action, command processing, or webapp behavior.
 - PARITY6 adds disabled-by-default schedule/completion sync through `supabase/functions/alilos-schedule-completion-sync`. It backs up sanitized local schedules/completion markers, surfaces remote-only completion markers as warnings, and cannot trigger configured-site action, command processing, or webapp behavior.
+- PARITY7 adds disabled-by-default command request/result processing through `supabase/functions/alilos-command-sync`. It only handles `request-status-refresh`, `request-dry-run`, `recalculate-today-schedule`, and `cancel-confirmation`; `perform-configured-action` and remote confirmation creation are explicitly rejected/deferred.
 - Do not implement webapp code, migrations, command/control, captive portal reconnect, or unattended execution from these notes alone.
 - Credentials stay local: configured website credentials and future captive portal credentials must not be sent to Supabase or the webapp, and must not appear in logs/docs. Service-role keys never ship in desktop or webapp clients.
 
@@ -60,7 +61,7 @@ These are local safety checks. They are not runtime app checks.
 | `src/worker/automation-monitor.ts` | Phase 6A due-action monitoring and simulated dry-run telemetry. |
 | `src/worker/automation-audit.ts` | Bounded sanitized automation audit event persistence. |
 | `src/worker/heartbeat-service.ts` | Disabled-by-default sanitized Supabase heartbeat sender/status. |
-| `src/worker/parity-sync-service.ts` | Disabled-by-default Supabase parity-sync service; status publishing, skip sync, and schedule/completion sync remain gated and command processing is unimplemented. |
+| `src/worker/parity-sync-service.ts` | Disabled-by-default Supabase parity-sync service; status publishing, skip sync, schedule/completion sync, and dry-run/non-clicking command sync remain individually gated. |
 | `src/worker/confirmation-service.ts` | Manual-confirm action state machine and safety checks. |
 | `src/worker/test-click-service.ts` | Guarded non-primary test-click pipeline. |
 | `src/worker/network-monitor.ts` | Internet, Perakam reachability, captive portal monitoring. |

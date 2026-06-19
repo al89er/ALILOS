@@ -220,7 +220,67 @@ app.whenReady().then(() => {
   heartbeatService = new HeartbeatService(config, logger, buildHeartbeatPayload, configStore.supabaseEnvLocal, app.getVersion());
   paritySyncService = new ParitySyncService(config, logger, configStore.supabaseEnvLocal, {
     buildDeviceStatusPayload: buildParityDeviceStatusPayload,
-    mergeRemoteSkippedDates: (dates) => scheduler.mergeRemoteSkippedDates(dates)
+    mergeRemoteSkippedDates: (dates) => scheduler.mergeRemoteSkippedDates(dates),
+    runAttendanceDryRun: async (confirmationId) => {
+      const result = await confirmationService.runAttendanceDryRun(confirmationId);
+      return {
+        status: result.status,
+        summary: result.summary,
+        details: {
+          action: result.action,
+          dateKey: result.dateKey,
+          rejectionCount: result.rejectionReasons.length,
+          noConfiguredSiteAction: true
+        }
+      };
+    },
+    recalculateTodaySchedule: () => {
+      const schedule = scheduler.recalculateToday();
+      reminderService.clearLogMarkersForDate(formatDateKey(new Date()));
+      logger.info("Today schedule recalculation requested from Supabase command sync. This is schedule-only and does not click Perakam.");
+      return {
+        summary: `Today schedule recalculated for ${schedule.date}.`,
+        details: {
+          scheduleDate: schedule.date,
+          clockInTime: schedule.clockInTime,
+          clockOutTime: schedule.clockOutTime,
+          noConfiguredSiteAction: true
+        }
+      };
+    },
+    cancelPendingConfirmation: (confirmationId) => {
+      const candidates = [
+        confirmationService.snapshot().clockIn.activeConfirmation,
+        confirmationService.snapshot().clockOut.activeConfirmation
+      ].filter((request) => request?.status === "pending");
+      const target = confirmationId
+        ? candidates.find((request) => request?.id === confirmationId) ?? null
+        : candidates.length === 1 ? candidates[0] : null;
+
+      if (!target) {
+        return {
+          status: "rejected" as const,
+          summary: "No single pending local confirmation was available to cancel.",
+          details: { reason: confirmationId ? "confirmation-not-found" : "ambiguous-or-missing-confirmation" } as Record<string, string | number | boolean | null>
+        };
+      }
+
+      const cancelled = confirmationService.cancelConfirmation(target.id);
+      return cancelled
+        ? {
+          status: "cancelled" as const,
+          summary: `Pending confirmation cancelled for ${cancelled.action}.`,
+          details: { action: cancelled.action, dateKey: cancelled.dateKey } as Record<string, string | number | boolean | null>
+        }
+        : {
+          status: "rejected" as const,
+          summary: "Pending confirmation could not be cancelled.",
+          details: { reason: "stale-confirmation" } as Record<string, string | number | boolean | null>
+        };
+    },
+    broadcastSnapshot: () => {
+      void broadcastSnapshot();
+    }
   });
   automationMonitor = new AutomationMonitor(
     config,

@@ -52,7 +52,7 @@ Worker-side files live in `src/worker`:
 | `automation-monitor.ts` | Phase 6A automation monitor that records due schedule events, prepares/checks the configured site profile in dry-run mode, and simulates web-action telemetry without clicking. |
 | `automation-audit.ts` | Bounded sanitized automation audit event persistence. |
 | `heartbeat-service.ts` | Disabled-by-default heartbeat sender and status snapshot built from sanitized app state. |
-| `parity-sync-service.ts` | Disabled-by-default parity-sync service for future Supabase/webapp monitoring/control. PARITY4 can publish sanitized status, PARITY5 can sync skip dates, and PARITY6 can sync schedule/completion backup metadata through Edge Function proxies when explicitly enabled; command processing remains unimplemented. |
+| `parity-sync-service.ts` | Disabled-by-default parity-sync service for future Supabase/webapp monitoring/control. PARITY4 can publish sanitized status, PARITY5 can sync skip dates, PARITY6 can sync schedule/completion backup metadata, and PARITY7 can process dry-run/non-clicking commands through Edge Function proxies when explicitly enabled. |
 | `scheduler.ts` | Daily schedule generation, weekend/skip handling, due/grace/missed states, status transition logging. |
 | `reminder-service.ts` | 30-second reminder evaluation, system notifications, Telegram reminders, duplicate suppression, notification-state retention. |
 | `browser-controller.ts` | Playwright persistent browser context, configured-site navigation/status classification, target button detection, guarded DOM clicks, test target diagnostics, auto-login form interaction, post-click verification. |
@@ -87,8 +87,9 @@ Supabase Edge Functions live under `supabase/functions`:
 | `alilos-parity-status/index.ts` | POST-only parity status proxy. It accepts sanitized desktop `deviceStatus` plus optional generated events, rejects forbidden keys/tokenized values, requires an existing `devices.device_id`, upserts `heartbeats`, inserts optional sanitized `event_logs`, and keeps service-role use server-side only. |
 | `alilos-skip-sync/index.ts` | POST-only skip-date sync proxy. It supports constrained `list-skips`, `upsert-skip`, and `delete-skip`, rejects forbidden keys/tokenized values, requires an existing `devices.device_id`, writes only `skip_dates`, and keeps service-role use server-side only. |
 | `alilos-schedule-completion-sync/index.ts` | POST-only schedule/completion sync proxy. It supports constrained `get-day-state`, `upsert-schedule`, and `upsert-completion`, rejects forbidden keys/tokenized values, requires an existing `devices.device_id`, writes only `daily_schedules` and `completion_records`, and keeps service-role use server-side only. |
+| `alilos-command-sync/index.ts` | POST-only command request/result proxy. It supports constrained `list-pending`, `claim-command`, `complete-command`, and `append-command-event`, rejects forbidden keys/tokenized values, requires an existing `devices.device_id`, writes only `command_requests` and `command_events`, and keeps service-role use server-side only. |
 
-The desktop still uses only publishable/anon credentials when parity sync is explicitly enabled. Direct `anon` / `authenticated` table privileges remain closed, no command processing is implemented, and no webapp exists in this repository. Skip sync affects scheduling only; schedule/completion sync backs up sanitized metadata and surfaces warnings only. Both are disabled by default.
+The desktop still uses only publishable/anon credentials when parity sync is explicitly enabled. Direct `anon` / `authenticated` table privileges remain closed, and no webapp exists in this repository. Skip sync affects scheduling only; schedule/completion sync backs up sanitized metadata and surfaces warnings only; command sync is limited to dry-run/non-clicking commands and rejects configured-action execution. All parity sync features are disabled by default.
 
 ## Renderer
 

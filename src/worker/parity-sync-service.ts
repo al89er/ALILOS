@@ -6,6 +6,7 @@ import type {
   AttendanceVerificationStatus,
   ParityCommandStatus,
   ParityCommandType,
+  ParityCommandRequestPayload,
   ParityCompletionPayload,
   ParityDeviceStatusPayload,
   ParityEventLogPayload,
@@ -76,9 +77,37 @@ interface ScheduleCompletionStateResponse {
   completions?: ParityCompletionPayload[];
 }
 
+interface CommandSyncRequestBody {
+  deviceId: string;
+  operation: "list-pending" | "claim-command" | "complete-command" | "append-command-event";
+  commandId?: string;
+  status?: Extract<ParityCommandStatus, "succeeded" | "failed" | "expired" | "rejected" | "cancelled">;
+  summary?: string | null;
+  details?: Record<string, string | number | boolean | null>;
+  event?: {
+    eventType: Extract<ParityCommandStatus, "claimed" | "succeeded" | "failed" | "expired" | "rejected" | "cancelled"> | "progress";
+    message: string;
+    details?: Record<string, string | number | boolean | null>;
+  };
+}
+
+interface CommandSyncListResponse {
+  success?: boolean;
+  commands?: ParityCommandRequestPayload[];
+}
+
+interface CommandSyncClaimResponse {
+  success?: boolean;
+  command?: ParityCommandRequestPayload | null;
+}
+
 interface ParitySyncDependencies {
   buildDeviceStatusPayload: () => ParityDeviceStatusPayload;
   mergeRemoteSkippedDates?: (dates: string[]) => number;
+  runAttendanceDryRun?: (confirmationId: string) => Promise<{ status: string; summary: string; details?: Record<string, string | number | boolean | null> }>;
+  recalculateTodaySchedule?: () => { summary: string; details?: Record<string, string | number | boolean | null> };
+  cancelPendingConfirmation?: (confirmationId?: string) => { status: "succeeded" | "rejected" | "cancelled"; summary: string; details?: Record<string, string | number | boolean | null> };
+  broadcastSnapshot?: () => void;
   fetchFn?: typeof fetch;
 }
 
@@ -86,9 +115,11 @@ export class ParitySyncService {
   private heartbeatTimer: NodeJS.Timeout | null = null;
   private skipSyncTimer: NodeJS.Timeout | null = null;
   private scheduleCompletionTimer: NodeJS.Timeout | null = null;
+  private commandSyncTimer: NodeJS.Timeout | null = null;
   private inFlight = false;
   private skipInFlight = false;
   private scheduleCompletionInFlight = false;
+  private commandInFlight = false;
   private lastStartedAt: string | null = null;
   private lastStoppedAt: string | null = null;
   private lastCheckedAt: string | null = null;
@@ -117,6 +148,16 @@ export class ParitySyncService {
   private scheduleCompletionWarningCount = 0;
   private lastScheduleCompletionWarning: string | null = null;
   private scheduleCompletionFailureCount = 0;
+  private lastCommandAttemptAt: string | null = null;
+  private lastCommandSuccessAt: string | null = null;
+  private lastCommandError: string | null = null;
+  private commandReceivedCount = 0;
+  private commandClaimedCount = 0;
+  private commandCompletedCount = 0;
+  private commandRejectedCount = 0;
+  private commandFailedCount = 0;
+  private commandExpiredCount = 0;
+  private currentCommandId: string | null = null;
   private hasLoggedDisabled = false;
 
   constructor(
@@ -146,7 +187,7 @@ export class ParitySyncService {
     this.lastStartedAt = new Date().toISOString();
     this.lastStoppedAt = null;
     this.lastError = null;
-    this.logger.info("Supabase parity status publisher started. Command processing remains disabled.");
+    this.logger.info(`Supabase parity status publisher started. Command processing ${this.config.paritySync.commandSyncEnabled ? "enabled for dry-run/non-clicking commands" : "remains disabled"}.`);
 
     this.heartbeatTimer = setInterval(() => {
       void this.publishStatus("interval");
@@ -169,6 +210,14 @@ export class ParitySyncService {
 
       void this.syncScheduleCompletions("startup");
     }
+
+    if (this.config.paritySync.commandSyncEnabled) {
+      this.commandSyncTimer = setInterval(() => {
+        void this.pollCommands("interval");
+      }, this.commandPollIntervalMs());
+
+      void this.pollCommands("startup");
+    }
   }
 
   stop(): void {
@@ -187,6 +236,11 @@ export class ParitySyncService {
       this.scheduleCompletionTimer = null;
     }
 
+    if (this.commandSyncTimer) {
+      clearInterval(this.commandSyncTimer);
+      this.commandSyncTimer = null;
+    }
+
     if (this.lastStartedAt) {
       this.lastStoppedAt = new Date().toISOString();
       this.logger.info("Supabase parity sync skeleton stopped.");
@@ -200,7 +254,7 @@ export class ParitySyncService {
 
   getStatus(): ParitySyncSnapshot {
     const effectiveSettings = this.effectiveSettings();
-    const active = Boolean(this.heartbeatTimer || this.skipSyncTimer || this.scheduleCompletionTimer);
+    const active = Boolean(this.heartbeatTimer || this.skipSyncTimer || this.scheduleCompletionTimer || this.commandSyncTimer);
     const enabled = this.config.paritySync.enabled;
     const configured = Boolean(effectiveSettings);
 
@@ -256,6 +310,20 @@ export class ParitySyncService {
         warningCount: this.scheduleCompletionWarningCount,
         lastWarning: this.lastScheduleCompletionWarning,
         failureCount: this.scheduleCompletionFailureCount
+      },
+      commandSync: {
+        enabled: enabled && this.config.paritySync.commandSyncEnabled,
+        active: Boolean(this.commandSyncTimer),
+        lastAttemptAt: this.lastCommandAttemptAt,
+        lastSuccessAt: this.lastCommandSuccessAt,
+        lastError: this.lastCommandError,
+        receivedCount: this.commandReceivedCount,
+        claimedCount: this.commandClaimedCount,
+        completedCount: this.commandCompletedCount,
+        rejectedCount: this.commandRejectedCount,
+        failedCount: this.commandFailedCount,
+        expiredCount: this.commandExpiredCount,
+        currentCommandId: this.currentCommandId ? shortId(this.currentCommandId) : null
       },
       note: this.note(enabled, configured, active)
     };
@@ -511,6 +579,193 @@ export class ParitySyncService {
     return this.getStatus();
   }
 
+  async pollCommands(source = "manual"): Promise<ParitySyncSnapshot> {
+    if (this.commandInFlight) {
+      return this.getStatus();
+    }
+
+    if (!this.config.paritySync.enabled || !this.config.paritySync.commandSyncEnabled) {
+      return this.getStatus();
+    }
+
+    const settings = this.effectiveSettings();
+    if (!settings) {
+      this.lastCommandError = null;
+      this.logger.info("Supabase command sync not sent: URL, publishable key, or device id is not configured.");
+      return this.getStatus();
+    }
+
+    this.commandInFlight = true;
+    this.lastCommandAttemptAt = new Date().toISOString();
+    this.lastCheckedAt = this.lastCommandAttemptAt;
+
+    try {
+      const response = await this.commandRequest(settings, {
+        deviceId: this.config.paritySync.deviceId,
+        operation: "list-pending"
+      }) as CommandSyncListResponse;
+      const commands = sanitizeCommandRows(response.commands ?? [], this.config.paritySync.deviceId);
+      this.commandReceivedCount += commands.length;
+
+      for (const command of commands) {
+        await this.processCommand(settings, command);
+      }
+
+      this.lastCommandSuccessAt = new Date().toISOString();
+      this.lastCommandError = null;
+      this.logger.info(`Supabase command sync ${source} processed ${commands.length} pending command(s). No configured-site action was attempted.`);
+    } catch (error) {
+      this.commandFailedCount += 1;
+      this.lastCommandError = sanitizeError(error);
+      this.logger.warn(`Supabase command sync failed: ${this.lastCommandError}`);
+    } finally {
+      this.currentCommandId = null;
+      this.commandInFlight = false;
+    }
+
+    return this.getStatus();
+  }
+
+  private async processCommand(settings: EffectiveParitySyncSettings, command: ParityCommandRequestPayload): Promise<void> {
+    this.currentCommandId = command.id;
+
+    if (isExpired(command.expiresAt)) {
+      await this.completeCommand(settings, command.id, "expired", "Command expired before desktop processing.", {
+        commandType: command.commandType
+      });
+      this.commandExpiredCount += 1;
+      return;
+    }
+
+    if (command.payload.payloadRejected === true || hasUnsafeDetails(command.payload)) {
+      await this.completeCommand(settings, command.id, "rejected", "Command payload rejected by desktop sanitizer.", {
+        commandType: command.commandType,
+        reason: "forbidden-content"
+      });
+      this.commandRejectedCount += 1;
+      return;
+    }
+
+    const claim = await this.commandRequest(settings, {
+      deviceId: this.config.paritySync.deviceId,
+      operation: "claim-command",
+      commandId: command.id
+    }) as CommandSyncClaimResponse;
+    const claimed = sanitizeCommandRow(claim.command ?? command, this.config.paritySync.deviceId);
+
+    if (!claimed || claimed.status !== "claimed") {
+      this.commandRejectedCount += 1;
+      this.logger.info(`Supabase command ${shortId(command.id)} was not claimable; local operation continues.`);
+      return;
+    }
+
+    this.commandClaimedCount += 1;
+    await this.appendCommandEvent(settings, claimed.id, "claimed", "Desktop claimed command for safe processing.", {
+      commandType: claimed.commandType
+    });
+
+    const result = await this.executeSafeCommand(claimed);
+    await this.completeCommand(settings, claimed.id, result.status, result.summary, result.details);
+
+    if (result.status === "succeeded" || result.status === "cancelled") {
+      this.commandCompletedCount += 1;
+    } else if (result.status === "expired") {
+      this.commandExpiredCount += 1;
+    } else if (result.status === "failed") {
+      this.commandFailedCount += 1;
+    } else {
+      this.commandRejectedCount += 1;
+    }
+  }
+
+  private async executeSafeCommand(command: ParityCommandRequestPayload): Promise<{
+    status: Extract<ParityCommandStatus, "succeeded" | "failed" | "expired" | "rejected" | "cancelled">;
+    summary: string;
+    details: Record<string, string | number | boolean | null>;
+  }> {
+    if (command.commandType === "perform-configured-action" || command.commandType === "request-confirmation") {
+      return {
+        status: "rejected",
+        summary: `${command.commandType} is deferred in PARITY7; no remote configured action is allowed.`,
+        details: { commandType: command.commandType, noConfiguredSiteAction: true }
+      };
+    }
+
+    if (command.commandType === "request-status-refresh") {
+      await this.publishStatus("command-request-status-refresh");
+      this.dependencies.broadcastSnapshot?.();
+      return {
+        status: "succeeded",
+        summary: "Desktop status refresh requested and attempted.",
+        details: {
+          commandType: command.commandType,
+          publishCount: this.publishCount,
+          failureCount: this.failureCount,
+          noConfiguredSiteAction: true
+        }
+      };
+    }
+
+    if (command.commandType === "recalculate-today-schedule") {
+      if (!this.dependencies.recalculateTodaySchedule) {
+        return missingCapability(command.commandType, "Schedule recalculation callback is not wired.");
+      }
+
+      const result = this.dependencies.recalculateTodaySchedule();
+      this.dependencies.broadcastSnapshot?.();
+      return {
+        status: "succeeded",
+        summary: sanitizeStatusText(result.summary, 500) ?? "Today schedule recalculated.",
+        details: sanitizeDetails({ commandType: command.commandType, noConfiguredSiteAction: true, ...(result.details ?? {}) })
+      };
+    }
+
+    if (command.commandType === "cancel-confirmation") {
+      if (!this.dependencies.cancelPendingConfirmation) {
+        return missingCapability(command.commandType, "Confirmation cancellation callback is not wired.");
+      }
+
+      const confirmationId = readPayloadString(command.payload, "confirmationId");
+      const result = this.dependencies.cancelPendingConfirmation(confirmationId ?? undefined);
+      this.dependencies.broadcastSnapshot?.();
+      return {
+        status: result.status,
+        summary: sanitizeStatusText(result.summary, 500) ?? "Confirmation cancellation processed.",
+        details: sanitizeDetails({ commandType: command.commandType, noConfiguredSiteAction: true, ...(result.details ?? {}) })
+      };
+    }
+
+    if (command.commandType === "request-dry-run") {
+      if (!this.dependencies.runAttendanceDryRun) {
+        return missingCapability(command.commandType, "Attendance dry-run callback is not wired.");
+      }
+
+      const confirmationId = readPayloadString(command.payload, "confirmationId");
+      if (!confirmationId) {
+        return {
+          status: "rejected",
+          summary: "Dry-run command requires an existing local confirmation id.",
+          details: { commandType: command.commandType, reason: "missing-confirmation-id", noConfiguredSiteAction: true }
+        };
+      }
+
+      const result = await this.dependencies.runAttendanceDryRun(confirmationId);
+      this.dependencies.broadcastSnapshot?.();
+      const dryRunStatus = sanitizeStatusText(result.status, 80) ?? "unknown";
+      return {
+        status: dryRunStatus === "passed" || dryRunStatus === "simulated" ? "succeeded" : "rejected",
+        summary: sanitizeStatusText(result.summary, 500) ?? "Dry-run command processed.",
+        details: sanitizeDetails({ commandType: command.commandType, dryRunStatus, noConfiguredSiteAction: true, ...(result.details ?? {}) })
+      };
+    }
+
+    return {
+      status: "rejected",
+      summary: "Unknown or unsupported command rejected.",
+      details: { commandType: sanitizeStatusText(command.commandType, 80), noConfiguredSiteAction: true }
+    };
+  }
+
   private logDisabledOnce(): void {
     if (this.hasLoggedDisabled) {
       return;
@@ -587,6 +842,62 @@ export class ParitySyncService {
     return response.json();
   }
 
+  private async commandRequest(settings: EffectiveParitySyncSettings, body: CommandSyncRequestBody): Promise<unknown> {
+    const endpoint = new URL("/functions/v1/alilos-command-sync", settings.supabaseUrl);
+    const fetchFn = this.dependencies.fetchFn ?? fetch;
+    const response = await fetchFn(endpoint.toString(), {
+      method: "POST",
+      headers: {
+        "apikey": settings.publishableKey,
+        "Authorization": `Bearer ${settings.publishableKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(sanitizeCommandRequestBody(body))
+    });
+
+    if (!response.ok) {
+      throw new Error(`Supabase command sync proxy returned HTTP ${response.status}.`);
+    }
+
+    return response.json();
+  }
+
+  private async appendCommandEvent(
+    settings: EffectiveParitySyncSettings,
+    commandId: string,
+    eventType: NonNullable<CommandSyncRequestBody["event"]>["eventType"],
+    message: string,
+    details: Record<string, string | number | boolean | null>
+  ): Promise<void> {
+    await this.commandRequest(settings, {
+      deviceId: this.config.paritySync.deviceId,
+      operation: "append-command-event",
+      commandId,
+      event: {
+        eventType,
+        message,
+        details
+      }
+    });
+  }
+
+  private async completeCommand(
+    settings: EffectiveParitySyncSettings,
+    commandId: string,
+    status: Extract<ParityCommandStatus, "succeeded" | "failed" | "expired" | "rejected" | "cancelled">,
+    summary: string,
+    details: Record<string, string | number | boolean | null>
+  ): Promise<void> {
+    await this.commandRequest(settings, {
+      deviceId: this.config.paritySync.deviceId,
+      operation: "complete-command",
+      commandId,
+      status,
+      summary,
+      details
+    });
+  }
+
 
   private effectiveSettings(): EffectiveParitySyncSettings | null {
     const supabaseUrl = parseSupabaseUrl(this.config.paritySync.supabaseUrl.trim() || this.envLocal.supabaseUrl.trim());
@@ -648,7 +959,10 @@ export class ParitySyncService {
       if (this.config.paritySync.scheduleCompletionSyncEnabled) {
         activeFeatures.push("schedule/completion sync");
       }
-      return `Parity ${activeFeatures.join(", ")} active; command processing remains disabled.`;
+      if (this.config.paritySync.commandSyncEnabled) {
+        activeFeatures.push("dry-run command sync");
+      }
+      return `Parity ${activeFeatures.join(", ")} active; no remote configured-site action is allowed.`;
     }
 
     return "Parity sync is configured but idle.";
@@ -777,6 +1091,119 @@ function sanitizeScheduleCompletionRequestBody(body: ScheduleCompletionRequestBo
   }
 
   return sanitized;
+}
+
+function sanitizeCommandRequestBody(body: CommandSyncRequestBody): CommandSyncRequestBody {
+  const sanitized: CommandSyncRequestBody = {
+    deviceId: sanitizeUuidLike(body.deviceId),
+    operation: body.operation
+  };
+
+  if (body.commandId && isValidDeviceId(body.commandId)) {
+    sanitized.commandId = body.commandId;
+  }
+
+  if (isFinalCommandStatus(body.status)) {
+    sanitized.status = body.status;
+  }
+
+  sanitized.summary = sanitizeStatusText(body.summary, 500);
+  sanitized.details = sanitizeDetails(body.details ?? {});
+
+  if (body.event) {
+    sanitized.event = {
+      eventType: isCommandEventType(body.event.eventType) ? body.event.eventType : "progress",
+      message: sanitizeStatusText(body.event.message, 500) ?? "Command event.",
+      details: sanitizeDetails(body.event.details ?? {})
+    };
+  }
+
+  return sanitized;
+}
+
+function sanitizeCommandRows(rows: ParityCommandRequestPayload[], expectedDeviceId: string): ParityCommandRequestPayload[] {
+  return rows
+    .map((row) => sanitizeCommandRow(row, expectedDeviceId))
+    .filter((row): row is ParityCommandRequestPayload => Boolean(row));
+}
+
+function sanitizeCommandRow(row: ParityCommandRequestPayload, expectedDeviceId: string): ParityCommandRequestPayload | null {
+  const id = sanitizeUuidLike(row.id);
+  const deviceId = sanitizeUuidLike(row.deviceId);
+  const commandType = sanitizeCommandType(row.commandType);
+  const status = sanitizeCommandStatus(row.status);
+  const requestedAt = sanitizeNullableIsoText(row.requestedAt);
+  const expiresAt = sanitizeNullableIsoText(row.expiresAt);
+
+  if (deviceId !== expectedDeviceId || !commandType || !status || !requestedAt || !expiresAt) {
+    return null;
+  }
+
+  return {
+    id,
+    deviceId,
+    commandType,
+    actionKey: sanitizeActionKey(row.actionKey),
+    scheduleDate: sanitizeDateText(row.scheduleDate),
+    payload: sanitizeCommandPayload(row.payload ?? {}),
+    status,
+    requestedAt,
+    expiresAt
+  };
+}
+
+function sanitizeCommandPayload(payload: Record<string, string | number | boolean | null>): Record<string, string | number | boolean | null> {
+  const sanitized = sanitizeDetails(payload);
+  return hasUnsafeDetails(payload)
+    ? { ...sanitized, payloadRejected: true, rejectReason: "forbidden-content" }
+    : sanitized;
+}
+
+function sanitizeCommandType(value: ParityCommandType | null | undefined): ParityCommandType | null {
+  return PARITY_COMMAND_TYPES.includes(value as ParityCommandType) ? value as ParityCommandType : null;
+}
+
+function sanitizeCommandStatus(value: ParityCommandStatus | null | undefined): ParityCommandStatus | null {
+  return PARITY_COMMAND_STATUSES.includes(value as ParityCommandStatus) ? value as ParityCommandStatus : null;
+}
+
+function isFinalCommandStatus(value: ParityCommandStatus | null | undefined): value is Extract<ParityCommandStatus, "succeeded" | "failed" | "expired" | "rejected" | "cancelled"> {
+  return value === "succeeded" || value === "failed" || value === "expired" || value === "rejected" || value === "cancelled";
+}
+
+function isCommandEventType(value: string | null | undefined): value is NonNullable<CommandSyncRequestBody["event"]>["eventType"] {
+  return value === "claimed"
+    || value === "progress"
+    || value === "succeeded"
+    || value === "failed"
+    || value === "expired"
+    || value === "rejected"
+    || value === "cancelled";
+}
+
+function isExpired(expiresAt: string): boolean {
+  return new Date(expiresAt).getTime() <= Date.now();
+}
+
+function hasUnsafeDetails(details: Record<string, string | number | boolean | null>): boolean {
+  return Object.entries(details).some(([key, value]) => isForbiddenDetailKey(key) || (typeof value === "string" && looksLikeForbiddenStatusText(value)));
+}
+
+function readPayloadString(payload: Record<string, string | number | boolean | null>, key: string): string | null {
+  const value = payload[key];
+  return typeof value === "string" ? sanitizeStatusText(value, 220) : null;
+}
+
+function missingCapability(commandType: ParityCommandType, reason: string): {
+  status: "rejected";
+  summary: string;
+  details: Record<string, string | number | boolean | null>;
+} {
+  return {
+    status: "rejected",
+    summary: `Missing local capability for ${commandType}.`,
+    details: { commandType, reason: sanitizeStatusText(reason, 240), noConfiguredSiteAction: true }
+  };
 }
 
 function buildLocalSchedulePayloads(config: AppConfig, deviceId: string, dateKey: string): ParitySchedulePayload[] {
@@ -958,7 +1385,7 @@ function sanitizeDetails(details: Record<string, string | number | boolean | nul
 
   for (const [key, value] of Object.entries(details).slice(0, 20)) {
     const normalizedKey = key.trim();
-    if (!normalizedKey || FORBIDDEN_DETAIL_KEYS.has(normalizedKey.toLowerCase())) {
+    if (!normalizedKey || isForbiddenDetailKey(normalizedKey)) {
       continue;
     }
 
@@ -970,6 +1397,20 @@ function sanitizeDetails(details: Record<string, string | number | boolean | nul
   }
 
   return sanitized;
+}
+
+function isForbiddenDetailKey(key: string): boolean {
+  return FORBIDDEN_DETAIL_KEYS.has(key.toLowerCase().replace(/[^a-z0-9_]/g, ""));
+}
+
+function looksLikeForbiddenStatusText(value: string): boolean {
+  return /https?:\/\/[^\s?#]+[^\s]*[?#][^\s]*/i.test(value)
+    || /\blink=/i.test(value)
+    || /\bmagic=/i.test(value)
+    || /\b4Tredir=/i.test(value)
+    || /\bBearer\s+[A-Za-z0-9._-]+/i.test(value)
+    || /\bbot\d+:[A-Za-z0-9_-]{15,}\b/i.test(value)
+    || looksLikeSupabaseServiceRoleKey(value);
 }
 
 const FORBIDDEN_DETAIL_KEYS = new Set([
@@ -1076,6 +1517,10 @@ function localDateKey(date: Date): string {
 
 function uniqueSorted(values: string[]): string[] {
   return [...new Set(values.filter((value) => /^\d{4}-\d{2}-\d{2}$/.test(value)))].sort();
+}
+
+function shortId(value: string): string {
+  return sanitizeStatusText(value, 8) ?? "unknown";
 }
 
 function parseSupabaseUrl(value: string): URL | null {

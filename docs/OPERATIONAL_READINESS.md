@@ -20,6 +20,7 @@ PARITY1B corrected target: monitored desktop use is release-candidate ready for 
 - No real action was attempted in W validation. Completion records stayed `0`.
 - Checked logs remained sanitized.
 - Supabase heartbeat skeleton exists but remains disabled/deferred.
+- Supabase PARITY7 command sync exists but remains disabled by default and is limited to dry-run/non-clicking commands if explicitly enabled.
 - Local Perakam auto-login is enabled on the test machine and should be intentionally controlled before future tests.
 
 ## O Track Consolidation
@@ -176,7 +177,7 @@ PARITY1B corrected target: monitored desktop use is release-candidate ready for 
 - Real scheduled manual-confirm at actual clock-in/out time not tested.
 - Fully unattended real action remains not approved and not validated.
 - Installer and signing remain optional release decisions.
-- Supabase schedule/completion sync exists through the disabled-by-default PARITY6 Edge Function path. Keep it off for ordinary monitored desktop use unless a separate Supabase smoke test is explicitly approved.
+- Supabase schedule/completion sync exists through the disabled-by-default PARITY6 Edge Function path, and dry-run/non-clicking command sync exists through the disabled-by-default PARITY7 Edge Function path. Keep both off for ordinary monitored desktop use unless a separate Supabase smoke test is explicitly approved.
 
 ## RC1 Monitored Real-World Observation Plan
 

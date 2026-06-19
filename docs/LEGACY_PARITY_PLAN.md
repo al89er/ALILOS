@@ -42,7 +42,7 @@ Telegram remains useful as an existing local notification/fallback path, but Tel
 | Supabase logs | Partially implemented | PARITY2 schema exists; PARITY4 can publish conservative parity status events only when enabled and `logUploadEnabled` is true. |
 | Supabase skip dates | Partially implemented | PARITY5 desktop/Edge Function sync exists and is disabled by default; webapp controls are still missing. |
 | Supabase schedules/completions | Partially implemented | PARITY6 desktop/Edge Function sync exists and is disabled by default; it backs up local rows and surfaces remote completion warnings only. |
-| Supabase command requests/results | Partially implemented | PARITY2 schema exists; command processing is missing. |
+| Supabase command requests/results | Partially implemented | PARITY7 dry-run/non-clicking command processing exists and is disabled by default; configured-action command execution is still missing/deferred. |
 | Webapp monitoring | Missing | Planned PWA/mobile status dashboard only. |
 | Webapp manual controls | Missing | Future skip/status/recalculate/dry-run/guarded action controls through Supabase. |
 | Telegram monitoring/commands | Paused | Existing Telegram code/config stays secondary; not required for completion. |
@@ -138,6 +138,19 @@ The migration keeps RLS enabled, revokes direct `anon` / `authenticated` table p
 ## PARITY3 Disabled Skeleton Result
 
 The desktop app now has a disabled-by-default `paritySync` config section and a `ParitySyncService` skeleton. The service exposes read-only health/status, command type/status constants, sanitized payload types, and lifecycle placeholders for future heartbeat/log/skip/command/schedule-completion sync.
+
+## PARITY7 Dry-Run Command Sync Result
+
+`supabase/functions/alilos-command-sync/index.ts` adds the Edge Function/API proxy for command request/result processing. It supports `list-pending`, `claim-command`, `complete-command`, and `append-command-event` against the existing `command_requests` and `command_events` tables with service-role use kept server-side only.
+
+The desktop command poller remains disabled by default and requires both `paritySync.enabled` and `paritySync.commandSyncEnabled`. PARITY7 handles only these non-clicking commands:
+
+- `request-status-refresh`
+- `request-dry-run`
+- `recalculate-today-schedule`
+- `cancel-confirmation`
+
+`perform-configured-action` and remote confirmation creation are explicitly rejected/deferred. Commands must be claimed before processing, expired commands are marked expired, unsupported or unsafe payloads are rejected, errors are sanitized/non-fatal, and no command can send arbitrary selectors, scripts, forms, URLs, credentials, cookies, raw HTML, screenshots, tokenized query strings, or opaque `link=` values.
 
 PARITY3 does not poll or process command requests, implement webapp code, add secrets, or enable unattended execution. Supabase keys for this path must be publishable/anon only; service-role-looking keys are rejected from local parity-sync config.
 

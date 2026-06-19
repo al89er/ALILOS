@@ -719,3 +719,344 @@ test("parity command constants match migration allow lists", () => {
     "cancelled"
   ]);
 });
+
+function commandPayload(config, overrides = {}) {
+  return {
+    id: "22222222-2222-4222-8222-222222222222",
+    deviceId: config.paritySync.deviceId,
+    commandType: "recalculate-today-schedule",
+    actionKey: null,
+    scheduleDate: null,
+    payload: {},
+    status: "pending",
+    requestedAt: "2026-06-19T00:00:00.000Z",
+    expiresAt: "2999-01-01T00:00:00.000Z",
+    ...overrides
+  };
+}
+
+test("command sync disabled does not poll", async () => {
+  const temp = createTempConfigStore();
+
+  try {
+    const config = temp.store.load();
+    config.paritySync.enabled = true;
+    config.paritySync.supabaseUrl = "https://example.supabase.co";
+    config.paritySync.publishableKey = "anon-publishable-key";
+    config.paritySync.commandSyncEnabled = false;
+    const logger = createLogger();
+    let fetchCalls = 0;
+    const service = new ParitySyncService(config, logger, { supabaseUrl: "", publishableKey: "" }, {
+      buildDeviceStatusPayload: () => createStatusPayload(),
+      fetchFn: async () => {
+        fetchCalls += 1;
+        return { ok: true, status: 200, json: async () => ({ success: true, commands: [] }) };
+      }
+    });
+
+    await service.pollCommands();
+    const status = service.getStatus();
+
+    assert.equal(status.commandSync.enabled, false);
+    assert.equal(status.commandSync.receivedCount, 0);
+    assert.equal(fetchCalls, 0);
+  } finally {
+    temp.cleanup();
+  }
+});
+
+test("command sync invalid config does not poll", async () => {
+  const temp = createTempConfigStore();
+
+  try {
+    const config = temp.store.load();
+    config.paritySync.enabled = true;
+    config.paritySync.commandSyncEnabled = true;
+    const logger = createLogger();
+    let fetchCalls = 0;
+    const service = new ParitySyncService(config, logger, { supabaseUrl: "", publishableKey: "" }, {
+      buildDeviceStatusPayload: () => createStatusPayload(),
+      fetchFn: async () => {
+        fetchCalls += 1;
+        return { ok: true, status: 200, json: async () => ({ success: true, commands: [] }) };
+      }
+    });
+
+    await service.pollCommands();
+    const status = service.getStatus();
+
+    assert.equal(status.configured, false);
+    assert.equal(status.commandSync.receivedCount, 0);
+    assert.equal(fetchCalls, 0);
+  } finally {
+    temp.cleanup();
+  }
+});
+
+test("command sync service-role-looking key prevents polling", async () => {
+  const temp = createTempConfigStore();
+
+  try {
+    const config = temp.store.load();
+    config.paritySync.enabled = true;
+    config.paritySync.commandSyncEnabled = true;
+    config.paritySync.supabaseUrl = "https://example.supabase.co";
+    config.paritySync.publishableKey = serviceRoleJwt();
+    const logger = createLogger();
+    let fetchCalls = 0;
+    const service = new ParitySyncService(config, logger, { supabaseUrl: "", publishableKey: "" }, {
+      buildDeviceStatusPayload: () => createStatusPayload(),
+      fetchFn: async () => {
+        fetchCalls += 1;
+        return { ok: true, status: 200, json: async () => ({ success: true, commands: [] }) };
+      }
+    });
+
+    await service.pollCommands();
+    const status = service.getStatus();
+
+    assert.equal(status.configured, false);
+    assert.equal(status.keyStatus, "missing");
+    assert.equal(fetchCalls, 0);
+  } finally {
+    temp.cleanup();
+  }
+});
+
+test("command sync list claim complete flow uses proxy and safe recalculate callback", async () => {
+  const temp = createTempConfigStore();
+
+  try {
+    const config = temp.store.load();
+    config.paritySync.enabled = true;
+    config.paritySync.commandSyncEnabled = true;
+    config.paritySync.supabaseUrl = "https://example.supabase.co";
+    config.paritySync.publishableKey = "anon-publishable-key";
+    const logger = createLogger();
+    const requests = [];
+    let recalculated = false;
+    const service = new ParitySyncService(config, logger, { supabaseUrl: "", publishableKey: "" }, {
+      buildDeviceStatusPayload: () => createStatusPayload(),
+      recalculateTodaySchedule: () => {
+        recalculated = true;
+        return { summary: "Today schedule recalculated.", details: { scheduleDate: "2026-06-19" } };
+      },
+      fetchFn: async (url, init) => {
+        const body = JSON.parse(init.body);
+        requests.push({ url, body });
+        if (body.operation === "list-pending") {
+          return { ok: true, status: 200, json: async () => ({ success: true, commands: [commandPayload(config)] }) };
+        }
+        if (body.operation === "claim-command") {
+          return { ok: true, status: 200, json: async () => ({ success: true, command: commandPayload(config, { status: "claimed" }) }) };
+        }
+        return { ok: true, status: 202, json: async () => ({ success: true }) };
+      }
+    });
+
+    await service.pollCommands("test");
+    const status = service.getStatus();
+
+    assert.equal(recalculated, true);
+    assert.equal(requests.every((request) => request.url === "https://example.supabase.co/functions/v1/alilos-command-sync"), true);
+    assert.deepEqual(requests.map((request) => request.body.operation), ["list-pending", "claim-command", "append-command-event", "complete-command"]);
+    assert.equal(requests.at(-1).body.status, "succeeded");
+    assert.equal(status.commandSync.receivedCount, 1);
+    assert.equal(status.commandSync.claimedCount, 1);
+    assert.equal(status.commandSync.completedCount, 1);
+    assert.equal(status.commandSync.rejectedCount, 0);
+    assert.match(logger.entries.at(-1).message, /No configured-site action was attempted/);
+  } finally {
+    temp.cleanup();
+  }
+});
+
+test("command sync rejects unsupported perform-configured-action", async () => {
+  const temp = createTempConfigStore();
+
+  try {
+    const config = temp.store.load();
+    config.paritySync.enabled = true;
+    config.paritySync.commandSyncEnabled = true;
+    config.paritySync.supabaseUrl = "https://example.supabase.co";
+    config.paritySync.publishableKey = "anon-publishable-key";
+    const logger = createLogger();
+    const requests = [];
+    const service = new ParitySyncService(config, logger, { supabaseUrl: "", publishableKey: "" }, {
+      buildDeviceStatusPayload: () => createStatusPayload(),
+      fetchFn: async (_url, init) => {
+        const body = JSON.parse(init.body);
+        requests.push(body);
+        if (body.operation === "list-pending") {
+          return { ok: true, status: 200, json: async () => ({ success: true, commands: [commandPayload(config, { commandType: "perform-configured-action" })] }) };
+        }
+        if (body.operation === "claim-command") {
+          return { ok: true, status: 200, json: async () => ({ success: true, command: commandPayload(config, { commandType: "perform-configured-action", status: "claimed" }) }) };
+        }
+        return { ok: true, status: 202, json: async () => ({ success: true }) };
+      }
+    });
+
+    await service.pollCommands("test");
+    const status = service.getStatus();
+    const complete = requests.find((body) => body.operation === "complete-command");
+
+    assert.equal(complete.status, "rejected");
+    assert.match(complete.summary, /deferred/);
+    assert.equal(complete.details.noConfiguredSiteAction, true);
+    assert.equal(status.commandSync.rejectedCount, 1);
+  } finally {
+    temp.cleanup();
+  }
+});
+
+test("command sync request-dry-run rejects missing local confirmation id", async () => {
+  const temp = createTempConfigStore();
+
+  try {
+    const config = temp.store.load();
+    config.paritySync.enabled = true;
+    config.paritySync.commandSyncEnabled = true;
+    config.paritySync.supabaseUrl = "https://example.supabase.co";
+    config.paritySync.publishableKey = "anon-publishable-key";
+    const logger = createLogger();
+    const requests = [];
+    const service = new ParitySyncService(config, logger, { supabaseUrl: "", publishableKey: "" }, {
+      buildDeviceStatusPayload: () => createStatusPayload(),
+      runAttendanceDryRun: async () => ({ status: "passed", summary: "dry-run passed" }),
+      fetchFn: async (_url, init) => {
+        const body = JSON.parse(init.body);
+        requests.push(body);
+        if (body.operation === "list-pending") {
+          return { ok: true, status: 200, json: async () => ({ success: true, commands: [commandPayload(config, { commandType: "request-dry-run" })] }) };
+        }
+        if (body.operation === "claim-command") {
+          return { ok: true, status: 200, json: async () => ({ success: true, command: commandPayload(config, { commandType: "request-dry-run", status: "claimed" }) }) };
+        }
+        return { ok: true, status: 202, json: async () => ({ success: true }) };
+      }
+    });
+
+    await service.pollCommands("test");
+    const complete = requests.find((body) => body.operation === "complete-command");
+    const status = service.getStatus();
+
+    assert.equal(complete.status, "rejected");
+    assert.match(complete.summary, /requires an existing local confirmation id/);
+    assert.equal(status.commandSync.rejectedCount, 1);
+  } finally {
+    temp.cleanup();
+  }
+});
+
+test("command sync marks expired command without executing callback", async () => {
+  const temp = createTempConfigStore();
+
+  try {
+    const config = temp.store.load();
+    config.paritySync.enabled = true;
+    config.paritySync.commandSyncEnabled = true;
+    config.paritySync.supabaseUrl = "https://example.supabase.co";
+    config.paritySync.publishableKey = "anon-publishable-key";
+    const logger = createLogger();
+    let recalculated = false;
+    const requests = [];
+    const service = new ParitySyncService(config, logger, { supabaseUrl: "", publishableKey: "" }, {
+      buildDeviceStatusPayload: () => createStatusPayload(),
+      recalculateTodaySchedule: () => {
+        recalculated = true;
+        return { summary: "should not run" };
+      },
+      fetchFn: async (_url, init) => {
+        const body = JSON.parse(init.body);
+        requests.push(body);
+        if (body.operation === "list-pending") {
+          return { ok: true, status: 200, json: async () => ({ success: true, commands: [commandPayload(config, { expiresAt: "2000-01-01T00:00:00.000Z" })] }) };
+        }
+        return { ok: true, status: 202, json: async () => ({ success: true }) };
+      }
+    });
+
+    await service.pollCommands("test");
+    const complete = requests.find((body) => body.operation === "complete-command");
+    const status = service.getStatus();
+
+    assert.equal(recalculated, false);
+    assert.equal(complete.status, "expired");
+    assert.equal(status.commandSync.expiredCount, 1);
+    assert.equal(status.commandSync.claimedCount, 0);
+  } finally {
+    temp.cleanup();
+  }
+});
+
+test("command sync rejects forbidden payload data before processing", async () => {
+  const temp = createTempConfigStore();
+
+  try {
+    const config = temp.store.load();
+    config.paritySync.enabled = true;
+    config.paritySync.commandSyncEnabled = true;
+    config.paritySync.supabaseUrl = "https://example.supabase.co";
+    config.paritySync.publishableKey = "anon-publishable-key";
+    const logger = createLogger();
+    const requests = [];
+    const service = new ParitySyncService(config, logger, { supabaseUrl: "", publishableKey: "" }, {
+      buildDeviceStatusPayload: () => createStatusPayload(),
+      fetchFn: async (_url, init) => {
+        const body = JSON.parse(init.body);
+        requests.push(body);
+        if (body.operation === "list-pending") {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              success: true,
+              commands: [commandPayload(config, { payload: { selector: "#submit", note: "https://secret.example/path?token=abc link=opaque" } })]
+            })
+          };
+        }
+        return { ok: true, status: 202, json: async () => ({ success: true }) };
+      }
+    });
+
+    await service.pollCommands("test");
+    const serialized = JSON.stringify(requests);
+    const complete = requests.find((body) => body.operation === "complete-command");
+    const status = service.getStatus();
+
+    assert.equal(complete.status, "rejected");
+    assert.equal(complete.details.reason, "forbidden-content");
+    assert.doesNotMatch(serialized, /#submit|token=abc|link=opaque|link=/);
+    assert.equal(status.commandSync.rejectedCount, 1);
+  } finally {
+    temp.cleanup();
+  }
+});
+
+test("command sync errors are sanitized and non-fatal", async () => {
+  const temp = createTempConfigStore();
+
+  try {
+    const config = temp.store.load();
+    config.paritySync.enabled = true;
+    config.paritySync.commandSyncEnabled = true;
+    config.paritySync.supabaseUrl = "https://example.supabase.co";
+    config.paritySync.publishableKey = "anon-publishable-key";
+    const logger = createLogger();
+    const service = new ParitySyncService(config, logger, { supabaseUrl: "", publishableKey: "" }, {
+      buildDeviceStatusPayload: () => createStatusPayload(),
+      fetchFn: async () => ({ ok: false, status: 403, json: async () => ({ success: false }) })
+    });
+
+    await service.pollCommands("test");
+    const status = service.getStatus();
+
+    assert.equal(status.commandSync.receivedCount, 0);
+    assert.equal(status.commandSync.failedCount, 1);
+    assert.match(status.commandSync.lastError, /HTTP 403/);
+    assert.doesNotMatch(status.commandSync.lastError, /Bearer|apikey|token=/i);
+  } finally {
+    temp.cleanup();
+  }
+});
