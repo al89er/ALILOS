@@ -90,6 +90,20 @@ This checklist is for safe local Windows desktop use after the P packaging/start
 - Logs remained sanitized in the checked notes.
 - Fully unattended execution remains no-go.
 
+## RC3 Packaged Validation Result
+
+- Validation passed: `typecheck`, `build`, `test`, `package:win`, and `git diff --check`.
+- The latest packaged `release/win-unpacked/ALILOS.exe` launched successfully.
+- Schedule tab showed `Recalculate today's schedule`.
+- The helper label clearly stated schedule recalculation only and that it does not click Perakam.
+- Existing configured mode was `manual-confirm`; launch-at-login remained disabled.
+- Recalculation alone did not start the browser, did not open Perakam, did not click Perakam, did not create a completion record, and did not create a latest execution result.
+- Scripted hide/show window check remained functional.
+- Logs used sanitized schedule-only wording.
+- Current release-readiness recommendation remains: go for monitored local `manual-confirm`, `dry-run`, or `notify-only`; go for the accelerated schedule validation helper; no-go for fully unattended real execution.
+- A legitimate real click still requires user confirmation at an appropriate real attendance time.
+- Supabase sync remains disabled/deferred, and the web companion remains planning-only.
+
 ## Workplace And Network Checks
 
 - Confirm Perakam dashboard is reachable from the workplace network.

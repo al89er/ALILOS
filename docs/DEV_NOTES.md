@@ -245,6 +245,7 @@ Operational notes after W validation:
 - RC1 is planned for one actual scheduled `manual-confirm` cycle with the user physically present. It is not approval for unattended execution or for Codex to perform a real action.
 - RC2 adds a schedule-only recalculation helper for accelerated near-future scheduler validation. It regenerates today's local generated schedule from the current windows, clears reminder markers for today, and does not touch Perakam, confirmations, completions, Supabase, Telegram, or Fortinet behavior.
 - RC2 accelerated workplace validation passed: near-future evening recalculation reached due/grace, visible dashboard candidate was found while hidden sidebar duplicate was ignored, confirmation plus dry-run passed, manual-confirm cancel passed, no real action occurred, no false completion record was created, and checked notes remained sanitized.
+- RC3 packaged validation passed. The latest `ALILOS.exe` includes the helper and safety label; recalculation alone did not open browser/Perakam, click Perakam, create a completion record, or create an execution result. Validation and packaging passed.
 - Local Perakam auto-login is enabled on the test machine and succeeded during W4/W5 without credential-value logging. Intentionally decide whether it should be enabled or disabled before future tests.
 - Fully unattended real attendance action is not approved or validated.
 - Supabase heartbeat/write path remains disabled/deferred; do not start S3 schedule/completion runtime sync without explicit approval.

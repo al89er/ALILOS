@@ -16,6 +16,7 @@
 - O4 consolidated the O track as mostly complete. Current go/no-go: monitored `manual-confirm`, `dry-run`, and `notify-only` are acceptable; fully unattended real execution remains no-go.
 - RC2 accelerated schedule helper is available from the Schedule tab as `Recalculate today's schedule`; use it only after temporary window changes, prefer `dry-run`, and restore normal windows afterward.
 - RC2 accelerated validation passed: due/grace reached, visible dashboard target detected, hidden sidebar duplicate ignored, dry-run passed, manual-confirm cancel passed, no real action, no false completion record.
+- RC3 packaged validation passed: latest `ALILOS.exe` includes the helper and safety label, recalculation alone did not open/click Perakam or create completion/execution records, and validation/package commands passed.
 - RC1 monitored real-world observation plan is documented in `docs/OPERATIONAL_READINESS.md`; it is one actual scheduled `manual-confirm` cycle with the user physically present.
 - Next track options: RC small real-world observation tasks when physically ready, S3E Edge Function/API schedule/completion contract planning only after explicit approval, or WEB5 authenticated read model/RLS planning only after explicit approval.
 - Keep `docs/PHASE_4D_MANUAL_CONFIRM_DESIGN.md` as historical design context, but update or supersede stale sections before relying on it for current behavior.
@@ -52,6 +53,7 @@ Recommended next major track:
 
 - RC small real-world observation tasks when physically ready. S3E Edge Function/API schedule/completion contract planning and WEB5 authenticated read model/RLS planning remain later options only after explicit approval.
 - For RC1, use packaged `ALILOS.exe`, confirm `manual-confirm`, keep the user physically present, abort on target ambiguity or unexpected unattended behavior, and record the result with the template in `docs/OPERATIONAL_READINESS.md`.
+- Continue to treat fully unattended real execution as no-go; legitimate real clicks still require user confirmation at an appropriate real attendance time.
 
 ## Suggested Next Implementation Phase
 

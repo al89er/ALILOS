@@ -168,6 +168,7 @@ The active implementation focus appears to be hardening the guarded manual-confi
 - O operational readiness is mostly complete after O4 consolidation. Current go/no-go: go for monitored local `manual-confirm`, `dry-run`, or `notify-only`; no-go for unattended real execution. Next options are RC real-world observation tasks, S3E Edge Function/API contract planning, or WEB5 authenticated read model/RLS planning, each only with explicit approval.
 - RC2 adds a Schedule-tab helper to recalculate today's generated schedule from the configured windows. It is schedule-only, does not click Perakam, and is intended for accelerated `dry-run` or monitored `manual-confirm` validation after temporary near-future window changes.
 - RC2 accelerated workplace validation passed: near-future evening recalculation reached due/grace, dashboard control detection found the visible candidate while ignoring hidden sidebar duplicates, dry-run passed without configured action, manual-confirm cancel passed, no real action was performed, no false completion record was created, and logs remained sanitized in checked notes.
+- RC3 packaged validation passed: latest `ALILOS.exe` includes the schedule recalculation helper and safe label, recalculation alone did not start Perakam/browser or create completion/execution records, logs used schedule-only wording, and validation/package commands passed. Current go/no-go remains monitored local use yes, unattended real execution no.
 
 ## W Workplace Validation Track
 
