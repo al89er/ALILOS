@@ -39,9 +39,9 @@ Telegram remains useful as an existing local notification/fallback path, but Tel
 | Skip dates | Implemented | Today/tomorrow skip controls exist locally. |
 | Skip next action | Partially implemented | Local skip dates exist; webapp/Supabase command path missing. |
 | Local logs | Implemented | JSON-line logs under Electron userData. |
-| Supabase logs | Missing | Future sanitized event/log sync. |
-| Supabase skip dates | Missing | Future skip-date sync. |
-| Supabase command requests/results | Missing | Future command queue/result records. |
+| Supabase logs | Partially implemented | PARITY2 schema exists; runtime publishing is missing. |
+| Supabase skip dates | Partially implemented | PARITY2 schema exists; desktop/webapp sync is missing. |
+| Supabase command requests/results | Partially implemented | PARITY2 schema exists; command processing is missing. |
 | Webapp monitoring | Missing | Planned PWA/mobile status dashboard only. |
 | Webapp manual controls | Missing | Future skip/status/recalculate/dry-run/guarded action controls through Supabase. |
 | Telegram monitoring/commands | Paused | Existing Telegram code/config stays secondary; not required for completion. |
@@ -122,3 +122,14 @@ The webapp/PWA must not:
 13. PARITY13 end-to-end webapp + Supabase + desktop validation.
 
 Do not add migrations, runtime sync, webapp code, captive portal reconnect, command/control, or unattended execution from this document alone. Each later PARITY step needs explicit approval.
+
+## PARITY2 Schema Result
+
+`supabase/migrations/20260619033529_parity_sync_schema.sql` adds schema-only support for:
+
+- `skip_dates`
+- `event_logs`
+- `command_requests`
+- `command_events`
+
+The migration keeps RLS enabled, revokes direct `anon` / `authenticated` table privileges, and assumes future reads/writes are mediated by an Edge Function/API proxy. It does not enable desktop runtime writes, webapp code, command processing, or unattended execution.

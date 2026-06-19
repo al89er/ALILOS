@@ -5,6 +5,7 @@
 - A.L.I.L.O.S. is targeting a generic automated scheduled website clicker: desktop agent, separate Playwright browser, startup/background operation, local auto-login, stale recovery, captive portal reconnect, Supabase sync/control plane, and webapp monitoring/control.
 - Telegram is paused/deprioritized. Existing Telegram code remains a secondary local notification/command path, but Telegram parity is not required for completion.
 - `docs/LEGACY_PARITY_PLAN.md` is the current parity matrix and fastest PARITY2-PARITY13 sequence.
+- PARITY2 adds schema-only Supabase support for `skip_dates`, `event_logs`, `command_requests`, and `command_events`. Runtime sync and command processing remain disabled/deferred.
 - Do not implement runtime sync, webapp code, migrations, command/control, captive portal reconnect, or unattended execution from these notes alone.
 - Credentials stay local: configured website credentials and future captive portal credentials must not be sent to Supabase or the webapp, and must not appear in logs/docs. Service-role keys never ship in desktop or webapp clients.
 
@@ -150,6 +151,7 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 - S2E heartbeat write-path options are documented.
 - S3A schedule/completion sync planning is documented.
 - S3B schedule/completion schema migration is drafted.
+- PARITY2 skip/log/status/command schema migration is added.
 - S3D schedule/completion write-path decision is documented: future writes should use an Edge Function/API proxy plus explicit device pairing/token.
 - WEB1 web/PWA companion planning is documented in `docs/WEB_COMPANION_PLAN.md`.
 - WEB2 static/read-only web companion UI design is documented in `docs/WEB_COMPANION_PLAN.md`.

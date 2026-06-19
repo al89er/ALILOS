@@ -5,7 +5,7 @@
 - Use `docs/LEGACY_PARITY_PLAN.md` as the current completion target and parity matrix.
 - Complete app means: desktop scheduled click engine, local auto-login/stale recovery, captive portal local reconnect, Supabase skip/log/status/schedule/completion/command sync, webapp/PWA monitoring/control, no normal-browser interference, and no sensitive data in Supabase/logs.
 - Telegram is paused/deprioritized. Keep existing Telegram behavior secondary; do not make Telegram parity a completion blocker.
-- Fastest build sequence: PARITY2 Supabase skips/logs/status/commands schema, PARITY3 disabled desktop sync skeleton, PARITY4 heartbeat/status/log publishing, PARITY5 skip-date sync, PARITY6 schedule/completion sync, PARITY7 dry-run command processing, PARITY8 read-only webapp monitoring, PARITY9 webapp skip/status/recalculate/dry-run controls, PARITY10 guarded configured-action command, PARITY11 startup/sleep-wake field validation, PARITY12 captive portal local reconnect, PARITY13 end-to-end validation.
+- Fastest build sequence: PARITY2 Supabase skips/logs/status/commands schema, PARITY3 disabled desktop sync skeleton, PARITY4 heartbeat/status/log publishing, PARITY5 skip-date sync, PARITY6 schedule/completion sync, PARITY7 dry-run command processing, PARITY8 read-only webapp monitoring, PARITY9 webapp skip/status/recalculate/dry-run controls, PARITY10 guarded configured-action command, PARITY11 startup/sleep-wake field validation, PARITY12 captive portal local reconnect, PARITY13 end-to-end validation. PARITY2 is schema-only now; continue with PARITY3 only after explicit approval.
 
 ## Immediate Next Safe Steps
 
@@ -25,7 +25,7 @@
 - RC2 accelerated validation passed: due/grace reached, visible dashboard target detected, hidden sidebar duplicate ignored, dry-run passed, manual-confirm cancel passed, no real action, no false completion record.
 - RC3 packaged validation passed: latest `ALILOS.exe` includes the helper and safety label, recalculation alone did not open/click Perakam or create completion/execution records, and validation/package commands passed.
 - RC1 monitored real-world observation plan is documented in `docs/OPERATIONAL_READINESS.md`; it is one actual scheduled `manual-confirm` cycle with the user physically present.
-- Next track options: PARITY2 Supabase schema planning for skips/logs/status/commands, RC small real-world observation tasks when physically ready, or PARITY11 startup/sleep-wake field validation. Do not implement runtime sync, webapp code, command/control, migrations, or captive portal reconnect without explicit approval.
+- Next track options: PARITY3 disabled desktop sync skeleton planning/implementation after explicit approval, RC small real-world observation tasks when physically ready, or PARITY11 startup/sleep-wake field validation. Do not implement runtime sync, webapp code, command/control execution, additional migrations, or captive portal reconnect without explicit approval.
 - Keep `docs/PHASE_4D_MANUAL_CONFIRM_DESIGN.md` as historical design context, but update or supersede stale sections before relying on it for current behavior.
 - For Phase 6A dry-run testing, set `automation.executionMode` to `dry-run` only in local config and confirm that due actions are simulated, not clicked.
 
@@ -39,6 +39,7 @@ Current Supabase status:
 - S2E write-path options documented.
 - S3A schedule/completion sync planning documented.
 - S3B schedule/completion schema migration drafted.
+- PARITY2 skip/log/status/command schema migration added.
 - S3D write-path decision documented: prefer Edge Function/API proxy plus explicit device pairing/token.
 - Heartbeat remains disabled by default.
 - Real writes remain deferred until auth/pairing/write-path authorization is decided.

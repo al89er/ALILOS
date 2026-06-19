@@ -35,6 +35,7 @@
 - Architecture direction documented for future Supabase/webapp work: local-first Windows desktop agent now, hosted phone webapp/PWA later, Supabase as the future sync/control plane, and Telegram paused/deprioritized as a secondary path.
 - S3A docs-only Supabase schedule/completion sync planning is documented for durable backup/recovery of generated daily schedules and completion records.
 - S3B schema-only Supabase migration is drafted for `daily_schedules` and `completion_records`.
+- PARITY2 schema-only Supabase migration is added for `skip_dates`, `event_logs`, `command_requests`, and `command_events`.
 - WEB1 docs-only web/PWA companion planning is documented in `docs/WEB_COMPANION_PLAN.md`.
 - WEB2 static/read-only web companion UI design is documented in `docs/WEB_COMPANION_PLAN.md`.
 - WEB3 legacy webapp relationship is documented in `docs/WEB_COMPANION_PLAN.md`.
@@ -52,7 +53,7 @@
 - Existing Phase 4D design docs are stale relative to current implementation because guarded execution and auto-login have since been implemented.
 - Settings can edit selected operational values only. Generated schedules, completion records, automation audit events, raw logs, target mappings, credentials, cookies/session data, screenshots, raw HTML, and personal identifiers remain outside editable settings.
 - Supabase heartbeat has a Settings-tab project URL editor and disabled-by-default sender skeleton, but the phone-webapp receiver/dashboard is still not implemented in this repository.
-- Supabase is not required for local scheduled operation. The repository has the S2A heartbeat schema migration, S2B sender skeleton, S3A docs-only schedule/completion sync plan, and S3B schema-only schedule/completion migration; runtime schedule/completion sync, hosted webapp/PWA, and remote command/control queue are not implemented.
+- Supabase is not required for local scheduled operation. The repository has the S2A heartbeat schema migration, S2B sender skeleton, S3A docs-only schedule/completion sync plan, S3B schema-only schedule/completion migration, and PARITY2 schema-only skip/log/status/command support; runtime sync, hosted webapp/PWA, and remote command/control queue are not implemented.
 - The future web/PWA companion remains unimplemented. WEB1 plans a read-only-first mobile status surface that depends on Supabase-synced heartbeat, schedule, and completion data when those sync paths exist.
 - WEB2 defines the first read-only screens and status cards, but no webapp code, dependencies, runtime sync, or controls exist.
 - WEB4 defines display-safe data groups and fake payload examples, but authenticated read policies and runtime sync remain deferred.

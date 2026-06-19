@@ -4,6 +4,8 @@ WEB1 is a docs-only plan for a future mobile-friendly browser/PWA companion. It 
 
 PARITY1B corrected target: the webapp/PWA plus Supabase control plane are required for the complete product milestone. Telegram is paused/deprioritized and is not a parity requirement. See `docs/LEGACY_PARITY_PLAN.md` for the full matrix and PARITY2-PARITY13 build sequence.
 
+PARITY2 adds schema-only tables for future skip dates, sanitized events, command requests, and command events. WEB code and command processing remain unimplemented until later approved PARITY steps.
+
 ## Architecture Split
 
 - Electron desktop remains the only local browser/session/action assistant.

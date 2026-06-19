@@ -6,7 +6,7 @@ The guard exists to prevent accidental migrations, database pushes, function dep
 
 ## Planned Role
 
-Supabase is planned as the shared backend for the future webapp/PWA sync/control plane. It is not required for scheduled local desktop operation. This repository currently has the S2A status-only heartbeat schema migration, an S2B disabled-by-default heartbeat sender skeleton, and an S3B schedule/completion schema migration. It still has no hosted webapp/PWA, runtime schedule/completion sync, skip/log/status/command sync, or remote command/control queue.
+Supabase is planned as the shared backend for the future webapp/PWA sync/control plane. It is not required for scheduled local desktop operation. This repository currently has the S2A status-only heartbeat schema migration, an S2B disabled-by-default heartbeat sender skeleton, an S3B schedule/completion schema migration, and a PARITY2 skip/log/status/command schema migration. It still has no hosted webapp/PWA, runtime schedule/completion sync, runtime skip/log/status/command sync, or remote command/control queue processing.
 
 The agreed roadmap is:
 
@@ -39,6 +39,19 @@ Do not store these values in Supabase:
 - Service-role keys in desktop or webapp clients.
 
 Remote command/control is not implemented. Any command queue or control-plane action requires a later explicit approval phase before schema, runtime code, or webapp behavior is added.
+
+## PARITY2 Schema
+
+`supabase/migrations/20260619033529_parity_sync_schema.sql` adds:
+
+- `skip_dates`: sanitized whole-day or action-specific skip rows by device/date/action.
+- `event_logs`: append-only sanitized status/event rows for webapp monitoring.
+- `command_requests`: constrained command queue rows for future webapp/Supabase/desktop coordination.
+- `command_events`: append-only sanitized audit rows for command processing.
+
+All PARITY2 tables enable RLS and revoke direct table privileges from `anon` and `authenticated`. No broad public policies are added. Future access should go through an Edge Function/API proxy with service-role use kept server-side only. The desktop app and webapp must not receive service-role keys.
+
+PARITY2 payloads and details are constrained to sanitized JSON objects and must not contain credentials, cookies, raw HTML, screenshots, full URLs, tokenized query strings, opaque `link=` values, portal hidden fields, arbitrary selectors, scripts, or forms.
 
 ## S1 Proposed Schema Outline
 
