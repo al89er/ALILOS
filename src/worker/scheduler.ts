@@ -59,6 +59,29 @@ export class Scheduler {
     this.unskipDate(formatDateKey(addDays(new Date(), 1)));
   }
 
+  mergeRemoteSkippedDates(dateKeys: string[]): number {
+    const current = new Set(this.config.scheduler.skippedDates);
+    let added = 0;
+
+    for (const dateKey of dateKeys) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey) || current.has(dateKey)) {
+        continue;
+      }
+
+      current.add(dateKey);
+      added += 1;
+    }
+
+    if (added === 0) {
+      return 0;
+    }
+
+    this.config.scheduler.skippedDates = [...current].sort();
+    this.configStore.save(this.config);
+    this.logger.info(`Applied ${added} remote skip date(s) from Supabase. Scheduling state only; no configured-site action was attempted.`);
+    return added;
+  }
+
   recalculateToday(): DailySchedule {
     const today = formatDateKey(new Date());
     delete this.config.scheduler.schedulesByDate[today];

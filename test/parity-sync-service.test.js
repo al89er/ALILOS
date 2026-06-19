@@ -218,6 +218,222 @@ test("invalid parity sync device id prevents publishing", async () => {
   }
 });
 
+test("skip sync disabled does not call fetch", async () => {
+  const temp = createTempConfigStore();
+
+  try {
+    const config = temp.store.load();
+    config.paritySync.enabled = true;
+    config.paritySync.supabaseUrl = "https://example.supabase.co";
+    config.paritySync.publishableKey = "anon-publishable-key";
+    config.paritySync.skipSyncEnabled = false;
+    const logger = createLogger();
+    let fetchCalls = 0;
+    const service = new ParitySyncService(config, logger, { supabaseUrl: "", publishableKey: "" }, {
+      buildDeviceStatusPayload: () => createStatusPayload(),
+      fetchFn: async () => {
+        fetchCalls += 1;
+        return { ok: true, status: 200, json: async () => ({ success: true, skips: [] }) };
+      }
+    });
+
+    await service.syncSkipDates();
+    const status = service.getStatus();
+
+    assert.equal(status.skipSync.enabled, false);
+    assert.equal(status.skipSync.syncCount, 0);
+    assert.equal(fetchCalls, 0);
+  } finally {
+    temp.cleanup();
+  }
+});
+
+test("skip sync missing config does not call fetch", async () => {
+  const temp = createTempConfigStore();
+
+  try {
+    const config = temp.store.load();
+    config.paritySync.enabled = true;
+    config.paritySync.skipSyncEnabled = true;
+    const logger = createLogger();
+    let fetchCalls = 0;
+    const service = new ParitySyncService(config, logger, { supabaseUrl: "", publishableKey: "" }, {
+      buildDeviceStatusPayload: () => createStatusPayload(),
+      fetchFn: async () => {
+        fetchCalls += 1;
+        return { ok: true, status: 200, json: async () => ({ success: true, skips: [] }) };
+      }
+    });
+
+    await service.syncSkipDates();
+    const status = service.getStatus();
+
+    assert.equal(status.configured, false);
+    assert.equal(status.skipSync.syncCount, 0);
+    assert.equal(fetchCalls, 0);
+  } finally {
+    temp.cleanup();
+  }
+});
+
+test("skip sync list merges remote skip dates without deleting local skips", async () => {
+  const temp = createTempConfigStore();
+
+  try {
+    const config = temp.store.load();
+    config.paritySync.enabled = true;
+    config.paritySync.supabaseUrl = "https://example.supabase.co";
+    config.paritySync.publishableKey = "anon-publishable-key";
+    config.paritySync.skipSyncEnabled = true;
+    config.scheduler.skippedDates = ["2026-06-20"];
+    const logger = createLogger();
+    let request = null;
+    const service = new ParitySyncService(config, logger, { supabaseUrl: "", publishableKey: "" }, {
+      buildDeviceStatusPayload: () => createStatusPayload(),
+      mergeRemoteSkippedDates: (dates) => {
+        const before = config.scheduler.skippedDates.length;
+        config.scheduler.skippedDates = [...new Set([...config.scheduler.skippedDates, ...dates])].sort();
+        return config.scheduler.skippedDates.length - before;
+      },
+      fetchFn: async (url, init) => {
+        request = { url, init };
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            success: true,
+            skips: [
+              {
+                deviceId: config.paritySync.deviceId,
+                skipDate: "2026-06-21",
+                actionKey: "clock-out",
+                reason: "webapp requested",
+                source: "webapp-command"
+              }
+            ]
+          })
+        };
+      }
+    });
+
+    await service.syncSkipDates("test");
+    const status = service.getStatus();
+    const body = JSON.parse(request.init.body);
+
+    assert.equal(request.url, "https://example.supabase.co/functions/v1/alilos-skip-sync");
+    assert.equal(body.operation, "list-skips");
+    assert.equal(body.deviceId, config.paritySync.deviceId);
+    assert.deepEqual(config.scheduler.skippedDates, ["2026-06-20", "2026-06-21"]);
+    assert.equal(status.skipSync.rowsReceived, 1);
+    assert.equal(status.skipSync.rowsApplied, 1);
+    assert.equal(status.skipSync.syncCount, 1);
+    assert.equal(status.skipSync.failureCount, 0);
+  } finally {
+    temp.cleanup();
+  }
+});
+
+test("skip sync empty remote list preserves existing local skip", async () => {
+  const temp = createTempConfigStore();
+
+  try {
+    const config = temp.store.load();
+    config.paritySync.enabled = true;
+    config.paritySync.supabaseUrl = "https://example.supabase.co";
+    config.paritySync.publishableKey = "anon-publishable-key";
+    config.paritySync.skipSyncEnabled = true;
+    config.scheduler.skippedDates = ["2026-06-20"];
+    const logger = createLogger();
+    const service = new ParitySyncService(config, logger, { supabaseUrl: "", publishableKey: "" }, {
+      buildDeviceStatusPayload: () => createStatusPayload(),
+      mergeRemoteSkippedDates: (dates) => {
+        const before = config.scheduler.skippedDates.length;
+        config.scheduler.skippedDates = [...new Set([...config.scheduler.skippedDates, ...dates])].sort();
+        return config.scheduler.skippedDates.length - before;
+      },
+      fetchFn: async () => ({ ok: true, status: 200, json: async () => ({ success: true, skips: [] }) })
+    });
+
+    await service.syncSkipDates("test");
+    const status = service.getStatus();
+
+    assert.deepEqual(config.scheduler.skippedDates, ["2026-06-20"]);
+    assert.equal(status.skipSync.rowsReceived, 0);
+    assert.equal(status.skipSync.rowsApplied, 0);
+    assert.equal(status.skipSync.syncCount, 1);
+  } finally {
+    temp.cleanup();
+  }
+});
+
+test("skip sync upsert and delete send sanitized scheduling-only payloads", async () => {
+  const temp = createTempConfigStore();
+
+  try {
+    const config = temp.store.load();
+    config.paritySync.enabled = true;
+    config.paritySync.supabaseUrl = "https://example.supabase.co";
+    config.paritySync.publishableKey = "anon-publishable-key";
+    config.paritySync.skipSyncEnabled = true;
+    const logger = createLogger();
+    const requests = [];
+    const service = new ParitySyncService(config, logger, { supabaseUrl: "", publishableKey: "" }, {
+      buildDeviceStatusPayload: () => createStatusPayload(),
+      fetchFn: async (url, init) => {
+        requests.push({ url, init });
+        return { ok: true, status: 202, json: async () => ({ success: true, affectedCount: 1 }) };
+      }
+    });
+
+    await service.upsertSkipDate("2026-06-22", "Desktop https://secret.example/path?token=abc link=opaque magic=secret");
+    await service.deleteSkipDate("2026-06-22");
+    const upsertBody = JSON.parse(requests[0].init.body);
+    const deleteBody = JSON.parse(requests[1].init.body);
+    const serialized = JSON.stringify([upsertBody, deleteBody]);
+    const status = service.getStatus();
+
+    assert.equal(upsertBody.operation, "upsert-skip");
+    assert.equal(upsertBody.skipDate, "2026-06-22");
+    assert.equal(upsertBody.actionKey, null);
+    assert.equal(upsertBody.source, "desktop-local");
+    assert.equal(deleteBody.operation, "delete-skip");
+    assert.equal(deleteBody.skipDate, "2026-06-22");
+    assert.doesNotMatch(serialized, /token=abc|link=|magic=secret|magic=/);
+    assert.equal(status.skipSync.uploadCount, 1);
+    assert.equal(status.skipSync.deleteCount, 1);
+    assert.equal(status.skipSync.failureCount, 0);
+  } finally {
+    temp.cleanup();
+  }
+});
+
+test("skip sync errors are sanitized and non-fatal", async () => {
+  const temp = createTempConfigStore();
+
+  try {
+    const config = temp.store.load();
+    config.paritySync.enabled = true;
+    config.paritySync.supabaseUrl = "https://example.supabase.co";
+    config.paritySync.publishableKey = "anon-publishable-key";
+    config.paritySync.skipSyncEnabled = true;
+    const logger = createLogger();
+    const service = new ParitySyncService(config, logger, { supabaseUrl: "", publishableKey: "" }, {
+      buildDeviceStatusPayload: () => createStatusPayload(),
+      fetchFn: async () => ({ ok: false, status: 403, json: async () => ({ success: false }) })
+    });
+
+    await service.syncSkipDates();
+    const status = service.getStatus();
+
+    assert.equal(status.skipSync.syncCount, 0);
+    assert.equal(status.skipSync.failureCount, 1);
+    assert.match(status.skipSync.lastError, /HTTP 403/);
+    assert.doesNotMatch(status.skipSync.lastError, /Bearer|apikey|token=/i);
+  } finally {
+    temp.cleanup();
+  }
+});
+
 test("parity status publishing sanitizes payload and updates success counters", async () => {
   const temp = createTempConfigStore();
 

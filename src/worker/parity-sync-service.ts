@@ -4,6 +4,7 @@ import type {
   ParityCommandType,
   ParityDeviceStatusPayload,
   ParityEventLogPayload,
+  ParitySkipDatePayload,
   ParitySyncSnapshot
 } from "../shared/types";
 import type { AppLogger } from "../main/logger";
@@ -39,14 +40,31 @@ interface ParitySyncRequestBody {
   events: ParityEventLogPayload[];
 }
 
+interface SkipSyncRequestBody {
+  deviceId: string;
+  operation: "list-skips" | "upsert-skip" | "delete-skip";
+  skipDate?: string;
+  actionKey?: "clock-in" | "clock-out" | null;
+  reason?: string | null;
+  source?: "desktop-local" | "webapp-command" | "manual-import";
+}
+
+interface SkipSyncListResponse {
+  success?: boolean;
+  skips?: ParitySkipDatePayload[];
+}
+
 interface ParitySyncDependencies {
   buildDeviceStatusPayload: () => ParityDeviceStatusPayload;
+  mergeRemoteSkippedDates?: (dates: string[]) => number;
   fetchFn?: typeof fetch;
 }
 
 export class ParitySyncService {
   private heartbeatTimer: NodeJS.Timeout | null = null;
+  private skipSyncTimer: NodeJS.Timeout | null = null;
   private inFlight = false;
+  private skipInFlight = false;
   private lastStartedAt: string | null = null;
   private lastStoppedAt: string | null = null;
   private lastCheckedAt: string | null = null;
@@ -55,6 +73,15 @@ export class ParitySyncService {
   private lastError: string | null = null;
   private publishCount = 0;
   private failureCount = 0;
+  private lastSkipAttemptAt: string | null = null;
+  private lastSkipSuccessAt: string | null = null;
+  private lastSkipError: string | null = null;
+  private skipSyncCount = 0;
+  private skipUploadCount = 0;
+  private skipDeleteCount = 0;
+  private skipFailureCount = 0;
+  private skipRowsReceived = 0;
+  private skipRowsApplied = 0;
   private hasLoggedDisabled = false;
 
   constructor(
@@ -91,12 +118,25 @@ export class ParitySyncService {
     }, this.heartbeatIntervalMs());
 
     void this.publishStatus("startup");
+
+    if (this.config.paritySync.skipSyncEnabled) {
+      this.skipSyncTimer = setInterval(() => {
+        void this.syncSkipDates("interval");
+      }, this.skipSyncIntervalMs());
+
+      void this.syncSkipDates("startup");
+    }
   }
 
   stop(): void {
     if (this.heartbeatTimer) {
       clearInterval(this.heartbeatTimer);
       this.heartbeatTimer = null;
+    }
+
+    if (this.skipSyncTimer) {
+      clearInterval(this.skipSyncTimer);
+      this.skipSyncTimer = null;
     }
 
     if (this.lastStartedAt) {
@@ -112,7 +152,7 @@ export class ParitySyncService {
 
   getStatus(): ParitySyncSnapshot {
     const effectiveSettings = this.effectiveSettings();
-    const active = Boolean(this.heartbeatTimer);
+    const active = Boolean(this.heartbeatTimer || this.skipSyncTimer);
     const enabled = this.config.paritySync.enabled;
     const configured = Boolean(effectiveSettings);
 
@@ -141,6 +181,19 @@ export class ParitySyncService {
       lastError: this.lastError,
       publishCount: this.publishCount,
       failureCount: this.failureCount,
+      skipSync: {
+        enabled: enabled && this.config.paritySync.skipSyncEnabled,
+        active: Boolean(this.skipSyncTimer),
+        lastAttemptAt: this.lastSkipAttemptAt,
+        lastSuccessAt: this.lastSkipSuccessAt,
+        lastError: this.lastSkipError,
+        syncCount: this.skipSyncCount,
+        uploadCount: this.skipUploadCount,
+        deleteCount: this.skipDeleteCount,
+        failureCount: this.skipFailureCount,
+        rowsReceived: this.skipRowsReceived,
+        rowsApplied: this.skipRowsApplied
+      },
       note: this.note(enabled, configured, active)
     };
   }
@@ -183,6 +236,123 @@ export class ParitySyncService {
     return this.getStatus();
   }
 
+  async syncSkipDates(source = "manual"): Promise<ParitySyncSnapshot> {
+    if (this.skipInFlight) {
+      return this.getStatus();
+    }
+
+    if (!this.config.paritySync.enabled || !this.config.paritySync.skipSyncEnabled) {
+      return this.getStatus();
+    }
+
+    const settings = this.effectiveSettings();
+    if (!settings) {
+      this.lastSkipError = null;
+      this.logger.info("Supabase skip sync not sent: URL, publishable key, or device id is not configured.");
+      return this.getStatus();
+    }
+
+    this.skipInFlight = true;
+    this.lastSkipAttemptAt = new Date().toISOString();
+    this.lastCheckedAt = this.lastSkipAttemptAt;
+
+    try {
+      const response = await this.skipRequest(settings, {
+        deviceId: this.config.paritySync.deviceId,
+        operation: "list-skips"
+      }) as SkipSyncListResponse;
+      const remoteSkips = sanitizeSkipRows(response.skips ?? [], this.config.paritySync.deviceId);
+      const dates = uniqueSorted(remoteSkips.map((skip) => skip.skipDate));
+      const applied = this.dependencies.mergeRemoteSkippedDates?.(dates) ?? 0;
+
+      this.skipRowsReceived = remoteSkips.length;
+      this.skipRowsApplied += applied;
+      this.skipSyncCount += 1;
+      this.lastSkipSuccessAt = new Date().toISOString();
+      this.lastSkipError = null;
+      this.logger.info(`Supabase skip sync ${source} received ${remoteSkips.length} skip row(s); applied ${applied} local skip date(s).`);
+    } catch (error) {
+      this.skipFailureCount += 1;
+      this.lastSkipError = sanitizeError(error);
+      this.logger.warn(`Supabase skip sync failed: ${this.lastSkipError}`);
+    } finally {
+      this.skipInFlight = false;
+    }
+
+    return this.getStatus();
+  }
+
+  async upsertSkipDate(skipDate: string, reason = "Desktop local skip"): Promise<ParitySyncSnapshot> {
+    if (!this.config.paritySync.enabled || !this.config.paritySync.skipSyncEnabled) {
+      return this.getStatus();
+    }
+
+    const settings = this.effectiveSettings();
+    const sanitizedDate = sanitizeDateText(skipDate);
+    if (!settings || !sanitizedDate) {
+      return this.getStatus();
+    }
+
+    this.lastSkipAttemptAt = new Date().toISOString();
+    this.lastCheckedAt = this.lastSkipAttemptAt;
+
+    try {
+      await this.skipRequest(settings, {
+        deviceId: this.config.paritySync.deviceId,
+        operation: "upsert-skip",
+        skipDate: sanitizedDate,
+        actionKey: null,
+        reason: sanitizeStatusText(reason, 500),
+        source: "desktop-local"
+      });
+      this.skipUploadCount += 1;
+      this.lastSkipSuccessAt = new Date().toISOString();
+      this.lastSkipError = null;
+      this.logger.info(`Supabase skip upsert sent for ${sanitizedDate}. Scheduling state only; no configured-site action was attempted.`);
+    } catch (error) {
+      this.skipFailureCount += 1;
+      this.lastSkipError = sanitizeError(error);
+      this.logger.warn(`Supabase skip upsert failed: ${this.lastSkipError}`);
+    }
+
+    return this.getStatus();
+  }
+
+  async deleteSkipDate(skipDate: string): Promise<ParitySyncSnapshot> {
+    if (!this.config.paritySync.enabled || !this.config.paritySync.skipSyncEnabled) {
+      return this.getStatus();
+    }
+
+    const settings = this.effectiveSettings();
+    const sanitizedDate = sanitizeDateText(skipDate);
+    if (!settings || !sanitizedDate) {
+      return this.getStatus();
+    }
+
+    this.lastSkipAttemptAt = new Date().toISOString();
+    this.lastCheckedAt = this.lastSkipAttemptAt;
+
+    try {
+      await this.skipRequest(settings, {
+        deviceId: this.config.paritySync.deviceId,
+        operation: "delete-skip",
+        skipDate: sanitizedDate,
+        actionKey: null,
+        source: "desktop-local"
+      });
+      this.skipDeleteCount += 1;
+      this.lastSkipSuccessAt = new Date().toISOString();
+      this.lastSkipError = null;
+      this.logger.info(`Supabase skip delete sent for ${sanitizedDate}. Scheduling state only; no configured-site action was attempted.`);
+    } catch (error) {
+      this.skipFailureCount += 1;
+      this.lastSkipError = sanitizeError(error);
+      this.logger.warn(`Supabase skip delete failed: ${this.lastSkipError}`);
+    }
+
+    return this.getStatus();
+  }
+
   private logDisabledOnce(): void {
     if (this.hasLoggedDisabled) {
       return;
@@ -219,6 +389,26 @@ export class ParitySyncService {
     }
   }
 
+  private async skipRequest(settings: EffectiveParitySyncSettings, body: SkipSyncRequestBody): Promise<unknown> {
+    const endpoint = new URL("/functions/v1/alilos-skip-sync", settings.supabaseUrl);
+    const fetchFn = this.dependencies.fetchFn ?? fetch;
+    const response = await fetchFn(endpoint.toString(), {
+      method: "POST",
+      headers: {
+        "apikey": settings.publishableKey,
+        "Authorization": `Bearer ${settings.publishableKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(sanitizeSkipRequestBody(body))
+    });
+
+    if (!response.ok) {
+      throw new Error(`Supabase skip sync proxy returned HTTP ${response.status}.`);
+    }
+
+    return response.json();
+  }
+
   private effectiveSettings(): EffectiveParitySyncSettings | null {
     const supabaseUrl = parseSupabaseUrl(this.config.paritySync.supabaseUrl.trim() || this.envLocal.supabaseUrl.trim());
     const publishableKey = (this.config.paritySync.publishableKey.trim() || this.envLocal.publishableKey.trim()).trim();
@@ -250,6 +440,10 @@ export class ParitySyncService {
     return Math.max(this.config.paritySync.commandPollIntervalSeconds, 30) * 1000;
   }
 
+  private skipSyncIntervalMs(): number {
+    return this.commandPollIntervalMs();
+  }
+
   private note(enabled: boolean, configured: boolean, active: boolean): string {
     if (!enabled) {
       return "Parity sync is disabled by default.";
@@ -264,7 +458,9 @@ export class ParitySyncService {
     }
 
     if (active) {
-      return "Parity status publishing is active; command processing remains disabled.";
+      return this.config.paritySync.skipSyncEnabled
+        ? "Parity status publishing and skip sync are active; command processing remains disabled."
+        : "Parity status publishing is active; command processing remains disabled.";
     }
 
     return "Parity sync is configured but idle.";
@@ -290,6 +486,47 @@ function buildStatusEvent(payload: ParityDeviceStatusPayload, source: string): P
       commandProcessing: false,
       directTableWrite: false
     }
+  };
+}
+
+function sanitizeSkipRequestBody(body: SkipSyncRequestBody): SkipSyncRequestBody {
+  const sanitized: SkipSyncRequestBody = {
+    deviceId: sanitizeUuidLike(body.deviceId),
+    operation: body.operation
+  };
+
+  const skipDate = sanitizeDateText(body.skipDate ?? null);
+  if (skipDate) {
+    sanitized.skipDate = skipDate;
+  }
+
+  sanitized.actionKey = body.actionKey === "clock-in" || body.actionKey === "clock-out" ? body.actionKey : null;
+  sanitized.reason = sanitizeStatusText(body.reason, 500);
+  sanitized.source = body.source === "webapp-command" || body.source === "manual-import" ? body.source : "desktop-local";
+
+  return sanitized;
+}
+
+function sanitizeSkipRows(rows: ParitySkipDatePayload[], expectedDeviceId: string): ParitySkipDatePayload[] {
+  return rows
+    .map((row) => sanitizeSkipRow(row, expectedDeviceId))
+    .filter((row): row is ParitySkipDatePayload => Boolean(row));
+}
+
+function sanitizeSkipRow(row: ParitySkipDatePayload, expectedDeviceId: string): ParitySkipDatePayload | null {
+  const deviceId = sanitizeUuidLike(row.deviceId);
+  const skipDate = sanitizeDateText(row.skipDate);
+
+  if (deviceId !== expectedDeviceId || !skipDate) {
+    return null;
+  }
+
+  return {
+    deviceId,
+    skipDate,
+    actionKey: row.actionKey === "clock-in" || row.actionKey === "clock-out" ? row.actionKey : null,
+    reason: sanitizeStatusText(row.reason, 500),
+    source: row.source === "webapp-command" || row.source === "manual-import" ? row.source : "desktop-local"
   };
 }
 
@@ -395,6 +632,10 @@ function sanitizeIsoText(value: string): string {
 function sanitizeDateText(value: string | null): string | null {
   const text = String(value ?? "").trim();
   return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : null;
+}
+
+function uniqueSorted(values: string[]): string[] {
+  return [...new Set(values.filter((value) => /^\d{4}-\d{2}-\d{2}$/.test(value)))].sort();
 }
 
 function parseSupabaseUrl(value: string): URL | null {

@@ -40,7 +40,7 @@ Telegram remains useful as an existing local notification/fallback path, but Tel
 | Skip next action | Partially implemented | Local skip dates exist; webapp/Supabase command path missing. |
 | Local logs | Implemented | JSON-line logs under Electron userData. |
 | Supabase logs | Partially implemented | PARITY2 schema exists; PARITY4 can publish conservative parity status events only when enabled and `logUploadEnabled` is true. |
-| Supabase skip dates | Partially implemented | PARITY2 schema exists; desktop/webapp sync is missing. |
+| Supabase skip dates | Partially implemented | PARITY5 desktop/Edge Function sync exists and is disabled by default; webapp controls are still missing. |
 | Supabase command requests/results | Partially implemented | PARITY2 schema exists; command processing is missing. |
 | Webapp monitoring | Missing | Planned PWA/mobile status dashboard only. |
 | Webapp manual controls | Missing | Future skip/status/recalculate/dry-run/guarded action controls through Supabase. |
@@ -157,3 +157,11 @@ The function accepts POST-only sanitized status payloads, rejects forbidden keys
 `docs/PARITY_STATUS_DEPLOYMENT.md` documents safe deployment and smoke testing for `alilos-parity-status`, including Supabase CLI checks, server-only Edge Function secrets, existing-device prerequisites, desktop parity-sync config prerequisites, placeholder-only curl testing, expected database checks, common failures, and staged desktop smoke testing.
 
 `docs/examples/parity-status-smoke.json` provides a placeholder-only sanitized payload. PARITY4C does not deploy the function, add secrets, commit project refs/keys/device ids, weaken RLS, process commands, implement a webapp, or enable desktop sync by default.
+
+## PARITY5 Skip Sync Result
+
+PARITY5 adds `supabase/functions/alilos-skip-sync/index.ts` for server-side skip-date sync. The function supports POST-only `list-skips`, `upsert-skip`, and `delete-skip`, requires a registered non-personal device id, validates allowed date/action/source fields, rejects forbidden keys and tokenized/sensitive strings, and writes `skip_dates` using the Edge Function service-role environment only.
+
+The desktop `ParitySyncService` can fetch remote skip rows, upsert local skips, and delete local unskips only when both `paritySync.enabled` and `paritySync.skipSyncEnabled` are true. Defaults remain disabled. Remote rows are applied conservatively to local scheduling by adding skipped dates only; an empty or missing remote list does not delete local skips. Because current local scheduling stores whole-day skips, action-specific remote skip rows are treated as whole-day local skips. This may over-skip, but it fails safe by preventing unintended actions.
+
+PARITY5 does not process command requests, implement a webapp, change configured-site execution behavior, weaken RLS, expose service-role keys to desktop/webapp clients, or approve unattended execution. Deployment and smoke testing are documented in `docs/PARITY_SKIP_SYNC_DEPLOYMENT.md`.

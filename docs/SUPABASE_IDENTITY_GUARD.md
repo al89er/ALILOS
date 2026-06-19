@@ -6,7 +6,7 @@ The guard exists to prevent accidental migrations, database pushes, function dep
 
 ## Planned Role
 
-Supabase is planned as the shared backend for the future webapp/PWA sync/control plane. It is not required for scheduled local desktop operation. This repository currently has the S2A status-only heartbeat schema migration, an S2B disabled-by-default heartbeat sender skeleton, an S3B schedule/completion schema migration, and a PARITY2 skip/log/status/command schema migration. It still has no hosted webapp/PWA, runtime schedule/completion sync, runtime skip/log/status/command sync, or remote command/control queue processing.
+Supabase is planned as the shared backend for the future webapp/PWA sync/control plane. It is not required for scheduled local desktop operation. This repository currently has the S2A status-only heartbeat schema migration, an S2B disabled-by-default heartbeat sender skeleton, an S3B schedule/completion schema migration, a PARITY2 skip/log/status/command schema migration, PARITY4 status publishing through an Edge Function, and PARITY5 skip sync through an Edge Function. Status and skip sync remain disabled by default. It still has no hosted webapp/PWA, runtime schedule/completion sync, or remote command/control queue processing.
 
 The agreed roadmap is:
 
@@ -86,6 +86,16 @@ The function validates the sanitized desktop status shape, maps `deviceStatus.de
 The proxy rejects forbidden top-level or nested keys and suspicious string values for credentials, passwords, cookies, raw HTML, screenshots, full or tokenized URLs, opaque `link=` values, selectors, scripts, forms, Fortinet hidden values such as `magic` / `4Tredir`, bearer tokens, Telegram bot token patterns, and service-role-looking client keys. Direct table privileges for `anon` and `authenticated` remain closed. No command processing, skip sync, schedule/completion sync, user identity creation, or webapp is implemented by PARITY4B.
 
 PARITY4C deployment and smoke-test steps are documented in `docs/PARITY_STATUS_DEPLOYMENT.md`. The placeholder-only request body is `docs/examples/parity-status-smoke.json`. Manual smoke testing should use placeholders only and a pre-registered non-personal device UUID. Do not use real service-role keys, real staff identity, credentials, cookies, tokenized URLs, `link=` values, screenshots, raw HTML, selectors, scripts, or form values in manual test payloads.
+
+## PARITY5 Skip Sync
+
+`supabase/functions/alilos-skip-sync/index.ts` is the server-side endpoint for skip-date sync. It accepts POST requests only and supports constrained `list-skips`, `upsert-skip`, and `delete-skip` operations. It requires a valid registered `deviceId`, an allowed operation, ISO `skipDate` where required, `actionKey` null or `clock-in` / `clock-out`, and `source` limited to `desktop-local`, `webapp-command`, or `manual-import`.
+
+The desktop uses only a publishable/anon key. The Edge Function uses `SUPABASE_SERVICE_ROLE_KEY` only from the server environment. Direct table privileges for `anon` and `authenticated` remain closed.
+
+Desktop skip sync is disabled by default and requires both `paritySync.enabled` and `paritySync.skipSyncEnabled`. Remote skip rows can only affect scheduling skip state. They cannot trigger configured-site navigation, confirmation, clicking, command processing, credentials, or browser automation. Current local scheduling supports whole-day skipped dates, so remote action-specific rows are conservatively applied as whole-day skips. Remote absence does not remove local skips; disagreement preserves skips.
+
+Deployment and smoke testing are documented in `docs/PARITY_SKIP_SYNC_DEPLOYMENT.md`. No webapp or command queue processing is implemented in PARITY5.
 
 ## S1 Proposed Schema Outline
 

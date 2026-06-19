@@ -52,7 +52,7 @@ Worker-side files live in `src/worker`:
 | `automation-monitor.ts` | Phase 6A automation monitor that records due schedule events, prepares/checks the configured site profile in dry-run mode, and simulates web-action telemetry without clicking. |
 | `automation-audit.ts` | Bounded sanitized automation audit event persistence. |
 | `heartbeat-service.ts` | Disabled-by-default heartbeat sender and status snapshot built from sanitized app state. |
-| `parity-sync-service.ts` | Disabled-by-default parity-sync service for future Supabase/webapp monitoring/control. PARITY4 can publish sanitized status to the PARITY4B Edge Function proxy when explicitly enabled; command processing remains unimplemented. |
+| `parity-sync-service.ts` | Disabled-by-default parity-sync service for future Supabase/webapp monitoring/control. PARITY4 can publish sanitized status to the PARITY4B Edge Function proxy, and PARITY5 can sync skip dates through the skip proxy when explicitly enabled; command processing remains unimplemented. |
 | `scheduler.ts` | Daily schedule generation, weekend/skip handling, due/grace/missed states, status transition logging. |
 | `reminder-service.ts` | 30-second reminder evaluation, system notifications, Telegram reminders, duplicate suppression, notification-state retention. |
 | `browser-controller.ts` | Playwright persistent browser context, configured-site navigation/status classification, target button detection, guarded DOM clicks, test target diagnostics, auto-login form interaction, post-click verification. |
@@ -85,8 +85,9 @@ Supabase Edge Functions live under `supabase/functions`:
 | Path | Responsibility |
 | --- | --- |
 | `alilos-parity-status/index.ts` | POST-only parity status proxy. It accepts sanitized desktop `deviceStatus` plus optional generated events, rejects forbidden keys/tokenized values, requires an existing `devices.device_id`, upserts `heartbeats`, inserts optional sanitized `event_logs`, and keeps service-role use server-side only. |
+| `alilos-skip-sync/index.ts` | POST-only skip-date sync proxy. It supports constrained `list-skips`, `upsert-skip`, and `delete-skip`, rejects forbidden keys/tokenized values, requires an existing `devices.device_id`, writes only `skip_dates`, and keeps service-role use server-side only. |
 
-The desktop still uses only publishable/anon credentials when parity sync is explicitly enabled. Direct `anon` / `authenticated` table privileges remain closed, no command processing is implemented, and no webapp exists in this repository.
+The desktop still uses only publishable/anon credentials when parity sync is explicitly enabled. Direct `anon` / `authenticated` table privileges remain closed, no command processing is implemented, and no webapp exists in this repository. Skip sync is scheduling-only and is disabled by default.
 
 ## Renderer
 

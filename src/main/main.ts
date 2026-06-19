@@ -219,7 +219,8 @@ app.whenReady().then(() => {
   });
   heartbeatService = new HeartbeatService(config, logger, buildHeartbeatPayload, configStore.supabaseEnvLocal, app.getVersion());
   paritySyncService = new ParitySyncService(config, logger, configStore.supabaseEnvLocal, {
-    buildDeviceStatusPayload: buildParityDeviceStatusPayload
+    buildDeviceStatusPayload: buildParityDeviceStatusPayload,
+    mergeRemoteSkippedDates: (dates) => scheduler.mergeRemoteSkippedDates(dates)
   });
   automationMonitor = new AutomationMonitor(
     config,
@@ -272,26 +273,34 @@ app.whenReady().then(() => {
 
   ipcMain.handle("dashboard:get-snapshot", buildSnapshot);
   ipcMain.handle("schedule:skip-today", async () => {
+    const dateKey = formatDateKey(new Date());
     scheduler.skipToday();
-    reminderService.clearLogMarkersForDate(formatDateKey(new Date()));
+    await paritySyncService.upsertSkipDate(dateKey, "Desktop skip today");
+    reminderService.clearLogMarkersForDate(dateKey);
     await broadcastSnapshot();
     return buildSnapshot();
   });
   ipcMain.handle("schedule:unskip-today", async () => {
+    const dateKey = formatDateKey(new Date());
     scheduler.unskipToday();
-    reminderService.clearLogMarkersForDate(formatDateKey(new Date()));
+    await paritySyncService.deleteSkipDate(dateKey);
+    reminderService.clearLogMarkersForDate(dateKey);
     await broadcastSnapshot();
     return buildSnapshot();
   });
   ipcMain.handle("schedule:skip-tomorrow", async () => {
+    const dateKey = formatDateKey(addDays(new Date(), 1));
     scheduler.skipTomorrow();
-    reminderService.clearLogMarkersForDate(formatDateKey(addDays(new Date(), 1)));
+    await paritySyncService.upsertSkipDate(dateKey, "Desktop skip tomorrow");
+    reminderService.clearLogMarkersForDate(dateKey);
     await broadcastSnapshot();
     return buildSnapshot();
   });
   ipcMain.handle("schedule:unskip-tomorrow", async () => {
+    const dateKey = formatDateKey(addDays(new Date(), 1));
     scheduler.unskipTomorrow();
-    reminderService.clearLogMarkersForDate(formatDateKey(addDays(new Date(), 1)));
+    await paritySyncService.deleteSkipDate(dateKey);
+    reminderService.clearLogMarkersForDate(dateKey);
     await broadcastSnapshot();
     return buildSnapshot();
   });

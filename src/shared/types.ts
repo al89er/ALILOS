@@ -337,6 +337,20 @@ export interface ParitySkipDatePayload {
   source: "desktop-local" | "webapp-command" | "manual-import";
 }
 
+export interface ParitySkipSyncSnapshot {
+  enabled: boolean;
+  active: boolean;
+  lastAttemptAt: string | null;
+  lastSuccessAt: string | null;
+  lastError: string | null;
+  syncCount: number;
+  uploadCount: number;
+  deleteCount: number;
+  failureCount: number;
+  rowsReceived: number;
+  rowsApplied: number;
+}
+
 export interface ParityCommandRequestPayload {
   id: string;
   deviceId: string;
@@ -383,6 +397,7 @@ export interface ParitySyncSnapshot {
   lastError: string | null;
   publishCount: number;
   failureCount: number;
+  skipSync: ParitySkipSyncSnapshot;
   note: string;
 }
 
