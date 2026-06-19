@@ -628,7 +628,7 @@ function renderAutomationTelemetry(snapshot: RendererDashboardSnapshot): void {
   elements.paritySyncStatus.textContent = paritySync.enabled
     ? paritySync.configured ? paritySyncHealthLabel(paritySync.health) : "Needs Supabase config"
     : "Disabled";
-  elements.paritySyncDetail.textContent = `${paritySync.note} Endpoint: ${paritySync.endpointHost ?? "none"}. Commands: ${paritySync.featureFlags.commandSyncEnabled ? "enabled" : "disabled"}. Last check: ${formatOptionalTime(paritySync.lastCheckedAt)}.`;
+  elements.paritySyncDetail.textContent = `${paritySync.note} Endpoint: ${paritySync.endpointHost ?? "none"}. Last attempt: ${formatOptionalTime(paritySync.lastAttemptAt)}. Last success: ${formatOptionalTime(paritySync.lastSuccessAt)}. Published: ${paritySync.publishCount}; failures: ${paritySync.failureCount}. Error: ${paritySync.lastError ?? "--"}. Commands: disabled.`;
 
   const auditItems = automation.auditEvents.length > 0
     ? automation.auditEvents.map((event) => {

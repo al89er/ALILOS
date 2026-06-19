@@ -65,6 +65,18 @@ Security boundaries:
 - Do not send credentials, cookies, raw HTML, screenshots, full/tokenized URLs, opaque `link=` values, selectors, scripts, forms, or hidden portal values through parity-sync payloads.
 - Do not process remote commands until a later approved PARITY step defines claim/execute/result behavior.
 
+## PARITY4 Status Publishing
+
+PARITY4 implements the first runtime parity-sync publisher, still disabled by default. When explicitly enabled with a valid Supabase URL and publishable/anon key, the desktop posts sanitized device/status payloads to a future Edge Function/API proxy endpoint derived from the configured Supabase project:
+
+```text
+/functions/v1/alilos-parity-status
+```
+
+The desktop does not write directly to `devices`, `heartbeats`, `event_logs`, or other tables in PARITY4. This preserves the existing RLS posture where direct `anon` / `authenticated` table privileges are revoked. Production publishing therefore requires a future server-side proxy implementation with service-role use kept out of desktop and webapp clients.
+
+PARITY4 may include a conservative generated status event when `paritySync.logUploadEnabled` is true. It does not upload arbitrary local log lines. It does not process command requests, sync skip dates, sync schedules/completions, implement a webapp, or upload credentials.
+
 ## S1 Proposed Schema Outline
 
 This is a planning outline only. Do not create migrations, runtime Supabase clients, remote writes, hosted webapp code, or command/control behavior until the relevant later phase is explicitly approved.

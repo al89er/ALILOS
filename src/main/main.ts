@@ -16,7 +16,7 @@ import { AppLogger } from "./logger";
 import { decryptSecret, encryptSecret, isSecureStorageAvailable } from "./secret-store";
 import { TelegramService } from "./telegram-service";
 import { createAppTray } from "./tray";
-import type { AppConfig, AppSettingsInput, AppSettingsSnapshot, AttendanceActionType, AttendanceCompletionRecord, AttendanceExecutionResult, AttendancePlaceholder, DashboardSnapshot, ExecutionMode, HeartbeatPayload, NetworkMonitorSettings, PerakamAutoLoginAttemptResult, PerakamAutoLoginInput, PerakamAutoLoginSnapshot, PerakamPageStatus, PerakamStatusSnapshot, ReminderSettings, ScheduleSnapshot, TelegramSecretStatus, TelegramSettings, TelegramSettingsInput, TelegramSettingsSnapshot, TestClickTargetId, TimeWindow } from "../shared/types";
+import type { AppConfig, AppSettingsInput, AppSettingsSnapshot, AttendanceActionType, AttendanceCompletionRecord, AttendanceExecutionResult, AttendancePlaceholder, DashboardSnapshot, ExecutionMode, HeartbeatPayload, NetworkMonitorSettings, ParityDeviceStatusPayload, PerakamAutoLoginAttemptResult, PerakamAutoLoginInput, PerakamAutoLoginSnapshot, PerakamPageStatus, PerakamStatusSnapshot, ReminderSettings, ScheduleActionSnapshot, ScheduleSnapshot, TelegramSecretStatus, TelegramSettings, TelegramSettingsInput, TelegramSettingsSnapshot, TestClickTargetId, TimeWindow } from "../shared/types";
 
 let mainWindow: BrowserWindow | null = null;
 let isQuitting = false;
@@ -218,7 +218,9 @@ app.whenReady().then(() => {
     }
   });
   heartbeatService = new HeartbeatService(config, logger, buildHeartbeatPayload, configStore.supabaseEnvLocal, app.getVersion());
-  paritySyncService = new ParitySyncService(config, logger, configStore.supabaseEnvLocal);
+  paritySyncService = new ParitySyncService(config, logger, configStore.supabaseEnvLocal, {
+    buildDeviceStatusPayload: buildParityDeviceStatusPayload
+  });
   automationMonitor = new AutomationMonitor(
     config,
     configStore,
@@ -959,6 +961,45 @@ function buildHeartbeatPayload(): HeartbeatPayload {
     statusText: sanitizeHeartbeatText(`worker=${workerSnapshot.state}; executionMode=${config.automation.executionMode}`, 500),
     lastErrorText: lastSanitizedErrorSummary(network.sanitizedError, perakam.lastError, browserController.status().lastError, telegram.lastError, reminderService.snapshot().lastError)
   };
+}
+
+function buildParityDeviceStatusPayload(): ParityDeviceStatusPayload {
+  const workerSnapshot = worker.snapshot();
+  const network = networkMonitor.snapshot();
+  const browser = browserController.status();
+  const perakam = browserController.getPerakamStatus(config.perakam.dashboardUrl);
+  const schedule = scheduler.getSnapshot();
+  const nextAction = nextRelevantScheduleAction(schedule);
+  const completions = allAttendanceCompletions(config);
+  const parityStatus = paritySyncService?.getStatus();
+
+  return {
+    deviceId: config.paritySync.deviceId,
+    deviceLabel: config.paritySync.deviceLabel,
+    appVersion: app.getVersion(),
+    appStatus: sanitizeHeartbeatText(appStatusText(), 80) ?? "unknown",
+    workerState: workerSnapshot.state,
+    executionMode: config.automation.executionMode,
+    networkStatus: sanitizeHeartbeatText(`connectivity=${network.connectivityState}; configuredSite=${network.perakamReachabilityState}`, 120) ?? "unknown",
+    captivePortalStatus: network.captivePortal.state,
+    configuredSiteStatus: perakam.status,
+    browserState: browser.state,
+    syncHealth: parityStatus?.health ?? "disabled",
+    nextActionStatus: nextAction?.status ?? null,
+    nextScheduleSummary: nextAction
+      ? sanitizeHeartbeatText(`${nextAction.action}:${nextAction.status}`, 240)
+      : sanitizeHeartbeatText(schedule.summary, 240),
+    completionSummary: sanitizeHeartbeatText(`localCompletionRecords=${completions.length}`, 240),
+    lastErrorText: lastSanitizedErrorSummary(network.sanitizedError, perakam.lastError, browser.lastError, reminderService.snapshot().lastError),
+    recordedAt: new Date().toISOString()
+  };
+}
+
+function nextRelevantScheduleAction(schedule: ScheduleSnapshot): ScheduleActionSnapshot | null {
+  return schedule.actions.find((item) => item.status === "due-now" || item.status === "within-grace-period")
+    ?? schedule.actions.find((item) => item.status === "upcoming")
+    ?? schedule.actions.find((item) => item.status === "missed")
+    ?? null;
 }
 
 function lastSanitizedErrorSummary(...messages: Array<string | null>): string | null {

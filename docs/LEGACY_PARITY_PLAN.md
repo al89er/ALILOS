@@ -39,7 +39,7 @@ Telegram remains useful as an existing local notification/fallback path, but Tel
 | Skip dates | Implemented | Today/tomorrow skip controls exist locally. |
 | Skip next action | Partially implemented | Local skip dates exist; webapp/Supabase command path missing. |
 | Local logs | Implemented | JSON-line logs under Electron userData. |
-| Supabase logs | Partially implemented | PARITY2 schema exists; runtime publishing is missing. |
+| Supabase logs | Partially implemented | PARITY2 schema exists; PARITY4 can publish conservative parity status events only when enabled and `logUploadEnabled` is true. |
 | Supabase skip dates | Partially implemented | PARITY2 schema exists; desktop/webapp sync is missing. |
 | Supabase command requests/results | Partially implemented | PARITY2 schema exists; command processing is missing. |
 | Webapp monitoring | Missing | Planned PWA/mobile status dashboard only. |
@@ -138,4 +138,10 @@ The migration keeps RLS enabled, revokes direct `anon` / `authenticated` table p
 
 The desktop app now has a disabled-by-default `paritySync` config section and a `ParitySyncService` skeleton. The service exposes read-only health/status, command type/status constants, sanitized payload types, and lifecycle placeholders for future heartbeat/log/skip/command/schedule-completion sync.
 
-PARITY3 does not send Supabase writes, poll or process command requests, implement webapp code, add secrets, or enable unattended execution. Supabase keys for this path must be publishable/anon only; service-role-looking keys are rejected from local parity-sync config.
+PARITY3 does not poll or process command requests, implement webapp code, add secrets, or enable unattended execution. Supabase keys for this path must be publishable/anon only; service-role-looking keys are rejected from local parity-sync config.
+
+## PARITY4 Status Publishing Result
+
+The desktop app now has gated parity status publishing. Publishing requires `paritySync.enabled = true`, a valid Supabase URL, a publishable/anon key, and a valid local device id. Defaults remain disabled.
+
+The publisher sends sanitized device/status payloads, plus a conservative generated status event only when `paritySync.logUploadEnabled` is true. It targets the future Edge Function/API proxy path `/functions/v1/alilos-parity-status` rather than direct table writes, because current migrations intentionally revoke direct `anon` / `authenticated` table privileges. No command polling, command processing, webapp code, skip sync, or schedule/completion sync is implemented in PARITY4.

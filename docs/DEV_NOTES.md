@@ -6,7 +6,8 @@
 - Telegram is paused/deprioritized. Existing Telegram code remains a secondary local notification/command path, but Telegram parity is not required for completion.
 - `docs/LEGACY_PARITY_PLAN.md` is the current parity matrix and fastest PARITY2-PARITY13 sequence.
 - PARITY2 adds schema-only Supabase support for `skip_dates`, `event_logs`, `command_requests`, and `command_events`. Runtime sync and command processing remain disabled/deferred.
-- PARITY3 adds disabled-by-default `paritySync` config, read-only dashboard status, sanitized shared payload/command types, and a no-write `ParitySyncService` skeleton. It does not send Supabase writes or process remote commands.
+- PARITY3 adds disabled-by-default `paritySync` config, read-only dashboard status, sanitized shared payload/command types, and a `ParitySyncService` skeleton.
+- PARITY4 adds gated status publishing through the future Edge Function/API proxy path. It remains disabled by default, uses publishable/anon keys only, sends sanitized device/status payloads, optionally sends generated status events when `logUploadEnabled` is true, and does not process remote commands.
 - Do not implement runtime sync, webapp code, migrations, command/control, captive portal reconnect, or unattended execution from these notes alone.
 - Credentials stay local: configured website credentials and future captive portal credentials must not be sent to Supabase or the webapp, and must not appear in logs/docs. Service-role keys never ship in desktop or webapp clients.
 
@@ -155,6 +156,7 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 - S3B schedule/completion schema migration is drafted.
 - PARITY2 skip/log/status/command schema migration is added.
 - PARITY3 disabled desktop parity-sync skeleton is added.
+- PARITY4 gated parity status publishing is added; proxy endpoint implementation and production write authorization remain future work.
 - S3D schedule/completion write-path decision is documented: future writes should use an Edge Function/API proxy plus explicit device pairing/token.
 - WEB1 web/PWA companion planning is documented in `docs/WEB_COMPANION_PLAN.md`.
 - WEB2 static/read-only web companion UI design is documented in `docs/WEB_COMPANION_PLAN.md`.

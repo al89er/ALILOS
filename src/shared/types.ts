@@ -289,13 +289,19 @@ export interface ParitySyncSettings {
 export interface ParityDeviceStatusPayload {
   deviceId: string;
   deviceLabel: string;
+  appVersion: string;
   appStatus: string;
   workerState: WorkerState;
   executionMode: ExecutionMode;
   networkStatus: string;
+  captivePortalStatus: CaptivePortalState;
   configuredSiteStatus: PerakamPageStatus;
   browserState: BrowserControllerState;
+  syncHealth: ParitySyncHealth;
   nextActionStatus: ScheduleActionStatus | null;
+  nextScheduleSummary: string | null;
+  completionSummary: string | null;
+  lastErrorText: string | null;
   recordedAt: string;
 }
 
@@ -372,7 +378,11 @@ export interface ParitySyncSnapshot {
   lastStartedAt: string | null;
   lastStoppedAt: string | null;
   lastCheckedAt: string | null;
+  lastAttemptAt: string | null;
+  lastSuccessAt: string | null;
   lastError: string | null;
+  publishCount: number;
+  failureCount: number;
   note: string;
 }
 

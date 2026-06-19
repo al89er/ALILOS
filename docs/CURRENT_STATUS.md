@@ -36,7 +36,8 @@
 - S3A docs-only Supabase schedule/completion sync planning is documented for durable backup/recovery of generated daily schedules and completion records.
 - S3B schema-only Supabase migration is drafted for `daily_schedules` and `completion_records`.
 - PARITY2 schema-only Supabase migration is added for `skip_dates`, `event_logs`, `command_requests`, and `command_events`.
-- PARITY3 disabled desktop parity-sync skeleton is implemented: `paritySync` config defaults off, read-only status is exposed in the dashboard, no runtime Supabase writes occur, and no remote commands are processed.
+- PARITY3 disabled desktop parity-sync skeleton is implemented: `paritySync` config defaults off, read-only status is exposed in the dashboard, and no remote commands are processed.
+- PARITY4 parity status publishing is implemented behind `paritySync.enabled`; defaults remain disabled, status payloads are sanitized, optional generated event publishing requires `logUploadEnabled`, and publishing targets a future Edge Function/API proxy rather than direct table writes.
 - WEB1 docs-only web/PWA companion planning is documented in `docs/WEB_COMPANION_PLAN.md`.
 - WEB2 static/read-only web companion UI design is documented in `docs/WEB_COMPANION_PLAN.md`.
 - WEB3 legacy webapp relationship is documented in `docs/WEB_COMPANION_PLAN.md`.
@@ -54,7 +55,7 @@
 - Existing Phase 4D design docs are stale relative to current implementation because guarded execution and auto-login have since been implemented.
 - Settings can edit selected operational values only. Generated schedules, completion records, automation audit events, raw logs, target mappings, credentials, cookies/session data, screenshots, raw HTML, and personal identifiers remain outside editable settings.
 - Supabase heartbeat has a Settings-tab project URL editor and disabled-by-default sender skeleton, but the phone-webapp receiver/dashboard is still not implemented in this repository.
-- Supabase is not required for local scheduled operation. The repository has the S2A heartbeat schema migration, S2B sender skeleton, S3A docs-only schedule/completion sync plan, S3B schema-only schedule/completion migration, PARITY2 schema-only skip/log/status/command support, and PARITY3 disabled desktop sync skeleton; runtime writes, hosted webapp/PWA, and remote command/control queue processing are not implemented.
+- Supabase is not required for local scheduled operation. The repository has the S2A heartbeat schema migration, S2B sender skeleton, S3A docs-only schedule/completion sync plan, S3B schema-only schedule/completion migration, PARITY2 schema-only skip/log/status/command support, PARITY3 disabled desktop sync skeleton, and PARITY4 gated status publishing. Hosted webapp/PWA and remote command/control queue processing are not implemented.
 - The future web/PWA companion remains unimplemented. WEB1 plans a read-only-first mobile status surface that depends on Supabase-synced heartbeat, schedule, and completion data when those sync paths exist.
 - WEB2 defines the first read-only screens and status cards, but no webapp code, dependencies, runtime sync, or controls exist.
 - WEB4 defines display-safe data groups and fake payload examples, but authenticated read policies and runtime sync remain deferred.
