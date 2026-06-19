@@ -76,6 +76,20 @@ This checklist is for safe local Windows desktop use after the P packaging/start
 - Confirm no successful completion record was created unless a legitimate real action was intentionally performed outside this helper.
 - Confirm logs contain sanitized status only.
 
+### RC2 Accelerated Validation Result
+
+- Workplace accelerated evening schedule validation passed.
+- `Recalculate today's schedule` was used with a near-future evening window.
+- Evening action entered due/grace state.
+- Dashboard/control detection passed: hidden sidebar duplicate candidate was ignored and the visible dashboard candidate was found.
+- Confirmation was accepted for validation, then dry-run passed.
+- Dry-run performed no configured Perakam action.
+- Manual-confirm cancel path passed.
+- No real action was performed.
+- No false successful completion record was created.
+- Logs remained sanitized in the checked notes.
+- Fully unattended execution remains no-go.
+
 ## Workplace And Network Checks
 
 - Confirm Perakam dashboard is reachable from the workplace network.

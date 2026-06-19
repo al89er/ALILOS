@@ -15,6 +15,7 @@
 - O3 real-machine observation passed for packaged launch, scripted hide/show, clean quit, sanitized logs, launch-at-login disabled, and completion records `0`.
 - O4 consolidated the O track as mostly complete. Current go/no-go: monitored `manual-confirm`, `dry-run`, and `notify-only` are acceptable; fully unattended real execution remains no-go.
 - RC2 accelerated schedule helper is available from the Schedule tab as `Recalculate today's schedule`; use it only after temporary window changes, prefer `dry-run`, and restore normal windows afterward.
+- RC2 accelerated validation passed: due/grace reached, visible dashboard target detected, hidden sidebar duplicate ignored, dry-run passed, manual-confirm cancel passed, no real action, no false completion record.
 - RC1 monitored real-world observation plan is documented in `docs/OPERATIONAL_READINESS.md`; it is one actual scheduled `manual-confirm` cycle with the user physically present.
 - Next track options: RC small real-world observation tasks when physically ready, S3E Edge Function/API schedule/completion contract planning only after explicit approval, or WEB5 authenticated read model/RLS planning only after explicit approval.
 - Keep `docs/PHASE_4D_MANUAL_CONFIRM_DESIGN.md` as historical design context, but update or supersede stale sections before relying on it for current behavior.
