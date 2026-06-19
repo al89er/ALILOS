@@ -151,3 +151,9 @@ The publisher sends sanitized device/status payloads, plus a conservative genera
 The Supabase Edge Function `supabase/functions/alilos-parity-status/index.ts` now provides the server-side proxy used by PARITY4 desktop publishing. The desktop still uses only a publishable/anon key. The service-role key belongs only in the Edge Function environment and is not committed, stored in desktop config, or exposed to the renderer.
 
 The function accepts POST-only sanitized status payloads, rejects forbidden keys and suspicious tokenized strings, requires the posted desktop `deviceId` to match an existing `devices.device_id`, upserts the latest `heartbeats` row, and optionally inserts sanitized generated `event_logs`. It does not auto-create personal identity, process remote commands, sync skip dates, sync schedule/completion records, or implement a webapp.
+
+## PARITY4C Deployment Runbook Result
+
+`docs/PARITY_STATUS_DEPLOYMENT.md` documents safe deployment and smoke testing for `alilos-parity-status`, including Supabase CLI checks, server-only Edge Function secrets, existing-device prerequisites, desktop parity-sync config prerequisites, placeholder-only curl testing, expected database checks, common failures, and staged desktop smoke testing.
+
+`docs/examples/parity-status-smoke.json` provides a placeholder-only sanitized payload. PARITY4C does not deploy the function, add secrets, commit project refs/keys/device ids, weaken RLS, process commands, implement a webapp, or enable desktop sync by default.

@@ -39,6 +39,7 @@
 - PARITY3 disabled desktop parity-sync skeleton is implemented: `paritySync` config defaults off, read-only status is exposed in the dashboard, and no remote commands are processed.
 - PARITY4 parity status publishing is implemented behind `paritySync.enabled`; defaults remain disabled, status payloads are sanitized, optional generated event publishing requires `logUploadEnabled`, and publishing targets the server-side `/functions/v1/alilos-parity-status` Edge Function rather than direct table writes.
 - PARITY4B adds the Supabase Edge Function proxy for sanitized desktop parity status. It requires an existing `devices.device_id`, upserts `heartbeats`, optionally inserts sanitized `event_logs`, keeps service-role use server-side only, and does not process commands or implement a webapp.
+- PARITY4C documents safe deployment and smoke testing in `docs/PARITY_STATUS_DEPLOYMENT.md`, with placeholder-only curl JSON in `docs/examples/parity-status-smoke.json`.
 - WEB1 docs-only web/PWA companion planning is documented in `docs/WEB_COMPANION_PLAN.md`.
 - WEB2 static/read-only web companion UI design is documented in `docs/WEB_COMPANION_PLAN.md`.
 - WEB3 legacy webapp relationship is documented in `docs/WEB_COMPANION_PLAN.md`.
@@ -92,6 +93,7 @@ The active implementation focus appears to be hardening the guarded manual-confi
 - WEB3 legacy webapp relationship is documented: treat `al89er/perakamwaktu` as reference/fallback, prefer rebuild or isolated future `webapp/`, and copy no legacy code/secrets/config.
 - WEB4 web companion data contracts are documented: heartbeat/status, Perakam/browser/session, network/captive portal, schedule, completion/verification, warnings/events, and sync capability/status.
 - PARITY4B status proxy is added at `/functions/v1/alilos-parity-status`; it accepts sanitized desktop status posts, rejects forbidden keys/values, requires an existing device id, and writes `heartbeats` plus optional `event_logs` server-side only.
+- PARITY4C deployment/smoke runbook is documented. It does not deploy the function, add secrets, commit project refs/keys/device ids, enable desktop sync by default, or change RLS.
 - Parity sync remains disabled by default. When explicitly enabled, the desktop still uses only a publishable/anon key and performs no command/control.
 - Schedule/completion/skip sync and webapp reads remain deferred until auth/pairing/write-path authorization is expanded beyond status publishing.
 

@@ -9,6 +9,7 @@
 - PARITY3 adds disabled-by-default `paritySync` config, read-only dashboard status, sanitized shared payload/command types, and a `ParitySyncService` skeleton.
 - PARITY4 adds gated status publishing through the Edge Function/API proxy path. It remains disabled by default, uses publishable/anon keys only, sends sanitized device/status payloads, optionally sends generated status events when `logUploadEnabled` is true, and does not process remote commands.
 - PARITY4B adds the Supabase Edge Function at `/functions/v1/alilos-parity-status`. The function requires a registered non-personal `device_id`, uses the service-role key only from the Edge Function environment, writes sanitized `heartbeats` and optional generated `event_logs`, and leaves direct `anon` / `authenticated` table privileges closed.
+- PARITY4C documents the deployment/smoke runbook in `docs/PARITY_STATUS_DEPLOYMENT.md` and a placeholder-only payload in `docs/examples/parity-status-smoke.json`; no deployment, secrets, RLS changes, command processing, webapp code, or default sync enablement are included.
 - Do not implement runtime sync, webapp code, migrations, command/control, captive portal reconnect, or unattended execution from these notes alone.
 - Credentials stay local: configured website credentials and future captive portal credentials must not be sent to Supabase or the webapp, and must not appear in logs/docs. Service-role keys never ship in desktop or webapp clients.
 
@@ -159,6 +160,7 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 - PARITY3 disabled desktop parity-sync skeleton is added.
 - PARITY4 gated parity status publishing is added; defaults remain disabled and the desktop uses only publishable/anon credentials.
 - PARITY4B status proxy is added under `supabase/functions/alilos-parity-status`; it performs the server-side `devices` check, `heartbeats` upsert, and optional sanitized `event_logs` insert.
+- PARITY4C deployment/smoke documentation is added. Use it before any live Edge Function deploy or desktop parity sync smoke.
 - S3D schedule/completion write-path decision is documented: future writes should use an Edge Function/API proxy plus explicit device pairing/token.
 - WEB1 web/PWA companion planning is documented in `docs/WEB_COMPANION_PLAN.md`.
 - WEB2 static/read-only web companion UI design is documented in `docs/WEB_COMPANION_PLAN.md`.

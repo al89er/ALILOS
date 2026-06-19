@@ -1,0 +1,21 @@
+{
+  "deviceStatus": {
+    "deviceId": "<existing-device-uuid>",
+    "deviceLabel": "<safe-device-label>",
+    "appVersion": "0.1.0",
+    "appStatus": "ready",
+    "workerState": "running",
+    "executionMode": "manual-confirm",
+    "networkStatus": "online",
+    "captivePortalStatus": "not-detected",
+    "configuredSiteStatus": "dashboard",
+    "browserState": "stopped",
+    "syncHealth": "active",
+    "nextActionStatus": null,
+    "nextScheduleSummary": null,
+    "completionSummary": "localCompletionRecords=0",
+    "lastErrorText": null,
+    "recordedAt": "2026-06-19T00:00:00.000Z"
+  },
+  "events": []
+}

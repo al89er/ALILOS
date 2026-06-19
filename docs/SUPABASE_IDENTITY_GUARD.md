@@ -85,17 +85,7 @@ The function validates the sanitized desktop status shape, maps `deviceStatus.de
 
 The proxy rejects forbidden top-level or nested keys and suspicious string values for credentials, passwords, cookies, raw HTML, screenshots, full or tokenized URLs, opaque `link=` values, selectors, scripts, forms, Fortinet hidden values such as `magic` / `4Tredir`, bearer tokens, Telegram bot token patterns, and service-role-looking client keys. Direct table privileges for `anon` and `authenticated` remain closed. No command processing, skip sync, schedule/completion sync, user identity creation, or webapp is implemented by PARITY4B.
 
-Manual smoke testing should use placeholders only and a pre-registered non-personal device UUID:
-
-```sh
-curl -X POST "https://PROJECT_REF.supabase.co/functions/v1/alilos-parity-status" \
-  -H "Authorization: Bearer PUBLISHABLE_OR_ANON_KEY" \
-  -H "apikey: PUBLISHABLE_OR_ANON_KEY" \
-  -H "Content-Type: application/json" \
-  --data '{"deviceStatus":{"deviceId":"00000000-0000-4000-8000-000000000000","deviceLabel":"A.L.I.L.O.S. desktop","appVersion":"0.1.0","appStatus":"ready","workerState":"running","executionMode":"manual-confirm","networkStatus":"online","captivePortalStatus":"not-detected","configuredSiteStatus":"dashboard","browserState":"stopped","syncHealth":"active","nextActionStatus":null,"nextScheduleSummary":null,"completionSummary":"localCompletionRecords=0","lastErrorText":null,"recordedAt":"2026-06-19T00:00:00.000Z"},"events":[]}'
-```
-
-Do not use real service-role keys, real staff identity, credentials, cookies, tokenized URLs, `link=` values, screenshots, raw HTML, selectors, scripts, or form values in manual test payloads.
+PARITY4C deployment and smoke-test steps are documented in `docs/PARITY_STATUS_DEPLOYMENT.md`. The placeholder-only request body is `docs/examples/parity-status-smoke.json`. Manual smoke testing should use placeholders only and a pre-registered non-personal device UUID. Do not use real service-role keys, real staff identity, credentials, cookies, tokenized URLs, `link=` values, screenshots, raw HTML, selectors, scripts, or form values in manual test payloads.
 
 ## S1 Proposed Schema Outline
 

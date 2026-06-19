@@ -5,7 +5,7 @@
 - Use `docs/LEGACY_PARITY_PLAN.md` as the current completion target and parity matrix.
 - Complete app means: desktop scheduled click engine, local auto-login/stale recovery, captive portal local reconnect, Supabase skip/log/status/schedule/completion/command sync, webapp/PWA monitoring/control, no normal-browser interference, and no sensitive data in Supabase/logs.
 - Telegram is paused/deprioritized. Keep existing Telegram behavior secondary; do not make Telegram parity a completion blocker.
-- Fastest build sequence: PARITY2 Supabase skips/logs/status/commands schema, PARITY3 disabled desktop sync skeleton, PARITY4 heartbeat/status/log publishing, PARITY4B status proxy, PARITY5 skip-date sync, PARITY6 schedule/completion sync, PARITY7 dry-run command processing, PARITY8 read-only webapp monitoring, PARITY9 webapp skip/status/recalculate/dry-run controls, PARITY10 guarded configured-action command, PARITY11 startup/sleep-wake field validation, PARITY12 captive portal local reconnect, PARITY13 end-to-end validation. PARITY4 status publishing and PARITY4B proxy are implemented but desktop sync remains disabled by default; continue with PARITY5 only after explicit approval.
+- Fastest build sequence: PARITY2 Supabase skips/logs/status/commands schema, PARITY3 disabled desktop sync skeleton, PARITY4 heartbeat/status/log publishing, PARITY4B status proxy, PARITY4C deployment/smoke runbook, PARITY5 skip-date sync, PARITY6 schedule/completion sync, PARITY7 dry-run command processing, PARITY8 read-only webapp monitoring, PARITY9 webapp skip/status/recalculate/dry-run controls, PARITY10 guarded configured-action command, PARITY11 startup/sleep-wake field validation, PARITY12 captive portal local reconnect, PARITY13 end-to-end validation. PARITY4 status publishing, PARITY4B proxy, and PARITY4C runbook are implemented but desktop sync remains disabled by default; continue with PARITY5 only after explicit approval.
 
 ## Immediate Next Safe Steps
 
@@ -43,6 +43,7 @@ Current Supabase status:
 - PARITY3 disabled desktop parity-sync skeleton added; no runtime writes or command processing yet.
 - PARITY4 gated parity status publishing added; disabled by default, proxy-targeted, and no command processing yet.
 - PARITY4B status proxy added at `/functions/v1/alilos-parity-status`; it requires a registered device id, writes sanitized `heartbeats` and optional generated `event_logs` server-side, and keeps service-role use out of desktop/webapp clients.
+- PARITY4C deployment/smoke runbook added in `docs/PARITY_STATUS_DEPLOYMENT.md`; use placeholder-only `docs/examples/parity-status-smoke.json` for curl shape.
 - S3D write-path decision documented: prefer Edge Function/API proxy plus explicit device pairing/token.
 - Parity sync remains disabled by default.
 - Skip sync, schedule/completion sync, command processing, and webapp access remain deferred until auth/pairing/write-path authorization is expanded beyond status publishing.
