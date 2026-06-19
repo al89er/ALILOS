@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import type { AppConfig, AttendanceCompletionRecord, AutomationAuditEvent, ExecutionMode, HeartbeatSettings } from "../shared/types";
+import type { AppConfig, AttendanceCompletionRecord, AutomationAuditEvent, ExecutionMode, HeartbeatSettings, ParitySyncSettings } from "../shared/types";
 
 export interface EnvLocalTelegramSecrets {
   botToken: string;
@@ -35,6 +35,19 @@ function createDefaultConfig(): AppConfig {
       supabaseUrl: "",
       publishableKey: "",
       intervalSeconds: 60
+    },
+    paritySync: {
+      enabled: false,
+      supabaseUrl: "",
+      publishableKey: "",
+      deviceId: randomUUID(),
+      deviceLabel: "A.L.I.L.O.S. desktop",
+      heartbeatIntervalSeconds: 60,
+      commandPollIntervalSeconds: 60,
+      logUploadEnabled: false,
+      skipSyncEnabled: false,
+      commandSyncEnabled: false,
+      scheduleCompletionSyncEnabled: false
     },
     attendance: {
       clockInPlaceholder: "08:00",
@@ -186,6 +199,7 @@ export class ConfigStore {
         publishableKey: sanitizeEnvSecret(parsedHeartbeat?.publishableKey),
         intervalSeconds: clampNumber(parsedHeartbeat?.intervalSeconds, 30, 24 * 60 * 60, defaultConfig.heartbeat.intervalSeconds)
       },
+      paritySync: normalizeParitySyncSettings(parsed.paritySync),
       attendance: {
         ...defaultConfig.attendance,
         ...parsed.attendance,
@@ -241,7 +255,12 @@ export class ConfigStore {
       }
     };
 
-    if (parsedHeartbeat?.deviceId !== normalized.heartbeat.deviceId || !parsed.startup) {
+    if (
+      parsedHeartbeat?.deviceId !== normalized.heartbeat.deviceId
+      || parsed.paritySync?.deviceId !== normalized.paritySync.deviceId
+      || parsed.paritySync?.publishableKey !== normalized.paritySync.publishableKey
+      || !parsed.startup
+    ) {
       this.save(normalized);
     }
 
@@ -355,6 +374,49 @@ function normalizeExecutionMode(value: unknown): ExecutionMode {
   }
 
   return defaultConfig.automation.executionMode;
+}
+
+function normalizeParitySyncSettings(value: Partial<ParitySyncSettings> | undefined): ParitySyncSettings {
+  return {
+    ...defaultConfig.paritySync,
+    ...value,
+    enabled: Boolean(value?.enabled),
+    supabaseUrl: sanitizeUrlText(value?.supabaseUrl),
+    publishableKey: normalizeSupabasePublishableKey(value?.publishableKey),
+    deviceId: normalizeDeviceId(value?.deviceId),
+    deviceLabel: sanitizePlainText(value?.deviceLabel, 120) || defaultConfig.paritySync.deviceLabel,
+    heartbeatIntervalSeconds: clampNumber(value?.heartbeatIntervalSeconds, 30, 24 * 60 * 60, defaultConfig.paritySync.heartbeatIntervalSeconds),
+    commandPollIntervalSeconds: clampNumber(value?.commandPollIntervalSeconds, 30, 24 * 60 * 60, defaultConfig.paritySync.commandPollIntervalSeconds),
+    logUploadEnabled: Boolean(value?.logUploadEnabled),
+    skipSyncEnabled: Boolean(value?.skipSyncEnabled),
+    commandSyncEnabled: Boolean(value?.commandSyncEnabled),
+    scheduleCompletionSyncEnabled: Boolean(value?.scheduleCompletionSyncEnabled)
+  };
+}
+
+function normalizeSupabasePublishableKey(value: unknown): string {
+  const key = sanitizeEnvSecret(value);
+  return looksLikeSupabaseServiceRoleKey(key) ? "" : key;
+}
+
+export function looksLikeSupabaseServiceRoleKey(value: string): boolean {
+  const key = String(value ?? "").trim();
+
+  if (key.startsWith("sb_secret_")) {
+    return true;
+  }
+
+  const parts = key.split(".");
+  if (parts.length < 2) {
+    return false;
+  }
+
+  try {
+    const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8")) as { role?: unknown };
+    return payload.role === "service_role";
+  } catch {
+    return false;
+  }
 }
 
 function sanitizeUrlText(value: unknown): string {

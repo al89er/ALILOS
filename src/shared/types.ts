@@ -128,6 +128,22 @@ export type CaptivePortalConfidence = "low" | "medium" | "high";
 export type CaptivePortalOpenTarget = "playwright" | "external";
 export type ExecutionMode = "notify-only" | "manual-confirm" | "dry-run";
 export type TelegramSecretStatus = "configured" | "env-local" | "missing";
+export type ParitySyncHealth = "disabled" | "not-configured" | "idle" | "active" | "error";
+export type ParityCommandType =
+  | "request-status-refresh"
+  | "request-dry-run"
+  | "request-confirmation"
+  | "cancel-confirmation"
+  | "perform-configured-action"
+  | "recalculate-today-schedule";
+export type ParityCommandStatus =
+  | "pending"
+  | "claimed"
+  | "succeeded"
+  | "failed"
+  | "expired"
+  | "rejected"
+  | "cancelled";
 export type AutomationAuditEventType =
   | "schedule-due"
   | "page-prepared"
@@ -151,6 +167,7 @@ export interface AppConfig {
   startup: StartupSettings;
   automation: AutomationSettings;
   heartbeat: HeartbeatSettings;
+  paritySync: ParitySyncSettings;
   attendance: {
     clockInPlaceholder: string;
     clockOutPlaceholder: string;
@@ -253,6 +270,110 @@ export interface HeartbeatSnapshot {
   lastSuccessAt: string | null;
   lastError: string | null;
   lastPayload: HeartbeatPayload | null;
+}
+
+export interface ParitySyncSettings {
+  enabled: boolean;
+  supabaseUrl: string;
+  publishableKey: string;
+  deviceId: string;
+  deviceLabel: string;
+  heartbeatIntervalSeconds: number;
+  commandPollIntervalSeconds: number;
+  logUploadEnabled: boolean;
+  skipSyncEnabled: boolean;
+  commandSyncEnabled: boolean;
+  scheduleCompletionSyncEnabled: boolean;
+}
+
+export interface ParityDeviceStatusPayload {
+  deviceId: string;
+  deviceLabel: string;
+  appStatus: string;
+  workerState: WorkerState;
+  executionMode: ExecutionMode;
+  networkStatus: string;
+  configuredSiteStatus: PerakamPageStatus;
+  browserState: BrowserControllerState;
+  nextActionStatus: ScheduleActionStatus | null;
+  recordedAt: string;
+}
+
+export interface ParityEventLogPayload {
+  deviceId: string;
+  eventTime: string;
+  eventType:
+    | "startup"
+    | "shutdown"
+    | "desktop-status"
+    | "network-status"
+    | "configured-site-status"
+    | "captive-portal-status"
+    | "schedule"
+    | "skip"
+    | "command"
+    | "dry-run"
+    | "configured-action"
+    | "sync"
+    | "error";
+  severity: "debug" | "info" | "warn" | "error";
+  actionKey: AttendanceActionType | null;
+  scheduleDate: string | null;
+  message: string;
+  details: Record<string, string | number | boolean | null>;
+}
+
+export interface ParitySkipDatePayload {
+  deviceId: string;
+  skipDate: string;
+  actionKey: AttendanceActionType | null;
+  reason: string | null;
+  source: "desktop-local" | "webapp-command" | "manual-import";
+}
+
+export interface ParityCommandRequestPayload {
+  id: string;
+  deviceId: string;
+  commandType: ParityCommandType;
+  actionKey: AttendanceActionType | null;
+  scheduleDate: string | null;
+  payload: Record<string, string | number | boolean | null>;
+  status: ParityCommandStatus;
+  requestedAt: string;
+  expiresAt: string;
+}
+
+export interface ParityCommandResultPayload {
+  commandId: string;
+  deviceId: string;
+  status: Extract<ParityCommandStatus, "succeeded" | "failed" | "expired" | "rejected" | "cancelled">;
+  summary: string;
+  details: Record<string, string | number | boolean | null>;
+  completedAt: string;
+}
+
+export interface ParitySyncSnapshot {
+  enabled: boolean;
+  configured: boolean;
+  active: boolean;
+  health: ParitySyncHealth;
+  endpointHost: string | null;
+  keyStatus: TelegramSecretStatus;
+  deviceId: string;
+  deviceLabel: string;
+  heartbeatIntervalSeconds: number;
+  commandPollIntervalSeconds: number;
+  featureFlags: {
+    logUploadEnabled: boolean;
+    skipSyncEnabled: boolean;
+    commandSyncEnabled: boolean;
+    scheduleCompletionSyncEnabled: boolean;
+  };
+  lastStartedAt: string | null;
+  lastStoppedAt: string | null;
+  lastCheckedAt: string | null;
+  lastError: string | null;
+  note: string;
 }
 
 export interface ReminderDateState {
@@ -804,6 +925,7 @@ export interface DashboardSnapshot {
   testClick: TestClickDashboardSnapshot;
   automation: AutomationSnapshot;
   heartbeat: HeartbeatSnapshot;
+  paritySync: ParitySyncSnapshot;
   logs: AppLogEntry[];
   configPath: string;
   logPath: string;

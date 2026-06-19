@@ -133,3 +133,9 @@ Do not add migrations, runtime sync, webapp code, captive portal reconnect, comm
 - `command_events`
 
 The migration keeps RLS enabled, revokes direct `anon` / `authenticated` table privileges, and assumes future reads/writes are mediated by an Edge Function/API proxy. It does not enable desktop runtime writes, webapp code, command processing, or unattended execution.
+
+## PARITY3 Disabled Skeleton Result
+
+The desktop app now has a disabled-by-default `paritySync` config section and a `ParitySyncService` skeleton. The service exposes read-only health/status, command type/status constants, sanitized payload types, and lifecycle placeholders for future heartbeat/log/skip/command/schedule-completion sync.
+
+PARITY3 does not send Supabase writes, poll or process command requests, implement webapp code, add secrets, or enable unattended execution. Supabase keys for this path must be publishable/anon only; service-role-looking keys are rejected from local parity-sync config.

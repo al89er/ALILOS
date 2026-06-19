@@ -53,6 +53,18 @@ All PARITY2 tables enable RLS and revoke direct table privileges from `anon` and
 
 PARITY2 payloads and details are constrained to sanitized JSON objects and must not contain credentials, cookies, raw HTML, screenshots, full URLs, tokenized query strings, opaque `link=` values, portal hidden fields, arbitrary selectors, scripts, or forms.
 
+## PARITY3 Disabled Desktop Skeleton
+
+The desktop app includes a disabled-by-default `paritySync` config section and `ParitySyncService` skeleton. It reports local health/status only and keeps runtime writes and command processing disabled. When disabled, the service starts no sync timers. If explicitly enabled in local config later, the current implementation still performs no Supabase writes and no command execution.
+
+Security boundaries:
+
+- Use publishable/anon keys only for desktop configuration.
+- Reject service-role-looking keys from parity-sync local config.
+- Keep service-role keys server-side only in a future Edge Function/API proxy.
+- Do not send credentials, cookies, raw HTML, screenshots, full/tokenized URLs, opaque `link=` values, selectors, scripts, forms, or hidden portal values through parity-sync payloads.
+- Do not process remote commands until a later approved PARITY step defines claim/execute/result behavior.
+
 ## S1 Proposed Schema Outline
 
 This is a planning outline only. Do not create migrations, runtime Supabase clients, remote writes, hosted webapp code, or command/control behavior until the relevant later phase is explicitly approved.

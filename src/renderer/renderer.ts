@@ -63,6 +63,8 @@ const automationDryRunDetail = document.querySelector<HTMLElement>("#automation-
 const heartbeatEndpoint = document.querySelector<HTMLElement>("#heartbeat-endpoint");
 const heartbeatLastSuccess = document.querySelector<HTMLElement>("#heartbeat-last-success");
 const heartbeatError = document.querySelector<HTMLElement>("#heartbeat-error");
+const paritySyncStatus = document.querySelector<HTMLElement>("#parity-sync-status");
+const paritySyncDetail = document.querySelector<HTMLElement>("#parity-sync-detail");
 const automationAuditList = document.querySelector<HTMLOListElement>("#automation-audit-list");
 const todayDate = document.querySelector<HTMLElement>("#today-date");
 const scheduleSummary = document.querySelector<HTMLElement>("#schedule-summary");
@@ -273,6 +275,8 @@ const elements = {
   heartbeatEndpoint: requireElement(heartbeatEndpoint, "heartbeat-endpoint"),
   heartbeatLastSuccess: requireElement(heartbeatLastSuccess, "heartbeat-last-success"),
   heartbeatError: requireElement(heartbeatError, "heartbeat-error"),
+  paritySyncStatus: requireElement(paritySyncStatus, "parity-sync-status"),
+  paritySyncDetail: requireElement(paritySyncDetail, "parity-sync-detail"),
   automationAuditList: requireElement(automationAuditList, "automation-audit-list"),
   todayDate: requireElement(todayDate, "today-date"),
   scheduleSummary: requireElement(scheduleSummary, "schedule-summary"),
@@ -577,6 +581,7 @@ function renderSettingsSummaries(snapshot: RendererDashboardSnapshot): void {
     ? `${currentTelegramSettings.enabled ? "Enabled" : "Disabled"}; bot token ${telegramSecretStatusLabel(currentTelegramSettings.secretStatus.botToken)}; chat ${telegramSecretStatusLabel(currentTelegramSettings.secretStatus.chatId)}; prefix ${commandPrefixLabel(currentTelegramSettings.commandPrefix)}.`
     : `${snapshot.telegram.enabled ? "Enabled" : "Disabled"}; settings are loaded through the secure preload bridge.`;
   elements.settingsHeartbeatSummary.textContent = `${(settings?.heartbeat.enabled ?? snapshot.heartbeat.enabled) ? "Enabled" : "Disabled"}; ${(settings?.heartbeat.configured ?? snapshot.heartbeat.configured) ? `Supabase ${(settings?.heartbeat.endpointHost ?? snapshot.heartbeat.endpointHost) ?? "configured"}` : "Supabase URL/key not configured"}.`;
+  elements.settingsHeartbeatSummary.textContent += ` Parity sync ${snapshot.paritySync.enabled ? "enabled" : "disabled"}; ${snapshot.paritySync.note}`;
   elements.settingsConfigPath.textContent = snapshot.configPath;
   elements.settingsLogPath.textContent = snapshot.logPath;
 }
@@ -591,6 +596,7 @@ function getNextRelevantAction(snapshot: RendererDashboardSnapshot): RendererDas
 function renderAutomationTelemetry(snapshot: RendererDashboardSnapshot): void {
   const automation = snapshot.automation;
   const heartbeat = snapshot.heartbeat;
+  const paritySync = snapshot.paritySync;
   const latestDryRun = automation.latestDryRun;
 
   elements.executionMode.textContent = executionModeLabel(automation.executionMode);
@@ -619,6 +625,10 @@ function renderAutomationTelemetry(snapshot: RendererDashboardSnapshot): void {
     : "Disabled.";
   elements.heartbeatLastSuccess.textContent = formatOptionalTime(heartbeat.lastSuccessAt);
   elements.heartbeatError.textContent = heartbeat.lastError ?? "--";
+  elements.paritySyncStatus.textContent = paritySync.enabled
+    ? paritySync.configured ? paritySyncHealthLabel(paritySync.health) : "Needs Supabase config"
+    : "Disabled";
+  elements.paritySyncDetail.textContent = `${paritySync.note} Endpoint: ${paritySync.endpointHost ?? "none"}. Commands: ${paritySync.featureFlags.commandSyncEnabled ? "enabled" : "disabled"}. Last check: ${formatOptionalTime(paritySync.lastCheckedAt)}.`;
 
   const auditItems = automation.auditEvents.length > 0
     ? automation.auditEvents.map((event) => {
@@ -906,6 +916,21 @@ function setControlsDisabled(disabled: boolean): void {
   elements.skipTomorrow.disabled = disabled;
   elements.unskipTomorrow.disabled = disabled;
   elements.recalculateTodaySchedule.disabled = disabled;
+}
+
+function paritySyncHealthLabel(status: string): string {
+  switch (status) {
+    case "active":
+      return "Skeleton active";
+    case "idle":
+      return "Idle";
+    case "not-configured":
+      return "Needs Supabase config";
+    case "error":
+      return "Error";
+    default:
+      return "Disabled";
+  }
 }
 
 function renderConfirmations(confirmations: RendererConfirmationDashboardSnapshot): void {

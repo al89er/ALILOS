@@ -7,6 +7,7 @@ import { BrowserController } from "../worker/browser-controller";
 import { ConfirmationService } from "../worker/confirmation-service";
 import { HeartbeatService } from "../worker/heartbeat-service";
 import { NetworkMonitor, normalizeNetworkMonitorSettings } from "../worker/network-monitor";
+import { ParitySyncService } from "../worker/parity-sync-service";
 import { ReminderService } from "../worker/reminder-service";
 import { Scheduler } from "../worker/scheduler";
 import { TestClickService } from "../worker/test-click-service";
@@ -31,6 +32,7 @@ let telegramService: TelegramService;
 let reminderService: ReminderService;
 let networkMonitor: NetworkMonitor;
 let heartbeatService: HeartbeatService;
+let paritySyncService: ParitySyncService;
 let automationMonitor: AutomationMonitor;
 let appTray: Tray | null = null;
 let perakamLoginInFlight = false;
@@ -106,6 +108,7 @@ async function buildSnapshot(): Promise<DashboardSnapshot> {
     testClick: testClickService.snapshot(),
     automation: automationMonitor.snapshot(),
     heartbeat: heartbeatService.snapshot(),
+    paritySync: paritySyncService.getStatus(),
     logs: await logger.recent(20),
     configPath: configStore.path,
     logPath: logger.path
@@ -215,6 +218,7 @@ app.whenReady().then(() => {
     }
   });
   heartbeatService = new HeartbeatService(config, logger, buildHeartbeatPayload, configStore.supabaseEnvLocal, app.getVersion());
+  paritySyncService = new ParitySyncService(config, logger, configStore.supabaseEnvLocal);
   automationMonitor = new AutomationMonitor(
     config,
     configStore,
@@ -261,6 +265,7 @@ app.whenReady().then(() => {
   reminderService.start();
   networkMonitor.start();
   heartbeatService.start();
+  paritySyncService.start();
   automationMonitor.start();
 
   ipcMain.handle("dashboard:get-snapshot", buildSnapshot);
@@ -580,6 +585,7 @@ app.on("before-quit", (event) => {
   reminderService?.stop();
   networkMonitor?.stop();
   heartbeatService?.stop();
+  paritySyncService?.stop();
   automationMonitor?.stop();
 
   if (browserController && browserController.status().state !== "stopped") {

@@ -52,6 +52,7 @@ Worker-side files live in `src/worker`:
 | `automation-monitor.ts` | Phase 6A automation monitor that records due schedule events, prepares/checks the configured site profile in dry-run mode, and simulates web-action telemetry without clicking. |
 | `automation-audit.ts` | Bounded sanitized automation audit event persistence. |
 | `heartbeat-service.ts` | Disabled-by-default heartbeat sender and status snapshot built from sanitized app state. |
+| `parity-sync-service.ts` | Disabled-by-default parity-sync skeleton for future Supabase/webapp monitoring/control. It reports status only and performs no runtime writes or command processing. |
 | `scheduler.ts` | Daily schedule generation, weekend/skip handling, due/grace/missed states, status transition logging. |
 | `reminder-service.ts` | 30-second reminder evaluation, system notifications, Telegram reminders, duplicate suppression, notification-state retention. |
 | `browser-controller.ts` | Playwright persistent browser context, configured-site navigation/status classification, target button detection, guarded DOM clicks, test target diagnostics, auto-login form interaction, post-click verification. |
