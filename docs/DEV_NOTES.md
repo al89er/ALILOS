@@ -7,7 +7,8 @@
 - `docs/LEGACY_PARITY_PLAN.md` is the current parity matrix and fastest PARITY2-PARITY13 sequence.
 - PARITY2 adds schema-only Supabase support for `skip_dates`, `event_logs`, `command_requests`, and `command_events`. Runtime sync and command processing remain disabled/deferred.
 - PARITY3 adds disabled-by-default `paritySync` config, read-only dashboard status, sanitized shared payload/command types, and a `ParitySyncService` skeleton.
-- PARITY4 adds gated status publishing through the future Edge Function/API proxy path. It remains disabled by default, uses publishable/anon keys only, sends sanitized device/status payloads, optionally sends generated status events when `logUploadEnabled` is true, and does not process remote commands.
+- PARITY4 adds gated status publishing through the Edge Function/API proxy path. It remains disabled by default, uses publishable/anon keys only, sends sanitized device/status payloads, optionally sends generated status events when `logUploadEnabled` is true, and does not process remote commands.
+- PARITY4B adds the Supabase Edge Function at `/functions/v1/alilos-parity-status`. The function requires a registered non-personal `device_id`, uses the service-role key only from the Edge Function environment, writes sanitized `heartbeats` and optional generated `event_logs`, and leaves direct `anon` / `authenticated` table privileges closed.
 - Do not implement runtime sync, webapp code, migrations, command/control, captive portal reconnect, or unattended execution from these notes alone.
 - Credentials stay local: configured website credentials and future captive portal credentials must not be sent to Supabase or the webapp, and must not appear in logs/docs. Service-role keys never ship in desktop or webapp clients.
 
@@ -156,15 +157,16 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 - S3B schedule/completion schema migration is drafted.
 - PARITY2 skip/log/status/command schema migration is added.
 - PARITY3 disabled desktop parity-sync skeleton is added.
-- PARITY4 gated parity status publishing is added; proxy endpoint implementation and production write authorization remain future work.
+- PARITY4 gated parity status publishing is added; defaults remain disabled and the desktop uses only publishable/anon credentials.
+- PARITY4B status proxy is added under `supabase/functions/alilos-parity-status`; it performs the server-side `devices` check, `heartbeats` upsert, and optional sanitized `event_logs` insert.
 - S3D schedule/completion write-path decision is documented: future writes should use an Edge Function/API proxy plus explicit device pairing/token.
 - WEB1 web/PWA companion planning is documented in `docs/WEB_COMPANION_PLAN.md`.
 - WEB2 static/read-only web companion UI design is documented in `docs/WEB_COMPANION_PLAN.md`.
 - WEB3 legacy webapp relationship is documented in `docs/WEB_COMPANION_PLAN.md`.
 - WEB4 read-only web companion data contracts are documented in `docs/WEB_COMPANION_PLAN.md`.
 - RC1 monitored real-world observation plan is documented in `docs/OPERATIONAL_READINESS.md`.
-- Heartbeat remains disabled by default.
-- Real Supabase writes are deferred until the auth/pairing/write-path decision is made.
+- Parity sync remains disabled by default and command processing remains unimplemented.
+- Schedule/completion/skip sync and webapp access remain deferred until auth/pairing/write-path authorization is expanded beyond status publishing.
 
 ### Desktop Operational Blockers
 

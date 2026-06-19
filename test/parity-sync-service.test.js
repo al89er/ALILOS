@@ -250,7 +250,7 @@ test("parity status publishing sanitizes payload and updates success counters", 
     assert.equal(status.failureCount, 0);
     assert.ok(status.lastSuccessAt);
     assert.equal(body.events.length, 1);
-    assert.doesNotMatch(serialized, /token=abc|magic=secret|4Tredir=secret|link=opaque|bot123:secret/);
+    assert.doesNotMatch(serialized, /token=abc|magic=secret|4Tredir=secret|link=opaque|magic=|4Tredir=|link=|bot123:secret/);
     assert.match(body.deviceStatus.deviceLabel, /https:\/\/secret\.example\/\[redacted\]/);
     assert.match(body.deviceStatus.lastErrorText, /\[redacted\]/);
     assert.match(body.events[0].details.source, /\[redacted\]/);

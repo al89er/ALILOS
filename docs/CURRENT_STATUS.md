@@ -37,7 +37,8 @@
 - S3B schema-only Supabase migration is drafted for `daily_schedules` and `completion_records`.
 - PARITY2 schema-only Supabase migration is added for `skip_dates`, `event_logs`, `command_requests`, and `command_events`.
 - PARITY3 disabled desktop parity-sync skeleton is implemented: `paritySync` config defaults off, read-only status is exposed in the dashboard, and no remote commands are processed.
-- PARITY4 parity status publishing is implemented behind `paritySync.enabled`; defaults remain disabled, status payloads are sanitized, optional generated event publishing requires `logUploadEnabled`, and publishing targets a future Edge Function/API proxy rather than direct table writes.
+- PARITY4 parity status publishing is implemented behind `paritySync.enabled`; defaults remain disabled, status payloads are sanitized, optional generated event publishing requires `logUploadEnabled`, and publishing targets the server-side `/functions/v1/alilos-parity-status` Edge Function rather than direct table writes.
+- PARITY4B adds the Supabase Edge Function proxy for sanitized desktop parity status. It requires an existing `devices.device_id`, upserts `heartbeats`, optionally inserts sanitized `event_logs`, keeps service-role use server-side only, and does not process commands or implement a webapp.
 - WEB1 docs-only web/PWA companion planning is documented in `docs/WEB_COMPANION_PLAN.md`.
 - WEB2 static/read-only web companion UI design is documented in `docs/WEB_COMPANION_PLAN.md`.
 - WEB3 legacy webapp relationship is documented in `docs/WEB_COMPANION_PLAN.md`.
@@ -55,7 +56,7 @@
 - Existing Phase 4D design docs are stale relative to current implementation because guarded execution and auto-login have since been implemented.
 - Settings can edit selected operational values only. Generated schedules, completion records, automation audit events, raw logs, target mappings, credentials, cookies/session data, screenshots, raw HTML, and personal identifiers remain outside editable settings.
 - Supabase heartbeat has a Settings-tab project URL editor and disabled-by-default sender skeleton, but the phone-webapp receiver/dashboard is still not implemented in this repository.
-- Supabase is not required for local scheduled operation. The repository has the S2A heartbeat schema migration, S2B sender skeleton, S3A docs-only schedule/completion sync plan, S3B schema-only schedule/completion migration, PARITY2 schema-only skip/log/status/command support, PARITY3 disabled desktop sync skeleton, and PARITY4 gated status publishing. Hosted webapp/PWA and remote command/control queue processing are not implemented.
+- Supabase is not required for local scheduled operation. The repository has the S2A heartbeat schema migration, S2B sender skeleton, S3A docs-only schedule/completion sync plan, S3B schema-only schedule/completion migration, PARITY2 schema-only skip/log/status/command support, PARITY3 disabled desktop sync skeleton, PARITY4 gated status publishing, and PARITY4B server-side status proxy. Hosted webapp/PWA and remote command/control queue processing are not implemented.
 - The future web/PWA companion remains unimplemented. WEB1 plans a read-only-first mobile status surface that depends on Supabase-synced heartbeat, schedule, and completion data when those sync paths exist.
 - WEB2 defines the first read-only screens and status cards, but no webapp code, dependencies, runtime sync, or controls exist.
 - WEB4 defines display-safe data groups and fake payload examples, but authenticated read policies and runtime sync remain deferred.
@@ -90,8 +91,9 @@ The active implementation focus appears to be hardening the guarded manual-confi
 - WEB2 web companion UI design is documented: mobile-first single-column read-only screens, explicit stale/offline/sync warnings, and no command buttons.
 - WEB3 legacy webapp relationship is documented: treat `al89er/perakamwaktu` as reference/fallback, prefer rebuild or isolated future `webapp/`, and copy no legacy code/secrets/config.
 - WEB4 web companion data contracts are documented: heartbeat/status, Perakam/browser/session, network/captive portal, schedule, completion/verification, warnings/events, and sync capability/status.
-- Heartbeat remains disabled by default.
-- Real Supabase writes are deferred until auth/pairing/write-path authorization is decided.
+- PARITY4B status proxy is added at `/functions/v1/alilos-parity-status`; it accepts sanitized desktop status posts, rejects forbidden keys/values, requires an existing device id, and writes `heartbeats` plus optional `event_logs` server-side only.
+- Parity sync remains disabled by default. When explicitly enabled, the desktop still uses only a publishable/anon key and performs no command/control.
+- Schedule/completion/skip sync and webapp reads remain deferred until auth/pairing/write-path authorization is expanded beyond status publishing.
 
 ### Desktop Operational Blockers
 

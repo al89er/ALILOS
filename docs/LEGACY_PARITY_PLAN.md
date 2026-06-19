@@ -144,4 +144,10 @@ PARITY3 does not poll or process command requests, implement webapp code, add se
 
 The desktop app now has gated parity status publishing. Publishing requires `paritySync.enabled = true`, a valid Supabase URL, a publishable/anon key, and a valid local device id. Defaults remain disabled.
 
-The publisher sends sanitized device/status payloads, plus a conservative generated status event only when `paritySync.logUploadEnabled` is true. It targets the future Edge Function/API proxy path `/functions/v1/alilos-parity-status` rather than direct table writes, because current migrations intentionally revoke direct `anon` / `authenticated` table privileges. No command polling, command processing, webapp code, skip sync, or schedule/completion sync is implemented in PARITY4.
+The publisher sends sanitized device/status payloads, plus a conservative generated status event only when `paritySync.logUploadEnabled` is true. It targets the Edge Function/API proxy path `/functions/v1/alilos-parity-status` rather than direct table writes, because current migrations intentionally revoke direct `anon` / `authenticated` table privileges. No command polling, command processing, webapp code, skip sync, or schedule/completion sync is implemented in PARITY4.
+
+## PARITY4B Status Proxy Result
+
+The Supabase Edge Function `supabase/functions/alilos-parity-status/index.ts` now provides the server-side proxy used by PARITY4 desktop publishing. The desktop still uses only a publishable/anon key. The service-role key belongs only in the Edge Function environment and is not committed, stored in desktop config, or exposed to the renderer.
+
+The function accepts POST-only sanitized status payloads, rejects forbidden keys and suspicious tokenized strings, requires the posted desktop `deviceId` to match an existing `devices.device_id`, upserts the latest `heartbeats` row, and optionally inserts sanitized generated `event_logs`. It does not auto-create personal identity, process remote commands, sync skip dates, sync schedule/completion records, or implement a webapp.

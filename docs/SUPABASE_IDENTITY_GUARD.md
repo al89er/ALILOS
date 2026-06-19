@@ -67,15 +67,35 @@ Security boundaries:
 
 ## PARITY4 Status Publishing
 
-PARITY4 implements the first runtime parity-sync publisher, still disabled by default. When explicitly enabled with a valid Supabase URL and publishable/anon key, the desktop posts sanitized device/status payloads to a future Edge Function/API proxy endpoint derived from the configured Supabase project:
+PARITY4 implements the first runtime parity-sync publisher, still disabled by default. When explicitly enabled with a valid Supabase URL and publishable/anon key, the desktop posts sanitized device/status payloads to the Edge Function/API proxy endpoint derived from the configured Supabase project:
 
 ```text
 /functions/v1/alilos-parity-status
 ```
 
-The desktop does not write directly to `devices`, `heartbeats`, `event_logs`, or other tables in PARITY4. This preserves the existing RLS posture where direct `anon` / `authenticated` table privileges are revoked. Production publishing therefore requires a future server-side proxy implementation with service-role use kept out of desktop and webapp clients.
+The desktop does not write directly to `devices`, `heartbeats`, `event_logs`, or other tables in PARITY4. This preserves the existing RLS posture where direct `anon` / `authenticated` table privileges are revoked. PARITY4B adds the server-side proxy implementation with service-role use kept out of desktop and webapp clients.
 
 PARITY4 may include a conservative generated status event when `paritySync.logUploadEnabled` is true. It does not upload arbitrary local log lines. It does not process command requests, sync skip dates, sync schedules/completions, implement a webapp, or upload credentials.
+
+## PARITY4B Status Proxy
+
+`supabase/functions/alilos-parity-status/index.ts` is the server-side endpoint for desktop status publishing. It accepts POST requests only, requires the standard Edge Function Authorization header from the desktop publishable/anon key, rejects service-role-looking keys supplied by the client, and uses `SUPABASE_SERVICE_ROLE_KEY` only from the Edge Function environment.
+
+The function validates the sanitized desktop status shape, maps `deviceStatus.deviceId` to the database `device_id`, and requires that device to already exist in `devices`. It updates safe device metadata, upserts the latest `heartbeats` row, and inserts optional generated `event_logs` when the payload includes allowed events. It returns only sanitized success/error JSON and counts; it does not echo raw payloads.
+
+The proxy rejects forbidden top-level or nested keys and suspicious string values for credentials, passwords, cookies, raw HTML, screenshots, full or tokenized URLs, opaque `link=` values, selectors, scripts, forms, Fortinet hidden values such as `magic` / `4Tredir`, bearer tokens, Telegram bot token patterns, and service-role-looking client keys. Direct table privileges for `anon` and `authenticated` remain closed. No command processing, skip sync, schedule/completion sync, user identity creation, or webapp is implemented by PARITY4B.
+
+Manual smoke testing should use placeholders only and a pre-registered non-personal device UUID:
+
+```sh
+curl -X POST "https://PROJECT_REF.supabase.co/functions/v1/alilos-parity-status" \
+  -H "Authorization: Bearer PUBLISHABLE_OR_ANON_KEY" \
+  -H "apikey: PUBLISHABLE_OR_ANON_KEY" \
+  -H "Content-Type: application/json" \
+  --data '{"deviceStatus":{"deviceId":"00000000-0000-4000-8000-000000000000","deviceLabel":"A.L.I.L.O.S. desktop","appVersion":"0.1.0","appStatus":"ready","workerState":"running","executionMode":"manual-confirm","networkStatus":"online","captivePortalStatus":"not-detected","configuredSiteStatus":"dashboard","browserState":"stopped","syncHealth":"active","nextActionStatus":null,"nextScheduleSummary":null,"completionSummary":"localCompletionRecords=0","lastErrorText":null,"recordedAt":"2026-06-19T00:00:00.000Z"},"events":[]}'
+```
+
+Do not use real service-role keys, real staff identity, credentials, cookies, tokenized URLs, `link=` values, screenshots, raw HTML, selectors, scripts, or form values in manual test payloads.
 
 ## S1 Proposed Schema Outline
 
