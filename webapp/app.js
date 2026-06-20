@@ -35,6 +35,7 @@ const ids = [
   "prev-month",
   "next-month",
   "skip-note",
+  "skip-message",
   "skip-list",
   "log-freshness",
   "log-list",
@@ -50,6 +51,7 @@ const elements = Object.fromEntries(ids.map((id) => [id, document.getElementById
 const commandButtons = [...document.querySelectorAll("[data-command-type]")];
 const tabButtons = [...document.querySelectorAll("[data-tab-target]")];
 const tabPanels = [...document.querySelectorAll("[data-tab-panel]")];
+const pendingSkipDates = new Set();
 
 render();
 bindTabs();
@@ -171,6 +173,56 @@ async function submitSafeCommand(commandType) {
   }
 }
 
+async function submitSkipToggle(skipDate, isSkipped) {
+  if (!isDateKey(skipDate)) {
+    setSkipMessage("Invalid skip date selected.", "bad");
+    return;
+  }
+
+  if (!isConfigured(config)) {
+    setSkipMessage("Skip toggle not submitted: configure Supabase URL, anon key, and device id first.", "warn");
+    return;
+  }
+
+  const operation = isSkipped ? "delete-skip" : "upsert-skip";
+  pendingSkipDates.add(skipDate);
+  setSkipMessage(`${isSkipped ? "Removing" : "Adding"} whole-day skip for ${skipDate}...`, "neutral");
+  renderSkipCalendar(state.data.skips ?? []);
+
+  try {
+    const endpoint = new URL("/functions/v1/alilos-skip-sync", config.VITE_SUPABASE_URL);
+    const response = await fetch(endpoint.toString(), {
+      method: "POST",
+      headers: {
+        apikey: config.VITE_SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${config.VITE_SUPABASE_ANON_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        deviceId: config.VITE_ALILOS_DEVICE_ID,
+        operation,
+        skipDate,
+        actionKey: null,
+        source: "webapp-command",
+        reason: "webapp calendar toggle"
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Skip proxy returned HTTP ${response.status}.`);
+    }
+
+    await response.json();
+    setSkipMessage(`${skipDate} ${isSkipped ? "unskipped" : "skipped"} for the whole day. Scheduling only; no website action was triggered.`, "good");
+    await loadDashboard();
+  } catch (error) {
+    setSkipMessage(sanitizeText(error.message, 160) ?? "Skip toggle failed.", "bad");
+  } finally {
+    pendingSkipDates.delete(skipDate);
+    renderSkipCalendar(state.data.skips ?? []);
+  }
+}
+
 function render(message = state.source === "live" ? "Live read proxy" : "Mock data", tone = state.source === "live" ? "good" : "neutral") {
   const data = state.data;
   const heartbeat = data.heartbeat;
@@ -244,7 +296,7 @@ function renderSchedules(schedules) {
 }
 
 function renderSkipCalendar(skips) {
-  const skippedDates = new Set(skips.map((item) => item.skipDate).filter(Boolean));
+  const skippedDates = new Set(skips.filter((item) => item.actionKey === null || item.actionKey === undefined).map((item) => item.skipDate).filter(Boolean));
   const current = parseMonthKey(state.monthKey);
   const first = new Date(current.year, current.monthIndex, 1);
   const daysInMonth = new Date(current.year, current.monthIndex + 1, 0).getDate();
@@ -261,16 +313,26 @@ function renderSkipCalendar(skips) {
     const dateKey = `${state.monthKey}-${String(day).padStart(2, "0")}`;
     const cell = document.createElement("button");
     cell.type = "button";
-    cell.disabled = true;
     cell.className = "calendar-day";
+    cell.dataset.skipDate = dateKey;
     cell.textContent = String(day);
     if (dateKey === todayKey()) cell.classList.add("today");
-    if (skippedDates.has(dateKey)) {
+    const isSkipped = skippedDates.has(dateKey);
+    const isPending = pendingSkipDates.has(dateKey);
+    if (isSkipped) {
       cell.classList.add("skipped");
       cell.setAttribute("aria-label", `${dateKey} skipped`);
     } else {
       cell.setAttribute("aria-label", `${dateKey} not skipped`);
     }
+    if (isPending) {
+      cell.classList.add("pending");
+      cell.disabled = true;
+      cell.setAttribute("aria-busy", "true");
+    }
+    cell.addEventListener("click", () => {
+      void submitSkipToggle(dateKey, isSkipped);
+    });
     cells.push(cell);
   }
 
@@ -281,7 +343,7 @@ function renderSkipCalendar(skips) {
     `${item.reason ?? "No reason supplied"} - ${item.source} - ${formatTime(item.updatedAt)}`
   )) : [listItem("No skipped dates", "Calendar has no synced skip rows", "Missing web data never implies action readiness.")]));
   elements["skip-freshness"].textContent = latestTimestampLabel(skips);
-  elements["skip-note"].textContent = "Read-only calendar. Interactive skip/unskip controls are planned next.";
+  elements["skip-note"].textContent = "Whole-day skip toggles affect scheduling only. Action-specific skip controls are future refinement.";
 }
 
 function renderCompletions(completions) {
@@ -414,6 +476,11 @@ function setCommandMessage(message, tone) {
   elements["command-message"].dataset.tone = tone;
 }
 
+function setSkipMessage(message, tone) {
+  elements["skip-message"].textContent = message;
+  elements["skip-message"].dataset.tone = tone;
+}
+
 function setButtonsDisabled(disabled) {
   for (const button of commandButtons) {
     button.disabled = disabled;
@@ -437,6 +504,10 @@ function sanitizeText(value, maxLength) {
 function todayKey() {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
+function isDateKey(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(value ?? ""));
 }
 
 function monthKey(value) {
@@ -482,7 +553,7 @@ function sampleDashboard(inputMonthKey) {
       { actionKey: "clock-out", targetTimeLocal: "17:05", windowStartLocal: "17:05", windowEndLocal: "17:10", source: "mock", status: "active", updatedAt: now }
     ],
     skips: [
-      { skipDate: `${currentMonth}-15`, actionKey: null, reason: "Mock read-only skip", source: "mock", updatedAt: now }
+      { skipDate: `${currentMonth}-15`, actionKey: null, reason: "Mock whole-day skip", source: "mock", updatedAt: now }
     ],
     completions: [],
     eventLogs: [

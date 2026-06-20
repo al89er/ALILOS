@@ -67,11 +67,25 @@ test("webapp skip dates calendar renders month navigation and skipped-date state
   assert.match(html, /id="prev-month"/);
   assert.match(html, /id="next-month"/);
   assert.match(html, /id="calendar-grid"/);
-  assert.match(html, /read-only in PARITY9B/);
+  assert.match(html, /Whole-day skip toggles affect scheduling only/);
   assert.match(app, /renderSkipCalendar/);
   assert.match(app, /classList\.add\("skipped"\)/);
-  assert.match(app, /Mock read-only skip/);
-  assert.match(app, /Interactive skip\/unskip controls are planned next/);
+  assert.match(app, /classList\.add\("pending"\)/);
+  assert.match(app, /submitSkipToggle/);
+  assert.match(app, /Action-specific skip controls are future refinement/);
+});
+
+test("webapp calendar skip toggles call skip-sync with whole-day payloads", () => {
+  const app = readWebappFile("app.js");
+
+  assert.match(app, /alilos-skip-sync/);
+  assert.match(app, /const operation = isSkipped \? "delete-skip" : "upsert-skip"/);
+  assert.match(app, /skipDate/);
+  assert.match(app, /actionKey: null/);
+  assert.match(app, /source: "webapp-command"/);
+  assert.match(app, /reason: "webapp calendar toggle"/);
+  assert.match(app, /Scheduling only; no website action was triggered/);
+  assert.doesNotMatch(app, /perform-configured-action|request-confirmation|service[_-]?role|sb_secret_/i);
 });
 
 test("webapp log history renders sanitized event rows without sensitive samples", () => {

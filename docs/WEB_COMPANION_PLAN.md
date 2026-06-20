@@ -1,6 +1,6 @@
 # Web Companion Plan
 
-WEB1-WEB4 documented the future mobile-friendly browser/PWA companion. PARITY8 created the first read-only implementation under `webapp/`. PARITY9 adds safe non-clicking command controls for status refresh, dry-run/check, schedule recalculation, and cancel confirmation. PARITY9B aligns the UI to the existing three-tab workflow: Dashboard, Skip dates, and Log history. It still does not add remote configured-action execution, Supabase table grants, Electron runtime behavior changes, configured-site login, credential handling, or unattended real execution approval.
+WEB1-WEB4 documented the future mobile-friendly browser/PWA companion. PARITY8 created the first read-only implementation under `webapp/`. PARITY9 adds safe non-clicking command controls for status refresh, dry-run/check, schedule recalculation, and cancel confirmation. PARITY9B aligns the UI to the existing three-tab workflow: Dashboard, Skip dates, and Log history. PARITY9C adds whole-day skip/unskip calendar controls. It still does not add remote configured-action execution, Supabase table grants, Electron runtime behavior changes, configured-site login, credential handling, or unattended real execution approval.
 
 PARITY1B corrected target: the webapp/PWA plus Supabase control plane are required for the complete product milestone. Telegram is paused/deprioritized and is not a parity requirement. See `docs/LEGACY_PARITY_PLAN.md` for the full matrix and PARITY2-PARITY13 build sequence.
 
@@ -12,7 +12,8 @@ PARITY8 implementation note:
 - Live data comes from `/functions/v1/alilos-dashboard-read` when the Edge Function is deployed and the webapp has placeholder-style config values supplied locally/at hosting time.
 - The UI falls back to mock/unavailable state when live reads are not configured or unavailable.
 - PARITY9 safe controls submit `create-command` requests to `/functions/v1/alilos-command-sync`; they do not run browser automation, send credentials, or perform configured-site clicks.
-- PARITY9B groups the UI into Dashboard, Skip dates, and Log history. The Skip dates calendar is visual/read-only for now; interactive skip/unskip controls are a next phase.
+- PARITY9B groups the UI into Dashboard, Skip dates, and Log history.
+- PARITY9C uses `/functions/v1/alilos-skip-sync` for whole-day scheduling skip/unskip from the calendar. Action-specific skip controls remain a future refinement.
 
 ## Architecture Split
 
@@ -566,7 +567,7 @@ Example:
 - Web companion may display state.
 - PARITY9 may submit only safe non-clicking command requests for status refresh, dry-run/check, recalculate today schedule, and cancel pending confirmation.
 - Web companion may not trigger Perakam or Fortinet actions.
-- No skip/unskip, mode switch, guarded configured-action command, or confirmation execution controls in WEB4/PARITY9.
+- No action-specific skip toggles, mode switch, guarded configured-action command, or confirmation execution controls in WEB4/PARITY9/PARITY9C.
 - No unattended execution pathway.
 
 ### Future Contract Dependencies

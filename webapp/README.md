@@ -1,6 +1,6 @@
 # A.L.I.L.O.S. Web Monitor
 
-PARITY8 added a same-repo, static, read-only web/PWA dashboard shell under `webapp/`. PARITY9 adds safe non-clicking command controls. PARITY9B aligns the UI to the existing three-tab workflow: Dashboard, Skip dates, and Log history.
+PARITY8 added a same-repo, static, read-only web/PWA dashboard shell under `webapp/`. PARITY9 adds safe non-clicking command controls. PARITY9B aligns the UI to the existing three-tab workflow: Dashboard, Skip dates, and Log history. PARITY9C adds whole-day skip/unskip calendar controls.
 
 ## Stack
 
@@ -9,11 +9,12 @@ PARITY8 added a same-repo, static, read-only web/PWA dashboard shell under `weba
 - No build step.
 - Supabase dashboard reads go through `/functions/v1/alilos-dashboard-read`.
 - Safe command creation goes through `/functions/v1/alilos-command-sync` with `create-command`.
+- Whole-day skip/unskip goes through `/functions/v1/alilos-skip-sync` with `upsert-skip` and `delete-skip`.
 
 ## Layout
 
 - Dashboard: morning/evening action cards, desktop/device status, configured website/session/network status, schedule/completion state, safe command controls, command sync state, and safety notices.
-- Skip dates: read-only calendar-style month view using synced skip rows when available. Interactive skip/unskip toggles are planned for a later phase.
+- Skip dates: calendar-style month view using synced skip rows when available. Date cells toggle whole-day skip/unskip only.
 - Log history: recent sanitized event log summaries when available, with mock sanitized fallback rows.
 
 ## Configuration
@@ -29,7 +30,8 @@ Use placeholder names only:
 ## Boundaries
 
 - Safe command buttons only: status refresh, dry-run/check, recalculate today, and cancel confirmation.
-- Skip-date calendar cells are visual/read-only in PARITY9B.
+- Skip-date calendar cells toggle whole-day scheduling skips only.
+- Action-specific skip controls remain a future refinement.
 - No Perakam/Fortinet login.
 - No credentials.
 - No browser automation.

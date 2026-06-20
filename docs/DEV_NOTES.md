@@ -15,7 +15,8 @@
 - PARITY7 adds disabled-by-default command request/result processing through `supabase/functions/alilos-command-sync`. It only handles `request-status-refresh`, `request-dry-run`, `recalculate-today-schedule`, and `cancel-confirmation`; `perform-configured-action` and remote confirmation creation are explicitly rejected/deferred.
 - PARITY8 adds a dependency-free static read-only web/PWA monitor under `webapp/` and the `supabase/functions/alilos-dashboard-read` read proxy. It has no command buttons and falls back to mock data when live read config/data is unavailable.
 - PARITY9 adds safe web command controls for status refresh, dry-run/check, recalculate today schedule, and cancel confirmation. They create allowlisted pending commands only; they do not perform configured-site clicks.
-- PARITY9B aligns the webapp with the existing three-tab mental model: Dashboard, Skip dates, and Log history. Skip-date cells are read-only in this phase, and log history displays sanitized event summaries only.
+- PARITY9B aligns the webapp with the existing three-tab mental model: Dashboard, Skip dates, and Log history. Log history displays sanitized event summaries only.
+- PARITY9C makes the Skip dates calendar interactive for whole-day scheduling skip/unskip through `supabase/functions/alilos-skip-sync`. It does not create command requests or configured-site actions.
 - Do not implement migrations, configured-action command execution, captive portal reconnect, or unattended execution from these notes alone.
 - Credentials stay local: configured website credentials and future captive portal credentials must not be sent to Supabase or the webapp, and must not appear in logs/docs. Service-role keys never ship in desktop or webapp clients.
 
@@ -119,13 +120,13 @@ Each line is a JSON object with timestamp, level, and message. The renderer disp
 
 ## Webapp
 
-`webapp/` contains the PARITY8 monitor plus PARITY9 safe non-clicking controls, arranged in the PARITY9B three-tab workflow: Dashboard, Skip dates, and Log history. It is plain HTML/CSS/JavaScript with no package install, no build step, no service-role key, and no direct table access. Runtime config is represented by placeholder names in `webapp/config.example.js`: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and `VITE_ALILOS_DEVICE_ID`. Real local `webapp/config.js` is ignored by Git.
+`webapp/` contains the PARITY8 monitor, PARITY9 safe non-clicking controls, PARITY9B three-tab workflow, and PARITY9C whole-day skip/unskip calendar controls. It is plain HTML/CSS/JavaScript with no package install, no build step, no service-role key, and no direct table access. Runtime config is represented by placeholder names in `webapp/config.example.js`: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and `VITE_ALILOS_DEVICE_ID`. Real local `webapp/config.js` is ignored by Git.
 
 Live data comes from `/functions/v1/alilos-dashboard-read` when deployed and configured. It may include sanitized device, schedule, completion, command, monthly skip-date, and event-log summaries. Missing config, unavailable Supabase, or missing synced data shows static/mock unavailable states and must not imply action readiness.
 
 Safe command creation goes to `/functions/v1/alilos-command-sync` with `operation: "create-command"` and only the PARITY7 non-clicking command types. The webapp has no `perform-configured-action` button, credential forms, arbitrary command input, raw JSON editor, service-role key, or browser automation.
 
-The Skip dates tab is visual/read-only in PARITY9B. Do not add skip/unskip commands from calendar cells without a separate approval step.
+The Skip dates tab uses `/functions/v1/alilos-skip-sync` with `upsert-skip` and `delete-skip` for whole-day skip/unskip only. These changes affect scheduling only and never trigger configured-site navigation, confirmation, clicking, command requests, credentials, or browser automation. Action-specific skip controls remain a future refinement.
 
 This tab layout is renderer-only. Do not change target IDs, confirmation behavior, persisted key names, or browser/controller behavior when adjusting tab placement.
 
@@ -380,7 +381,7 @@ RC1 notes:
 
 ## Planning The Web Companion Safely
 
-- WEB1 was docs-only; PARITY8 created the first `webapp/` monitoring shell, PARITY9 adds safe non-clicking command controls, and PARITY9B aligns the shell to Dashboard/Skip dates/Log history. Do not add frontend dependencies, migrations, `.env.local`, secrets, configured-action command execution, or Electron runtime changes from the old plan alone.
+- WEB1 was docs-only; PARITY8 created the first `webapp/` monitoring shell, PARITY9 adds safe non-clicking command controls, PARITY9B aligns the shell to Dashboard/Skip dates/Log history, and PARITY9C adds whole-day skip/unskip calendar controls. Do not add frontend dependencies, migrations, `.env.local`, secrets, configured-action command execution, or Electron runtime changes from the old plan alone.
 - The Electron desktop app remains the only local browser/session/action assistant. The web/PWA companion is a mobile status/control surface only.
 - WEB1 starts read-only: heartbeat/status when available, stale/offline warnings, placeholders until schedule/completion sync exists, and no control commands.
 - Future supervised controls require later explicit approval and must go through the Supabase/Edge Function/API control-plane boundary.

@@ -40,11 +40,11 @@ Telegram remains useful as an existing local notification/fallback path, but Tel
 | Skip next action | Partially implemented | Local skip dates exist; webapp/Supabase command path missing. |
 | Local logs | Implemented | JSON-line logs under Electron userData. |
 | Supabase logs | Partially implemented | PARITY2 schema exists; PARITY4 can publish conservative parity status events only when enabled and `logUploadEnabled` is true. |
-| Supabase skip dates | Partially implemented | PARITY5 desktop/Edge Function sync exists and is disabled by default; PARITY9 does not add skip/unskip controls yet. |
+| Supabase skip dates | Partially implemented | PARITY5 desktop/Edge Function sync exists and is disabled by default; PARITY9C adds webapp whole-day skip/unskip through the same Edge Function. |
 | Supabase schedules/completions | Partially implemented | PARITY6 desktop/Edge Function sync exists and is disabled by default; it backs up local rows and surfaces remote completion warnings only. |
 | Supabase command requests/results | Partially implemented | PARITY7 dry-run/non-clicking command processing exists and is disabled by default; configured-action command execution is still missing/deferred. |
 | Webapp monitoring | Partially implemented | PARITY8 adds a same-repo read-only static PWA shell and dashboard-read proxy; PARITY9B aligns it to Dashboard, Skip dates, and Log history tabs. Deployment/auth pairing remains future work. |
-| Webapp manual controls | Partially implemented | PARITY9 adds safe status refresh, dry-run/check, recalculate today schedule, and cancel confirmation controls only. PARITY9B skip-date calendar is read-only; skip/unskip and guarded configured-action controls remain deferred. |
+| Webapp manual controls | Partially implemented | PARITY9 adds safe status refresh, dry-run/check, recalculate today schedule, and cancel confirmation controls. PARITY9C adds whole-day skip/unskip calendar controls. Action-specific skip UI and guarded configured-action controls remain deferred. |
 | Telegram monitoring/commands | Paused | Existing Telegram code/config stays secondary; not required for completion. |
 | Background operation | Implemented | Tray/background packaged app works; field validation remains. |
 | Separate Playwright browser | Implemented | Persistent Playwright browser is separate from normal browser use. |
@@ -173,7 +173,7 @@ PARITY8 does not add command creation UI, skip/unskip controls, mode switches, c
 
 Production use requires the deployed command Edge Function, a placeholder-configured webapp using publishable/anon credentials, and desktop parity command sync explicitly enabled with both `paritySync.enabled` and `paritySync.commandSyncEnabled`. The buttons do not imply immediate execution when the desktop is offline or sync is disabled.
 
-PARITY9 does not add skip/unskip, runtime mode switching, configured-site login, captive portal login, credential fields, service-role keys in the webapp, direct table grants, arbitrary command input, raw JSON editors, browser automation, remote `perform-configured-action`, or unattended execution.
+PARITY9 does not add runtime mode switching, configured-site login, captive portal login, credential fields, service-role keys in the webapp, direct table grants, arbitrary command input, raw JSON editors, browser automation, remote `perform-configured-action`, or unattended execution.
 
 ## PARITY9B Webapp Tab Workflow Result
 
@@ -185,11 +185,24 @@ PARITY9 does not add skip/unskip, runtime mode switching, configured-site login,
 
 The Dashboard tab shows morning/evening action cards, desktop/device status, configured website/session/network status, schedule/completion status, safe non-clicking controls, command sync status, and safety notices.
 
-The Skip dates tab shows a month-based read-only calendar. Highlighted cells represent synced or mock skipped dates. Calendar skip/unskip toggles are not wired in PARITY9B and should be a separate safe phase.
+The Skip dates tab shows a month-based calendar. Highlighted cells represent synced or mock skipped dates.
 
 The Log history tab shows recent sanitized event-log summaries from the dashboard read proxy when available, with sanitized mock fallback rows otherwise. It must not display raw sensitive data, full/tokenized URLs, raw HTML, screenshots, credentials, or service-role keys.
 
 `supabase/functions/alilos-dashboard-read/index.ts` can now return monthly skip-date rows and recent sanitized `event_logs` rows. It remains read-only, uses service-role only server-side, and does not change direct table grants or RLS posture.
+
+## PARITY9C Webapp Skip Calendar Controls Result
+
+The Skip dates tab now toggles whole-day skipped dates through `supabase/functions/alilos-skip-sync/index.ts`:
+
+- unskipped date -> `upsert-skip`
+- skipped whole-day date -> `delete-skip`
+
+The webapp uses publishable/anon credentials only. The Edge Function uses `SUPABASE_SERVICE_ROLE_KEY` only from the server environment and direct table privileges remain closed.
+
+Calendar skip/unskip affects scheduling skip state only. It does not create command requests, navigate the configured website, submit credentials, confirm an action, click anything, or approve unattended execution.
+
+Action-specific skip UI remains a future refinement because the current desktop local scheduler applies remote action-specific skip rows conservatively as whole-day skips.
 
 PARITY3 does not poll or process command requests, implement webapp code, add secrets, or enable unattended execution. Supabase keys for this path must be publishable/anon only; service-role-looking keys are rejected from local parity-sync config.
 

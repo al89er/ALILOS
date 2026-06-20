@@ -375,6 +375,12 @@ button:disabled {
   opacity: 1;
 }
 
+.calendar-day.pending {
+  border-style: dashed;
+  cursor: wait;
+  opacity: 0.72;
+}
+
 .calendar-day.filler {
   border: 0;
   background: transparent;
@@ -451,6 +457,18 @@ button:disabled {
 }
 
 #command-message[data-tone="bad"] {
+  color: var(--bad);
+}
+
+#skip-message[data-tone="good"] {
+  color: var(--good);
+}
+
+#skip-message[data-tone="warn"] {
+  color: var(--warn);
+}
+
+#skip-message[data-tone="bad"] {
   color: var(--bad);
 }
 

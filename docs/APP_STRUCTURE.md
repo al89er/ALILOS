@@ -2,7 +2,7 @@
 
 PARITY1B corrected target: A.L.I.L.O.S. is a generic automated scheduled website clicker with a background Electron desktop agent, separate Playwright browser, startup/background operation, local auto-login, stale recovery, future captive portal reconnect, Supabase sync/control plane, and webapp monitoring/control. Telegram is paused/deprioritized and is not required for completion. See `docs/LEGACY_PARITY_PLAN.md`.
 
-The first web/PWA companion shell now lives under `webapp/`. It is a static monitoring dashboard for PARITY8/PARITY9 with the PARITY9B three-tab workflow: Dashboard, Skip dates, and Log history. It uses the Supabase dashboard-read Edge Function when configured. The legacy/current `al89er/perakamwaktu` webapp is reference/fallback only and is not imported into this repo.
+The first web/PWA companion shell now lives under `webapp/`. It is a static monitoring dashboard for PARITY8/PARITY9 with the PARITY9B three-tab workflow: Dashboard, Skip dates, and Log history. PARITY9C adds whole-day skip/unskip calendar controls through the skip-sync Edge Function. The legacy/current `al89er/perakamwaktu` webapp is reference/fallback only and is not imported into this repo.
 
 ## Runtime And Scripts
 
@@ -100,11 +100,11 @@ The desktop and webapp still use only publishable/anon credentials. Direct `anon
 | --- | --- |
 | `index.html` | Static mobile-first shell with Dashboard, Skip dates, and Log history tabs. |
 | `styles.css` | Dependency-free responsive tab, card, calendar, log, and status styling. |
-| `app.js` | Fetches `/functions/v1/alilos-dashboard-read`, renders dashboard action cards, read-only monthly skip calendar, sanitized log history, and submits safe `create-command` requests to `/functions/v1/alilos-command-sync` with publishable/anon credentials when configured; otherwise shows static mock state. |
+| `app.js` | Fetches `/functions/v1/alilos-dashboard-read`, renders dashboard action cards, monthly skip calendar, sanitized log history, submits safe `create-command` requests to `/functions/v1/alilos-command-sync`, and toggles whole-day skips through `/functions/v1/alilos-skip-sync` with publishable/anon credentials when configured; otherwise shows static mock state. |
 | `config.example.js` | Placeholder-only config shape for `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and `VITE_ALILOS_DEVICE_ID`. |
 | `manifest.webmanifest` | Minimal PWA manifest. |
 
-The webapp has only safe/non-clicking command buttons. The skip-date calendar is read-only in PARITY9B. It has no configured-action execution button, no configured-site login, no credential fields, no service-role key, and no browser automation.
+The webapp has only safe/non-clicking command buttons and whole-day scheduling skip/unskip calendar cells. It has no configured-action execution button, no configured-site login, no credential fields, no service-role key, and no browser automation.
 
 ## Renderer
 
