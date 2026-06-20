@@ -47,6 +47,7 @@
 - PARITY9 adds safe webapp command controls for status refresh, dry-run/check, recalculate today, and cancel confirmation. These create pending commands through `/functions/v1/alilos-command-sync`; remote configured-action execution remains rejected/deferred.
 - PARITY9B aligns the webapp to the existing three-tab workflow: Dashboard, Skip dates, and Log history. Log history shows sanitized event summaries only.
 - PARITY9C makes the Skip dates calendar interactive for whole-day skip/unskip through `/functions/v1/alilos-skip-sync`. It affects scheduling only and does not create configured-site actions.
+- PARITY9D documents the deployed safe-loop smoke-test runbook in `docs/PARITY_SAFE_LOOP_SMOKE.md`. It is docs-only and covers Edge Function deployment checks, existing-device setup, desktop parity sync flags, webapp config, status publishing, dashboard reads, skip upsert/delete, safe command processing, schedule/completion visibility, sanitized logs, and rollback.
 - WEB1 docs-only web/PWA companion planning is documented in `docs/WEB_COMPANION_PLAN.md`.
 - WEB2 static/read-only web companion UI design is documented in `docs/WEB_COMPANION_PLAN.md`.
 - WEB3 legacy webapp relationship is documented in `docs/WEB_COMPANION_PLAN.md`.
@@ -65,7 +66,7 @@
 - Settings can edit selected operational values only. Generated schedules, completion records, automation audit events, raw logs, target mappings, credentials, cookies/session data, screenshots, raw HTML, and personal identifiers remain outside editable settings.
 - Supabase heartbeat has a Settings-tab project URL editor and disabled-by-default sender skeleton. PARITY8 now adds a read-only web/PWA dashboard shell, but it depends on deployed Edge Functions and synced data for live status.
 - Supabase is not required for local scheduled operation. The repository has the S2A heartbeat schema migration, S2B sender skeleton, S3A docs-only schedule/completion sync plan, S3B schema-only schedule/completion migration, PARITY2 schema-only skip/log/status/command support, PARITY3 disabled desktop sync skeleton, PARITY4 gated status publishing, PARITY4B server-side status proxy, PARITY5 disabled skip-date sync, PARITY6 disabled schedule/completion sync, PARITY7 disabled dry-run/non-clicking command sync, and PARITY8 read-only web/PWA monitoring. Configured-action command execution is not implemented.
-- The web/PWA companion has PARITY8 read-only monitoring, PARITY9 safe non-clicking command controls, PARITY9B three-tab workflow alignment, and PARITY9C whole-day skip/unskip calendar controls. It has no configured-action button and falls back to static mock data if the read proxy/config/data is unavailable.
+- The web/PWA companion has PARITY8 read-only monitoring, PARITY9 safe non-clicking command controls, PARITY9B three-tab workflow alignment, PARITY9C whole-day skip/unskip calendar controls, and the PARITY9D safe-loop smoke runbook. It has no configured-action button and falls back to static mock data if the read proxy/config/data is unavailable.
 - WEB2 defines the first read-only screens and status cards; PARITY8 implements the first static read-only shell without controls or frontend dependencies.
 - WEB4 defines display-safe data groups and fake payload examples, but authenticated read policies and runtime sync remain deferred.
 - The old Tampermonkey script and the legacy/current `al89er/perakamwaktu` webapp remain fallback/backup references only and should not be merged into ALILOS automatically.
@@ -106,7 +107,7 @@ The active implementation focus appears to be hardening the guarded manual-confi
 - PARITY7 command sync is implemented but disabled by default. It requires the deployed `alilos-command-sync` Edge Function, uses publishable/anon desktop credentials only, handles dry-run/non-clicking requests, and explicitly rejects remote configured action execution.
 - PARITY8 read-only web monitoring is implemented. It requires the deployed `alilos-dashboard-read` Edge Function for live data, uses publishable/anon web credentials only, and does not change direct table privileges.
 - PARITY9 safe web controls are implemented. They require the deployed `alilos-command-sync` Edge Function with `create-command` and desktop command sync enabled to be useful.
-- PARITY9B web workflow alignment is implemented. PARITY9C whole-day skip/unskip calendar controls are implemented through the existing skip-sync Edge Function; action-specific skip UI remains deferred.
+- PARITY9B web workflow alignment is implemented. PARITY9C whole-day skip/unskip calendar controls are implemented through the existing skip-sync Edge Function. PARITY9D safe-loop deployment/smoke guidance is documented. Action-specific skip UI remains deferred.
 - Parity sync remains disabled by default. When explicitly enabled, the desktop still uses only a publishable/anon key and no command can send arbitrary selectors, scripts, forms, URLs, credentials, cookies, raw HTML, screenshots, or opaque `link=` values.
 - Webapp configured-action command execution remains deferred until auth/pairing/control-path authorization is explicitly expanded beyond safe non-clicking commands.
 

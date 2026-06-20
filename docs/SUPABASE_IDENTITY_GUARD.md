@@ -6,7 +6,7 @@ The guard exists to prevent accidental migrations, database pushes, function dep
 
 ## Planned Role
 
-Supabase is planned as the shared backend for the webapp/PWA sync/control plane. It is not required for scheduled local desktop operation. This repository currently has the S2A status-only heartbeat schema migration, an S2B disabled-by-default heartbeat sender skeleton, an S3B schedule/completion schema migration, a PARITY2 skip/log/status/command schema migration, PARITY4 status publishing through an Edge Function, PARITY5 skip sync through an Edge Function, PARITY6 schedule/completion sync through an Edge Function, PARITY7 dry-run/non-clicking command sync through an Edge Function, PARITY8 read-only web monitoring through an Edge Function, PARITY9 safe web command creation through an Edge Function, and PARITY9C whole-day web skip/unskip through the existing skip-sync Edge Function. Status, skip, schedule/completion, and command sync remain disabled by default on the desktop. It still has no remote configured-action command execution.
+Supabase is planned as the shared backend for the webapp/PWA sync/control plane. It is not required for scheduled local desktop operation. This repository currently has the S2A status-only heartbeat schema migration, an S2B disabled-by-default heartbeat sender skeleton, an S3B schedule/completion schema migration, a PARITY2 skip/log/status/command schema migration, PARITY4 status publishing through an Edge Function, PARITY5 skip sync through an Edge Function, PARITY6 schedule/completion sync through an Edge Function, PARITY7 dry-run/non-clicking command sync through an Edge Function, PARITY8 read-only web monitoring through an Edge Function, PARITY9 safe web command creation through an Edge Function, PARITY9C whole-day web skip/unskip through the existing skip-sync Edge Function, and PARITY9D safe-loop smoke-test documentation. Status, skip, schedule/completion, and command sync remain disabled by default on the desktop. It still has no remote configured-action command execution.
 
 The agreed roadmap is:
 
@@ -98,6 +98,8 @@ Desktop skip sync is disabled by default and requires both `paritySync.enabled` 
 PARITY9C webapp calendar controls use the same Edge Function for whole-day `upsert-skip` and `delete-skip` requests with `source: webapp-command`. They use publishable/anon credentials only, do not write tables directly, do not create command requests, and cannot trigger configured-site actions. Action-specific skip UI remains a future refinement.
 
 Deployment and smoke testing are documented in `docs/PARITY_SKIP_SYNC_DEPLOYMENT.md`. No command queue processing is implemented in PARITY5/PARITY9C.
+
+`docs/PARITY_SAFE_LOOP_SMOKE.md` documents the later combined safe-loop smoke sequence for deployed status publishing, dashboard reads, skip upsert/delete, schedule/completion visibility, safe command processing, and sanitized logs. That runbook does not add secrets, weaken RLS/grants, deploy functions by itself, or approve remote configured-action execution.
 
 ## PARITY6 Schedule/Completion Sync
 

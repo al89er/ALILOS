@@ -1,6 +1,6 @@
 # Web Companion Plan
 
-WEB1-WEB4 documented the future mobile-friendly browser/PWA companion. PARITY8 created the first read-only implementation under `webapp/`. PARITY9 adds safe non-clicking command controls for status refresh, dry-run/check, schedule recalculation, and cancel confirmation. PARITY9B aligns the UI to the existing three-tab workflow: Dashboard, Skip dates, and Log history. PARITY9C adds whole-day skip/unskip calendar controls. It still does not add remote configured-action execution, Supabase table grants, Electron runtime behavior changes, configured-site login, credential handling, or unattended real execution approval.
+WEB1-WEB4 documented the future mobile-friendly browser/PWA companion. PARITY8 created the first read-only implementation under `webapp/`. PARITY9 adds safe non-clicking command controls for status refresh, dry-run/check, schedule recalculation, and cancel confirmation. PARITY9B aligns the UI to the existing three-tab workflow: Dashboard, Skip dates, and Log history. PARITY9C adds whole-day skip/unskip calendar controls. PARITY9D documents the deployed safe-loop smoke-test runbook. It still does not add remote configured-action execution, Supabase table grants, Electron runtime behavior changes, configured-site login, credential handling, or unattended real execution approval.
 
 PARITY1B corrected target: the webapp/PWA plus Supabase control plane are required for the complete product milestone. Telegram is paused/deprioritized and is not a parity requirement. See `docs/LEGACY_PARITY_PLAN.md` for the full matrix and PARITY2-PARITY13 build sequence.
 
@@ -14,6 +14,7 @@ PARITY8 implementation note:
 - PARITY9 safe controls submit `create-command` requests to `/functions/v1/alilos-command-sync`; they do not run browser automation, send credentials, or perform configured-site clicks.
 - PARITY9B groups the UI into Dashboard, Skip dates, and Log history.
 - PARITY9C uses `/functions/v1/alilos-skip-sync` for whole-day scheduling skip/unskip from the calendar. Action-specific skip controls remain a future refinement.
+- PARITY9D runbook lives in `docs/PARITY_SAFE_LOOP_SMOKE.md` and validates the deployed status, dashboard, skip, schedule/completion, command, and sanitized-log loop without adding remote configured-action execution.
 
 ## Architecture Split
 
@@ -677,6 +678,7 @@ The web/PWA should represent these states clearly:
 3. WEB3 authenticated read-only status.
 4. WEB4 schedule/completion display after sync exists.
 5. PARITY9 safe non-clicking command buttons for status refresh, dry-run/check, recalculate today schedule, and cancel confirmation.
-6. WEB5/PARITY10 guarded configured-action command design only after explicit approval.
-7. WEB6 supervised controls after explicit approval.
-8. No unattended execution unless explicitly approved later.
+6. PARITY9D deployed safe-loop smoke-test runbook.
+7. WEB5/PARITY10 guarded configured-action command design only after explicit approval.
+8. WEB6 supervised controls after explicit approval.
+9. No unattended execution unless explicitly approved later.

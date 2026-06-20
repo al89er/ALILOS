@@ -44,7 +44,7 @@ Telegram remains useful as an existing local notification/fallback path, but Tel
 | Supabase schedules/completions | Partially implemented | PARITY6 desktop/Edge Function sync exists and is disabled by default; it backs up local rows and surfaces remote completion warnings only. |
 | Supabase command requests/results | Partially implemented | PARITY7 dry-run/non-clicking command processing exists and is disabled by default; configured-action command execution is still missing/deferred. |
 | Webapp monitoring | Partially implemented | PARITY8 adds a same-repo read-only static PWA shell and dashboard-read proxy; PARITY9B aligns it to Dashboard, Skip dates, and Log history tabs. Deployment/auth pairing remains future work. |
-| Webapp manual controls | Partially implemented | PARITY9 adds safe status refresh, dry-run/check, recalculate today schedule, and cancel confirmation controls. PARITY9C adds whole-day skip/unskip calendar controls. Action-specific skip UI and guarded configured-action controls remain deferred. |
+| Webapp manual controls | Partially implemented | PARITY9 adds safe status refresh, dry-run/check, recalculate today schedule, and cancel confirmation controls. PARITY9C adds whole-day skip/unskip calendar controls. PARITY9D documents the safe-loop deployment/smoke runbook. Action-specific skip UI and guarded configured-action controls remain deferred. |
 | Telegram monitoring/commands | Paused | Existing Telegram code/config stays secondary; not required for completion. |
 | Background operation | Implemented | Tray/background packaged app works; field validation remains. |
 | Separate Playwright browser | Implemented | Persistent Playwright browser is separate from normal browser use. |
@@ -117,10 +117,11 @@ The webapp/PWA must not:
 7. PARITY7 command request/result processing in dry-run mode.
 8. PARITY8 webapp/PWA read-only monitoring.
 9. PARITY9 webapp skip/status/recalculate/dry-run controls.
-10. PARITY10 guarded configured-action command.
-11. PARITY11 launch-at-startup and sleep/wake field validation.
-12. PARITY12 captive portal local reconnect implementation.
-13. PARITY13 end-to-end webapp + Supabase + desktop validation.
+10. PARITY9D deployed safe-loop smoke-test runbook.
+11. PARITY10 guarded configured-action command.
+12. PARITY11 launch-at-startup and sleep/wake field validation.
+13. PARITY12 captive portal local reconnect implementation.
+14. PARITY13 end-to-end webapp + Supabase + desktop validation.
 
 Do not add migrations, runtime sync, webapp code, captive portal reconnect, command/control, or unattended execution from this document alone. Each later PARITY step needs explicit approval.
 
@@ -203,6 +204,12 @@ The webapp uses publishable/anon credentials only. The Edge Function uses `SUPAB
 Calendar skip/unskip affects scheduling skip state only. It does not create command requests, navigate the configured website, submit credentials, confirm an action, click anything, or approve unattended execution.
 
 Action-specific skip UI remains a future refinement because the current desktop local scheduler applies remote action-specific skip rows conservatively as whole-day skips.
+
+## PARITY9D Safe Loop Smoke Runbook Result
+
+`docs/PARITY_SAFE_LOOP_SMOKE.md` documents the manual deployed safe-loop smoke test before any remote real configured-action command is added. It covers Edge Function deployment, existing-device setup, desktop parity sync flags, webapp local config, status heartbeat publishing, dashboard reads, skip calendar upsert/delete, safe web command creation, desktop safe command processing, schedule/completion visibility, sanitized log history, troubleshooting, and rollback.
+
+PARITY9D is docs-only. It does not deploy functions, add secrets, create `.env.local`, change RLS/table grants, implement runtime code, enable configured-action command execution, or approve unattended execution.
 
 PARITY3 does not poll or process command requests, implement webapp code, add secrets, or enable unattended execution. Supabase keys for this path must be publishable/anon only; service-role-looking keys are rejected from local parity-sync config.
 
