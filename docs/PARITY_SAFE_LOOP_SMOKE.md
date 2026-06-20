@@ -242,8 +242,8 @@ Expected:
 
 Expected:
 
-- Only allowlisted non-clicking commands are accepted.
-- `perform-configured-action` is not available and remains rejected.
+- Only allowlisted non-clicking commands are exercised in this safe-loop smoke sequence.
+- `perform-configured-action` is implemented in PARITY10B but must not be exercised by this runbook; use PARITY10C for supervised guarded-action field validation.
 - Desktop may run checks, refresh status, recalculate schedule, or cancel a pending local confirmation.
 - No real configured website click occurs.
 
@@ -336,5 +336,5 @@ Service-role-looking key rejected:
 - Remove local-only `webapp/config.js` if desired.
 - Never commit `webapp/config.js`.
 - Do not change table privileges to make a smoke test pass.
-- Do not deploy or test remote `perform-configured-action`.
+- Do not test remote `perform-configured-action` from this safe-loop runbook. Use the separate PARITY10C field-validation sequence when explicitly approved.
 - If any sensitive value appears in UI/logs/history, stop the test, preserve only sanitized notes, disable sync flags, and investigate locally.

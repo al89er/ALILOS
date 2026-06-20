@@ -6,7 +6,7 @@ The guard exists to prevent accidental migrations, database pushes, function dep
 
 ## Planned Role
 
-Supabase is planned as the shared backend for the webapp/PWA sync/control plane. It is not required for scheduled local desktop operation. This repository currently has the S2A status-only heartbeat schema migration, an S2B disabled-by-default heartbeat sender skeleton, an S3B schedule/completion schema migration, a PARITY2 skip/log/status/command schema migration, PARITY4 status publishing through an Edge Function, PARITY5 skip sync through an Edge Function, PARITY6 schedule/completion sync through an Edge Function, PARITY7 dry-run/non-clicking command sync through an Edge Function, PARITY8 read-only web monitoring through an Edge Function, PARITY9 safe web command creation through an Edge Function, PARITY9C whole-day web skip/unskip through the existing skip-sync Edge Function, PARITY9D safe-loop smoke-test documentation, and PARITY10A configured-action preflight/deferred scaffolding. Status, skip, schedule/completion, and command sync remain disabled by default on the desktop. It still has no remote configured-action command execution.
+Supabase is planned as the shared backend for the webapp/PWA sync/control plane. It is not required for scheduled local desktop operation. This repository currently has the S2A status-only heartbeat schema migration, an S2B disabled-by-default heartbeat sender skeleton, an S3B schedule/completion schema migration, a PARITY2 skip/log/status/command schema migration, PARITY4 status publishing through an Edge Function, PARITY5 skip sync through an Edge Function, PARITY6 schedule/completion sync through an Edge Function, PARITY7 dry-run/non-clicking command sync through an Edge Function, PARITY8 read-only web monitoring through an Edge Function, PARITY9 safe web command creation through an Edge Function, PARITY9C whole-day web skip/unskip through the existing skip-sync Edge Function, PARITY9D safe-loop smoke-test documentation, PARITY10A configured-action preflight scaffolding, and PARITY10B guarded configured-action requests. Status, skip, schedule/completion, command sync, and `paritySync.remoteActionEnabled` remain disabled by default on the desktop.
 
 The agreed roadmap is:
 
@@ -38,7 +38,7 @@ Do not store these values in Supabase:
 - Captive portal usernames/passwords or hidden portal form values.
 - Service-role keys in desktop or webapp clients.
 
-Remote configured-action command execution is not implemented. PARITY7/PARITY9 command sync can create and process safe dry-run/non-clicking requests when explicitly enabled. PARITY10A may record a `perform-configured-action` preflight row only as `rejected` with `executionDeferred`, `preflightOnly`, and `noConfiguredSiteAction`; the desktop still rejects any such command.
+Remote configured-action command execution is implemented only as a guarded desktop-owned path and is disabled by default. PARITY7/PARITY9 command sync can create and process safe dry-run/non-clicking requests when explicitly enabled. PARITY10B can create pending `perform-configured-action` requests with constrained fields, but the desktop rejects them unless `paritySync.remoteActionEnabled` is explicitly true in local config and local guards pass.
 
 ## PARITY2 Schema
 
@@ -55,7 +55,7 @@ PARITY2 payloads and details are constrained to sanitized JSON objects and must 
 
 ## PARITY3 Disabled Desktop Skeleton
 
-The desktop app includes a disabled-by-default `paritySync` config section and `ParitySyncService`. It reports local health/status and keeps all runtime writes and command processing disabled unless specific parity feature flags are explicitly enabled. When disabled, the service starts no sync timers. If explicitly enabled in local config later, only the approved status, skip, and schedule/completion proxy paths can write sanitized metadata; command execution remains unimplemented.
+The desktop app includes a disabled-by-default `paritySync` config section and `ParitySyncService`. It reports local health/status and keeps all runtime writes and command processing disabled unless specific parity feature flags are explicitly enabled. When disabled, the service starts no sync timers. If explicitly enabled in local config later, approved status, skip, schedule/completion, command, and guarded remote-action proxy paths can process only sanitized payloads. Guarded remote action also requires `paritySync.remoteActionEnabled`, which defaults to false.
 
 Security boundaries:
 
@@ -122,9 +122,9 @@ Deployment and smoke testing are documented in `docs/PARITY_SCHEDULE_COMPLETION_
 
 The desktop uses only a publishable/anon key. The Edge Function uses `SUPABASE_SERVICE_ROLE_KEY` only from the server environment. Direct table privileges for `anon` and `authenticated` remain closed.
 
-Desktop command sync is disabled by default and requires both `paritySync.enabled` and `paritySync.commandSyncEnabled`. PARITY9 web controls may create only pending safe commands through the Edge Function using publishable/anon credentials; expiry is generated server-side and responses are sanitized. Commands must be claimed before processing, expired commands are marked expired, unsupported or unsafe payloads are rejected, and API failures are non-fatal to local desktop operation. `perform-configured-action` and remote confirmation creation remain explicitly rejected/deferred. No command may include arbitrary selectors, scripts, forms, full URLs, tokenized URLs, credentials, cookies, raw HTML, screenshots, opaque `link=` values, or service-role keys.
+Desktop command sync is disabled by default and requires both `paritySync.enabled` and `paritySync.commandSyncEnabled`. PARITY9 web controls may create pending safe commands through the Edge Function using publishable/anon credentials; expiry is generated server-side and responses are sanitized. Commands must be claimed before processing, expired commands are marked expired, unsupported or unsafe payloads are rejected, and API failures are non-fatal to local desktop operation. PARITY10B allows `perform-configured-action` only as a guarded request with `actionKey`, `scheduleDate`, and minimal guard metadata; the desktop rejects it unless `paritySync.remoteActionEnabled` is true, `manual-confirm` mode is active, local date matches, and existing guard checks pass. Remote confirmation creation remains explicitly rejected/deferred. No command may include arbitrary selectors, scripts, forms, full URLs, tokenized URLs, credentials, cookies, raw HTML, screenshots, opaque `link=` values, or service-role keys.
 
-PARITY10A extends the command Edge Function only with configured-action preflight validation for `deviceId`, `actionKey`, `scheduleDate`, and minimal preflight metadata. It does not create pending executable configured-action commands, does not add direct table grants, and does not expose service-role keys to the webapp or desktop.
+PARITY10B extends the command Edge Function with pending guarded configured-action command creation for `deviceId`, `actionKey`, `scheduleDate`, and minimal guard metadata. It does not add direct table grants, does not expose service-role keys to the webapp or desktop, and does not allow arbitrary target data. Operational reliance remains deferred until PARITY10C field validation.
 
 Deployment and smoke testing are documented in `docs/PARITY_COMMAND_SYNC_DEPLOYMENT.md`. Direct table privileges for `anon` and `authenticated` remain closed.
 

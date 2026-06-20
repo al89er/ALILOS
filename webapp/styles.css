@@ -196,16 +196,17 @@ dt,
   border-top: 1px solid var(--border);
 }
 
-.deferred-action-button {
+.remote-action-button {
   border-color: var(--border);
   background: #f8fafc;
-  color: var(--muted);
+  color: var(--text);
   text-align: center;
 }
 
-.deferred-action-button:disabled {
+.remote-action-button:disabled {
   cursor: not-allowed;
-  opacity: 1;
+  color: var(--muted);
+  opacity: 0.72;
 }
 
 .section-heading {

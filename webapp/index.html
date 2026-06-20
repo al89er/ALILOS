@@ -26,7 +26,7 @@
 
       <section class="notice">
         <strong>Safe web controls.</strong>
-        <span>These controls only request non-clicking desktop checks. They do not perform a real website click.</span>
+        <span>Safe commands request non-clicking checks. Guarded action requests require confirmation and desktop guard approval before any configured-site click.</span>
       </section>
 
       <section id="dashboard-panel" class="tab-panel active" data-tab-panel>
@@ -37,8 +37,8 @@
             <small id="morning-state">Schedule unavailable</small>
             <div class="remote-action-status">
               <small id="morning-readiness">Readiness unavailable</small>
-              <button type="button" class="deferred-action-button" data-deferred-action="clock-in" disabled>Configured action disabled</button>
-              <small>Remote configured action is not enabled yet. Use dry-run/check for preflight.</small>
+              <button type="button" class="remote-action-button" data-remote-action="clock-in" disabled>Request guarded action</button>
+              <small>Desktop must be online. Credentials stay local. The desktop re-runs guard checks and fails safely if schedule, session, network, or target state is invalid.</small>
             </div>
           </article>
           <article class="action-card" id="evening-card">
@@ -47,8 +47,8 @@
             <small id="evening-state">Schedule unavailable</small>
             <div class="remote-action-status">
               <small id="evening-readiness">Readiness unavailable</small>
-              <button type="button" class="deferred-action-button" data-deferred-action="clock-out" disabled>Configured action disabled</button>
-              <small>Remote configured action is not enabled yet. Use dry-run/check for preflight.</small>
+              <button type="button" class="remote-action-button" data-remote-action="clock-out" disabled>Request guarded action</button>
+              <small>Desktop must be online. Credentials stay local. The desktop re-runs guard checks and fails safely if schedule, session, network, or target state is invalid.</small>
             </div>
           </article>
         </section>
@@ -120,9 +120,10 @@
           <ul>
             <li>Desktop must be online before any future supervised action can run.</li>
             <li>Safe controls create requests only; the desktop agent performs all local checks.</li>
+            <li>Guarded action requests require local desktop config and existing guard checks.</li>
             <li>This webapp cannot log in to Perakam or Fortinet.</li>
             <li>Credentials and browser sessions remain local to the desktop.</li>
-            <li>Remote configured-action execution is not enabled yet.</li>
+            <li>No webapp browser automation, selectors, scripts, forms, URLs, or credential payloads are accepted.</li>
           </ul>
         </section>
       </section>

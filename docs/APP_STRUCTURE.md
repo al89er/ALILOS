@@ -2,7 +2,7 @@
 
 PARITY1B corrected target: A.L.I.L.O.S. is a generic automated scheduled website clicker with a background Electron desktop agent, separate Playwright browser, startup/background operation, local auto-login, stale recovery, future captive portal reconnect, Supabase sync/control plane, and webapp monitoring/control. Telegram is paused/deprioritized and is not required for completion. See `docs/LEGACY_PARITY_PLAN.md`.
 
-The first web/PWA companion shell now lives under `webapp/`. It is a static monitoring dashboard for PARITY8/PARITY9 with the PARITY9B three-tab workflow: Dashboard, Skip dates, and Log history. PARITY9C adds whole-day skip/unskip calendar controls through the skip-sync Edge Function. PARITY10A adds disabled configured-action readiness/preflight surfaces only. The legacy/current `al89er/perakamwaktu` webapp is reference/fallback only and is not imported into this repo.
+The first web/PWA companion shell now lives under `webapp/`. It is a static monitoring dashboard for PARITY8/PARITY9 with the PARITY9B three-tab workflow: Dashboard, Skip dates, and Log history. PARITY9C adds whole-day skip/unskip calendar controls through the skip-sync Edge Function. PARITY10B adds guarded configured-action request buttons that still require desktop config and guard approval. The legacy/current `al89er/perakamwaktu` webapp is reference/fallback only and is not imported into this repo.
 
 ## Runtime And Scripts
 
@@ -52,7 +52,7 @@ Worker-side files live in `src/worker`:
 | `automation-monitor.ts` | Phase 6A automation monitor that records due schedule events, prepares/checks the configured site profile in dry-run mode, and simulates web-action telemetry without clicking. |
 | `automation-audit.ts` | Bounded sanitized automation audit event persistence. |
 | `heartbeat-service.ts` | Disabled-by-default heartbeat sender and status snapshot built from sanitized app state. |
-| `parity-sync-service.ts` | Disabled-by-default parity-sync service for future Supabase/webapp monitoring/control. PARITY4 can publish sanitized status, PARITY5 can sync skip dates, PARITY6 can sync schedule/completion backup metadata, and PARITY7 can process dry-run/non-clicking commands through Edge Function proxies when explicitly enabled. PARITY10A still rejects remote configured-action execution. |
+| `parity-sync-service.ts` | Disabled-by-default parity-sync service for future Supabase/webapp monitoring/control. PARITY4 can publish sanitized status, PARITY5 can sync skip dates, PARITY6 can sync schedule/completion backup metadata, PARITY7 can process dry-run/non-clicking commands, and PARITY10B can route guarded configured-action commands through the existing desktop guard callback when explicitly enabled. |
 | `scheduler.ts` | Daily schedule generation, weekend/skip handling, due/grace/missed states, status transition logging. |
 | `reminder-service.ts` | 30-second reminder evaluation, system notifications, Telegram reminders, duplicate suppression, notification-state retention. |
 | `browser-controller.ts` | Playwright persistent browser context, configured-site navigation/status classification, target button detection, guarded DOM clicks, test target diagnostics, auto-login form interaction, post-click verification. |
@@ -87,10 +87,10 @@ Supabase Edge Functions live under `supabase/functions`:
 | `alilos-parity-status/index.ts` | POST-only parity status proxy. It accepts sanitized desktop `deviceStatus` plus optional generated events, rejects forbidden keys/tokenized values, requires an existing `devices.device_id`, upserts `heartbeats`, inserts optional sanitized `event_logs`, and keeps service-role use server-side only. |
 | `alilos-skip-sync/index.ts` | POST-only skip-date sync proxy. It supports constrained `list-skips`, `upsert-skip`, and `delete-skip`, rejects forbidden keys/tokenized values, requires an existing `devices.device_id`, writes only `skip_dates`, and keeps service-role use server-side only. |
 | `alilos-schedule-completion-sync/index.ts` | POST-only schedule/completion sync proxy. It supports constrained `get-day-state`, `upsert-schedule`, and `upsert-completion`, rejects forbidden keys/tokenized values, requires an existing `devices.device_id`, writes only `daily_schedules` and `completion_records`, and keeps service-role use server-side only. |
-| `alilos-command-sync/index.ts` | POST-only command request/result proxy. It supports constrained `create-command`, `list-pending`, `claim-command`, `complete-command`, and `append-command-event`, rejects forbidden keys/tokenized values, requires an existing `devices.device_id`, writes only `command_requests` and `command_events`, and keeps service-role use server-side only. PARITY10A configured-action preflight is recorded as rejected/deferred, not pending executable work. |
+| `alilos-command-sync/index.ts` | POST-only command request/result proxy. It supports constrained `create-command`, `list-pending`, `claim-command`, `complete-command`, and `append-command-event`, rejects forbidden keys/tokenized values, requires an existing `devices.device_id`, writes only `command_requests` and `command_events`, and keeps service-role use server-side only. PARITY10B configured-action requests are pending commands with constrained guard metadata only. |
 | `alilos-dashboard-read/index.ts` | POST-only read dashboard proxy. It returns sanitized device, heartbeat, schedule, monthly skip, completion, command status, and event-log summaries for one registered device without changing RLS/table grants. |
 
-The desktop and webapp still use only publishable/anon credentials. Direct `anon` / `authenticated` table privileges remain closed. Skip sync affects scheduling only; schedule/completion sync backs up sanitized metadata and surfaces warnings only; command sync is limited to dry-run/non-clicking commands and rejects configured-action execution. All desktop parity sync features are disabled by default.
+The desktop and webapp still use only publishable/anon credentials. Direct `anon` / `authenticated` table privileges remain closed. Skip sync affects scheduling only; schedule/completion sync backs up sanitized metadata and surfaces warnings only; command sync is disabled by default and guarded configured-action execution also requires `paritySync.remoteActionEnabled`. All desktop parity sync features are disabled by default.
 
 ## Webapp
 
@@ -100,11 +100,11 @@ The desktop and webapp still use only publishable/anon credentials. Direct `anon
 | --- | --- |
 | `index.html` | Static mobile-first shell with Dashboard, Skip dates, and Log history tabs. |
 | `styles.css` | Dependency-free responsive tab, card, calendar, log, and status styling. |
-| `app.js` | Fetches `/functions/v1/alilos-dashboard-read`, renders dashboard action cards with disabled configured-action readiness surfaces, monthly skip calendar, sanitized log history, submits safe `create-command` requests to `/functions/v1/alilos-command-sync`, and toggles whole-day skips through `/functions/v1/alilos-skip-sync` with publishable/anon credentials when configured; otherwise shows static mock state. |
+| `app.js` | Fetches `/functions/v1/alilos-dashboard-read`, renders dashboard action cards with guarded configured-action request buttons, monthly skip calendar, sanitized log history, submits safe and guarded `create-command` requests to `/functions/v1/alilos-command-sync`, and toggles whole-day skips through `/functions/v1/alilos-skip-sync` with publishable/anon credentials when configured; otherwise shows static mock state. |
 | `config.example.js` | Placeholder-only config shape for `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and `VITE_ALILOS_DEVICE_ID`. |
 | `manifest.webmanifest` | Minimal PWA manifest. |
 
-The webapp has only safe/non-clicking command buttons, disabled configured-action readiness copy, and whole-day scheduling skip/unskip calendar cells. It has no active configured-action execution button, no configured-site login, no credential fields, no service-role key, and no browser automation.
+The webapp has safe/non-clicking command buttons, guarded configured-action request buttons, and whole-day scheduling skip/unskip calendar cells. It has no configured-site login, no credential fields, no service-role key, no arbitrary payload editor, and no browser automation. Any configured-site action is performed only by the desktop after local guard checks.
 
 ## Renderer
 

@@ -20,7 +20,7 @@ PARITY1B corrected target: monitored desktop use is release-candidate ready for 
 - No real action was attempted in W validation. Completion records stayed `0`.
 - Checked logs remained sanitized.
 - Supabase heartbeat skeleton exists but remains disabled/deferred.
-- Supabase PARITY7 command sync exists but remains disabled by default and is limited to dry-run/non-clicking commands if explicitly enabled. PARITY10A configured-action preflight remains rejected/deferred and does not approve remote real execution.
+- Supabase PARITY7 command sync exists but remains disabled by default. PARITY10B guarded configured-action handling also exists, but it requires `paritySync.remoteActionEnabled=true` in local desktop config and still needs PARITY10C field validation before operational reliance.
 - Local Perakam auto-login is enabled on the test machine and should be intentionally controlled before future tests.
 
 ## O Track Consolidation
@@ -28,7 +28,7 @@ PARITY1B corrected target: monitored desktop use is release-candidate ready for 
 - O1 added this operational readiness checklist.
 - O2 fixed the launch-at-login log wording to `Launch-at-login setting applied from settings...`.
 - O3 real-machine observation passed: packaged `ALILOS.exe` launched, `manual-confirm` was observed, launch-at-login final state was disabled, Network Monitor was active, internet was `online`, Perakam reachability was `login-required`, captive portal was `not-detected`, scripted hide/show IPC passed, Quit completed cleanly, no `ALILOS` process remained, completion records stayed `0`, and sanitized log review passed.
-- Current recommendation: go for monitored local use in `manual-confirm`, `dry-run`, or `notify-only`; no-go for fully unattended real execution or remote configured-action execution.
+- Current recommendation: go for monitored local use in `manual-confirm`, `dry-run`, or `notify-only`; no-go for fully unattended real execution. Remote configured-action execution is code-complete behind a disabled local gate but not operationally ready until supervised PARITY10C validation.
 - RC1 monitored real-world observation is planned below for one actual scheduled `manual-confirm` cycle with the user physically present.
 - Next track options: perform RC1 when physically ready, continue S3/Supabase planning only after explicit approval, or continue web/PWA planning only after explicit approval.
 
@@ -177,7 +177,7 @@ PARITY1B corrected target: monitored desktop use is release-candidate ready for 
 - Real scheduled manual-confirm at actual clock-in/out time not tested.
 - Fully unattended real action remains not approved and not validated.
 - Installer and signing remain optional release decisions.
-- Supabase schedule/completion sync exists through the disabled-by-default PARITY6 Edge Function path, dry-run/non-clicking command sync exists through the disabled-by-default PARITY7 Edge Function path, and configured-action preflight/deferred scaffolding exists through PARITY10A. Keep sync off for ordinary monitored desktop use unless a separate Supabase smoke test is explicitly approved.
+- Supabase schedule/completion sync exists through the disabled-by-default PARITY6 Edge Function path, dry-run/non-clicking command sync exists through the disabled-by-default PARITY7 Edge Function path, and guarded configured-action handling exists through PARITY10B. Keep sync and `paritySync.remoteActionEnabled` off for ordinary monitored desktop use unless a separate Supabase smoke/field test is explicitly approved.
 
 ## RC1 Monitored Real-World Observation Plan
 

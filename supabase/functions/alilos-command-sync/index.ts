@@ -46,22 +46,22 @@ const PARITY7_ALLOWED_COMMAND_TYPES = new Set([
   "request-status-refresh",
   "request-dry-run",
   "cancel-confirmation",
-  "recalculate-today-schedule"
+  "recalculate-today-schedule",
+  "perform-configured-action"
 ]);
 const CREATE_COMMAND_TYPES = new Set([
   "request-status-refresh",
   "request-dry-run",
   "cancel-confirmation",
-  "recalculate-today-schedule"
-]);
-const PREFLIGHT_ONLY_COMMAND_TYPES = new Set([
+  "recalculate-today-schedule",
   "perform-configured-action"
 ]);
 const CONFIGURED_ACTION_PREFLIGHT_PAYLOAD_KEYS = new Set([
   "requestedFrom",
-  "preflightOnly",
-  "executionDeferred",
-  "noConfiguredSiteAction"
+  "guardedRemoteAction",
+  "desktopGuardRequired",
+  "webappDoesNotClick",
+  "credentialsStayLocal"
 ]);
 const FINAL_STATUSES = new Set(["succeeded", "failed", "expired", "rejected", "cancelled"]);
 const EVENT_TYPES = new Set(["created", "claimed", "progress", "succeeded", "failed", "expired", "rejected", "cancelled"]);
@@ -174,7 +174,7 @@ Deno.serve(async (request) => {
   }
 
   if (payload.operation === "create-command") {
-    if (!payload.commandType || (!CREATE_COMMAND_TYPES.has(payload.commandType) && !PREFLIGHT_ONLY_COMMAND_TYPES.has(payload.commandType))) {
+    if (!payload.commandType || !CREATE_COMMAND_TYPES.has(payload.commandType)) {
       return jsonResponse({ success: false, error: "unsupported-command-type" }, 400);
     }
 
@@ -188,21 +188,13 @@ Deno.serve(async (request) => {
         return jsonResponse({ success: false, error: "invalid-configured-action-preflight-payload" }, 400);
       }
 
-      const preflightPayload = {
+      const guardedPayload = {
         requestedFrom: "webapp",
-        preflightOnly: true,
-        executionDeferred: true,
-        noConfiguredSiteAction: true
+        guardedRemoteAction: true,
+        desktopGuardRequired: true,
+        webappDoesNotClick: true,
+        credentialsStayLocal: true
       };
-      const resultDetails = {
-        commandType: payload.commandType,
-        actionKey: payload.actionKey,
-        scheduleDate: payload.scheduleDate,
-        preflightOnly: true,
-        executionDeferred: true,
-        noConfiguredSiteAction: true
-      };
-      const summary = "Remote configured action is not enabled in this build.";
       const { data, error } = await supabase
         .from("command_requests")
         .insert({
@@ -210,23 +202,27 @@ Deno.serve(async (request) => {
           command_type: payload.commandType,
           action_key: payload.actionKey,
           schedule_date: payload.scheduleDate,
-          payload: preflightPayload,
-          status: "rejected",
-          requested_by: "webapp-preflight",
+          payload: guardedPayload,
+          status: "pending",
+          requested_by: "webapp-guarded-action",
           requested_at: acceptedAt,
-          expires_at: expiresAt,
-          completed_at: acceptedAt,
-          result_summary: summary,
-          result_details: resultDetails
+          expires_at: expiresAt
         })
         .select("id, status, requested_at, expires_at")
         .single();
 
       if (error || !data) {
-        return jsonResponse({ success: false, error: "command-preflight-create-failed" }, 500);
+        return jsonResponse({ success: false, error: "command-create-failed" }, 500);
       }
 
-      await appendCommandEvent(supabase, payload.deviceId, readUuid(data.id) ?? "00000000-0000-4000-8000-000000000000", "rejected", summary, resultDetails);
+      await appendCommandEvent(supabase, payload.deviceId, readUuid(data.id) ?? "00000000-0000-4000-8000-000000000000", "created", "Guarded remote configured action requested. Desktop guard pipeline must approve before any click.", {
+        commandType: payload.commandType,
+        actionKey: payload.actionKey,
+        scheduleDate: payload.scheduleDate,
+        source: "webapp",
+        guardedRemoteAction: true,
+        webappDoesNotClick: true
+      });
 
       return jsonResponse({
         success: true,
@@ -234,12 +230,10 @@ Deno.serve(async (request) => {
         acceptedAt,
         command: {
           id: readUuid(data.id) ?? "00000000-0000-4000-8000-000000000000",
-          status: readCommandStatus(data.status) ?? "rejected",
+          status: readCommandStatus(data.status) ?? "pending",
           requestedAt: readIsoDate(data.requested_at) ?? acceptedAt,
           expiresAt: readIsoDate(data.expires_at) ?? expiresAt,
-          preflightOnly: true,
-          executionDeferred: true,
-          summary
+          guardedRemoteAction: true
         }
       }, 202);
     }

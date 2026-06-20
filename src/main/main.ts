@@ -234,6 +234,7 @@ app.whenReady().then(() => {
         }
       };
     },
+    runRemoteConfiguredAction: async (actionKey, scheduleDate) => runRemoteConfiguredAction(actionKey, scheduleDate),
     recalculateTodaySchedule: () => {
       const schedule = scheduler.recalculateToday();
       reminderService.clearLogMarkersForDate(formatDateKey(new Date()));
@@ -1131,6 +1132,100 @@ function recordAttendanceExecutionAudit(result: AttendanceExecutionResult): void
       }
     });
   }
+}
+
+async function runRemoteConfiguredAction(
+  actionKey: AttendanceActionType,
+  scheduleDate: string
+): Promise<{ status: string; summary: string; details: Record<string, string | number | boolean | null> }> {
+  const localDate = formatDateKey(new Date());
+  if (scheduleDate !== localDate) {
+    return {
+      status: "rejected",
+      summary: "Remote configured action rejected because schedule date does not match the desktop local date.",
+      details: { actionKey, scheduleDate, localDate, reason: "date-mismatch", noConfiguredSiteAction: true }
+    };
+  }
+
+  const network = networkMonitor.snapshot();
+  if (network.connectivityState !== "online" || network.captivePortal.state !== "not-detected") {
+    return {
+      status: "rejected",
+      summary: "Remote configured action rejected because desktop network or captive portal state is not safe.",
+      details: {
+        actionKey,
+        scheduleDate,
+        connectivityState: network.connectivityState,
+        captivePortalState: network.captivePortal.state,
+        reason: "network-or-captive-portal-uncertain",
+        noConfiguredSiteAction: true
+      }
+    };
+  }
+
+  const confirmation = confirmationService.createConfirmation(actionKey);
+  if (!confirmation) {
+    const readiness = actionKey === "clock-in"
+      ? confirmationService.snapshot().clockIn
+      : confirmationService.snapshot().clockOut;
+    return {
+      status: "rejected",
+      summary: "Remote configured action rejected by local readiness checks before confirmation.",
+      details: {
+        actionKey,
+        scheduleDate,
+        reason: readiness.reasonText,
+        rejectionCount: readiness.reasons.length,
+        noConfiguredSiteAction: true
+      }
+    };
+  }
+
+  const accepted = confirmationService.acceptConfirmation(confirmation.id);
+  if (!accepted || accepted.status !== "accepted") {
+    return {
+      status: "rejected",
+      summary: "Remote configured action rejected because local confirmation could not be accepted.",
+      details: { actionKey, scheduleDate, reason: accepted?.status ?? "confirmation-not-accepted", noConfiguredSiteAction: true }
+    };
+  }
+
+  const dryRun = await confirmationService.runAttendanceDryRun(confirmation.id);
+  if (dryRun.status !== "passed") {
+    return {
+      status: "rejected",
+      summary: dryRun.summary,
+      details: {
+        actionKey,
+        scheduleDate,
+        dryRunStatus: dryRun.status,
+        rejectionCount: dryRun.rejectionReasons.length,
+        noConfiguredSiteAction: true
+      }
+    };
+  }
+
+  const result = await confirmationService.runGuardedAttendanceClick(confirmation.id);
+  recordAttendanceExecutionAudit(result);
+  await broadcastSnapshot();
+
+  if (config.paritySync.scheduleCompletionSyncEnabled) {
+    await paritySyncService.syncScheduleCompletions("remote-configured-action", scheduleDate);
+  }
+
+  return {
+    status: result.status,
+    summary: result.summary,
+    details: {
+      actionKey,
+      scheduleDate,
+      executionStatus: result.status,
+      completionState: result.completionState,
+      verificationState: result.verification?.status ?? null,
+      rejectionCount: result.rejectionReasons.length,
+      noConfiguredSiteAction: result.status !== "succeeded"
+    }
+  };
 }
 
 function savePerakamAutoLoginSettings(settings: Partial<PerakamAutoLoginInput> | null): void {

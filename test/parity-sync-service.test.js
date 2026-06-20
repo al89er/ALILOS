@@ -74,6 +74,7 @@ test("parity sync config defaults disabled and empty", () => {
     assert.equal(config.paritySync.skipSyncEnabled, false);
     assert.equal(config.paritySync.commandSyncEnabled, false);
     assert.equal(config.paritySync.scheduleCompletionSyncEnabled, false);
+    assert.equal(config.paritySync.remoteActionEnabled, false);
   } finally {
     temp.cleanup();
   }
@@ -735,6 +736,10 @@ function commandPayload(config, overrides = {}) {
   };
 }
 
+function testDateKey(date = new Date()) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
 test("command sync disabled does not poll", async () => {
   const temp = createTempConfigStore();
 
@@ -871,7 +876,7 @@ test("command sync list claim complete flow uses proxy and safe recalculate call
   }
 });
 
-test("command sync rejects unsupported perform-configured-action", async () => {
+test("command sync rejects perform-configured-action when remote action gate is disabled", async () => {
   const temp = createTempConfigStore();
 
   try {
@@ -888,10 +893,47 @@ test("command sync rejects unsupported perform-configured-action", async () => {
         const body = JSON.parse(init.body);
         requests.push(body);
         if (body.operation === "list-pending") {
-          return { ok: true, status: 200, json: async () => ({ success: true, commands: [commandPayload(config, { commandType: "perform-configured-action" })] }) };
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              success: true,
+              commands: [commandPayload(config, {
+                commandType: "perform-configured-action",
+                actionKey: "clock-in",
+                scheduleDate: testDateKey(),
+                payload: {
+                  requestedFrom: "webapp",
+                  guardedRemoteAction: true,
+                  desktopGuardRequired: true,
+                  webappDoesNotClick: true,
+                  credentialsStayLocal: true
+                }
+              })]
+            })
+          };
         }
         if (body.operation === "claim-command") {
-          return { ok: true, status: 200, json: async () => ({ success: true, command: commandPayload(config, { commandType: "perform-configured-action", status: "claimed" }) }) };
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              success: true,
+              command: commandPayload(config, {
+                commandType: "perform-configured-action",
+                actionKey: "clock-in",
+                scheduleDate: testDateKey(),
+                payload: {
+                  requestedFrom: "webapp",
+                  guardedRemoteAction: true,
+                  desktopGuardRequired: true,
+                  webappDoesNotClick: true,
+                  credentialsStayLocal: true
+                },
+                status: "claimed"
+              })
+            })
+          };
         }
         return { ok: true, status: 202, json: async () => ({ success: true }) };
       }
@@ -902,11 +944,182 @@ test("command sync rejects unsupported perform-configured-action", async () => {
     const complete = requests.find((body) => body.operation === "complete-command");
 
     assert.equal(complete.status, "rejected");
-    assert.equal(complete.summary, "Remote configured action is not enabled in this build.");
-    assert.equal(complete.details.executionDeferred, true);
-    assert.equal(complete.details.preflightOnly, true);
+    assert.equal(complete.summary, "Remote configured action is disabled in local desktop config.");
+    assert.equal(complete.details.remoteActionEnabled, false);
     assert.equal(complete.details.noConfiguredSiteAction, true);
     assert.equal(status.commandSync.rejectedCount, 1);
+  } finally {
+    temp.cleanup();
+  }
+});
+
+test("command sync rejects remote configured action with wrong date before guarded callback", async () => {
+  const temp = createTempConfigStore();
+
+  try {
+    const config = temp.store.load();
+    config.paritySync.enabled = true;
+    config.paritySync.commandSyncEnabled = true;
+    config.paritySync.remoteActionEnabled = true;
+    config.paritySync.supabaseUrl = "https://example.supabase.co";
+    config.paritySync.publishableKey = "anon-publishable-key";
+    const logger = createLogger();
+    const requests = [];
+    let callbackCalls = 0;
+    const command = commandPayload(config, {
+      commandType: "perform-configured-action",
+      actionKey: "clock-in",
+      scheduleDate: "2000-01-01",
+      payload: {
+        requestedFrom: "webapp",
+        guardedRemoteAction: true,
+        desktopGuardRequired: true,
+        webappDoesNotClick: true,
+        credentialsStayLocal: true
+      }
+    });
+    const service = new ParitySyncService(config, logger, { supabaseUrl: "", publishableKey: "" }, {
+      buildDeviceStatusPayload: () => createStatusPayload(),
+      runRemoteConfiguredAction: async () => {
+        callbackCalls += 1;
+        return { status: "succeeded", summary: "should not run" };
+      },
+      fetchFn: async (_url, init) => {
+        const body = JSON.parse(init.body);
+        requests.push(body);
+        if (body.operation === "list-pending") {
+          return { ok: true, status: 200, json: async () => ({ success: true, commands: [command] }) };
+        }
+        if (body.operation === "claim-command") {
+          return { ok: true, status: 200, json: async () => ({ success: true, command: { ...command, status: "claimed" } }) };
+        }
+        return { ok: true, status: 202, json: async () => ({ success: true }) };
+      }
+    });
+
+    await service.pollCommands("test");
+    const complete = requests.find((body) => body.operation === "complete-command");
+
+    assert.equal(callbackCalls, 0);
+    assert.equal(complete.status, "rejected");
+    assert.equal(complete.summary, "Remote configured action schedule date does not match the desktop local date.");
+    assert.equal(complete.details.noConfiguredSiteAction, true);
+  } finally {
+    temp.cleanup();
+  }
+});
+
+test("command sync rejects remote configured action with unsupported payload before guarded callback", async () => {
+  const temp = createTempConfigStore();
+
+  try {
+    const config = temp.store.load();
+    config.paritySync.enabled = true;
+    config.paritySync.commandSyncEnabled = true;
+    config.paritySync.remoteActionEnabled = true;
+    config.paritySync.supabaseUrl = "https://example.supabase.co";
+    config.paritySync.publishableKey = "anon-publishable-key";
+    const logger = createLogger();
+    const requests = [];
+    let callbackCalls = 0;
+    const command = commandPayload(config, {
+      commandType: "perform-configured-action",
+      actionKey: "clock-out",
+      scheduleDate: testDateKey(),
+      payload: { requestedFrom: "webapp", unexpected: true }
+    });
+    const service = new ParitySyncService(config, logger, { supabaseUrl: "", publishableKey: "" }, {
+      buildDeviceStatusPayload: () => createStatusPayload(),
+      runRemoteConfiguredAction: async () => {
+        callbackCalls += 1;
+        return { status: "succeeded", summary: "should not run" };
+      },
+      fetchFn: async (_url, init) => {
+        const body = JSON.parse(init.body);
+        requests.push(body);
+        if (body.operation === "list-pending") {
+          return { ok: true, status: 200, json: async () => ({ success: true, commands: [command] }) };
+        }
+        if (body.operation === "claim-command") {
+          return { ok: true, status: 200, json: async () => ({ success: true, command: { ...command, status: "claimed" } }) };
+        }
+        return { ok: true, status: 202, json: async () => ({ success: true }) };
+      }
+    });
+
+    await service.pollCommands("test");
+    const complete = requests.find((body) => body.operation === "complete-command");
+
+    assert.equal(callbackCalls, 0);
+    assert.equal(complete.status, "rejected");
+    assert.equal(complete.summary, "Remote configured action payload rejected by desktop sanitizer.");
+    assert.equal(complete.details.reason, "unsupported-payload");
+  } finally {
+    temp.cleanup();
+  }
+});
+
+test("command sync routes valid remote configured action to guarded desktop callback", async () => {
+  const temp = createTempConfigStore();
+
+  try {
+    const config = temp.store.load();
+    config.paritySync.enabled = true;
+    config.paritySync.commandSyncEnabled = true;
+    config.paritySync.remoteActionEnabled = true;
+    config.paritySync.supabaseUrl = "https://example.supabase.co";
+    config.paritySync.publishableKey = "anon-publishable-key";
+    const logger = createLogger();
+    const requests = [];
+    const command = commandPayload(config, {
+      commandType: "perform-configured-action",
+      actionKey: "clock-out",
+      scheduleDate: testDateKey(),
+      payload: {
+        requestedFrom: "webapp",
+        guardedRemoteAction: true,
+        desktopGuardRequired: true,
+        webappDoesNotClick: true,
+        credentialsStayLocal: true
+      }
+    });
+    const callbackArgs = [];
+    const service = new ParitySyncService(config, logger, { supabaseUrl: "", publishableKey: "" }, {
+      buildDeviceStatusPayload: () => createStatusPayload(),
+      runRemoteConfiguredAction: async (actionKey, scheduleDate) => {
+        callbackArgs.push({ actionKey, scheduleDate });
+        return {
+          status: "succeeded",
+          summary: "Guarded desktop path completed.",
+          details: {
+            verificationState: "verified-success",
+            note: "sanitized https://secret.example/path?token=abc link=opaque"
+          }
+        };
+      },
+      fetchFn: async (_url, init) => {
+        const body = JSON.parse(init.body);
+        requests.push(body);
+        if (body.operation === "list-pending") {
+          return { ok: true, status: 200, json: async () => ({ success: true, commands: [command] }) };
+        }
+        if (body.operation === "claim-command") {
+          return { ok: true, status: 200, json: async () => ({ success: true, command: { ...command, status: "claimed" } }) };
+        }
+        return { ok: true, status: 202, json: async () => ({ success: true }) };
+      }
+    });
+
+    await service.pollCommands("test");
+    const complete = requests.find((body) => body.operation === "complete-command");
+    const serialized = JSON.stringify(complete);
+
+    assert.deepEqual(callbackArgs, [{ actionKey: "clock-out", scheduleDate: testDateKey() }]);
+    assert.equal(complete.status, "succeeded");
+    assert.equal(complete.summary, "Guarded desktop path completed.");
+    assert.equal(complete.details.actionKey, "clock-out");
+    assert.equal(complete.details.remoteStatus, "succeeded");
+    assert.doesNotMatch(serialized, /token=abc|link=opaque|link=/);
   } finally {
     temp.cleanup();
   }

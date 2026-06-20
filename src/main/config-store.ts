@@ -47,6 +47,7 @@ function createDefaultConfig(): AppConfig {
       logUploadEnabled: false,
       skipSyncEnabled: false,
       commandSyncEnabled: false,
+      remoteActionEnabled: false,
       scheduleCompletionSyncEnabled: false
     },
     attendance: {
@@ -390,6 +391,7 @@ function normalizeParitySyncSettings(value: Partial<ParitySyncSettings> | undefi
     logUploadEnabled: Boolean(value?.logUploadEnabled),
     skipSyncEnabled: Boolean(value?.skipSyncEnabled),
     commandSyncEnabled: Boolean(value?.commandSyncEnabled),
+    remoteActionEnabled: Boolean(value?.remoteActionEnabled),
     scheduleCompletionSyncEnabled: Boolean(value?.scheduleCompletionSyncEnabled)
   };
 }

@@ -7,7 +7,7 @@ This runbook deploys and smoke-tests the `alilos-command-sync` Supabase Edge Fun
 - Desktop local operation does not require Supabase.
 - Desktop command sync remains disabled unless both `paritySync.enabled` and `paritySync.commandSyncEnabled` are explicitly enabled.
 - PARITY7 handles only `request-status-refresh`, `request-dry-run`, `recalculate-today-schedule`, and `cancel-confirmation`.
-- `perform-configured-action` and remote confirmation creation remain rejected/deferred.
+- `perform-configured-action` is available only through the PARITY10B guarded desktop path and remains disabled by default through local `paritySync.remoteActionEnabled`.
 - No command may contain arbitrary selectors, scripts, forms, full URLs, tokenized URLs, credentials, cookies, raw HTML, screenshots, opaque `link=` values, or service-role keys.
 
 ## Deploy
@@ -34,7 +34,7 @@ Use a pre-registered non-personal test `deviceId`, a publishable/anon client key
 - `claim-command` moves one pending command to claimed.
 - `complete-command` writes sanitized result summary/details.
 - `append-command-event` writes sanitized audit details.
-- `perform-configured-action` is not returned by `list-pending` and is rejected by the desktop if encountered.
+- `perform-configured-action` may be returned by `list-pending` only as a guarded PARITY10B command. The desktop rejects it unless command sync, `manual-confirm`, `remoteActionEnabled`, local date, constrained payload, and existing guard checks all pass.
 
 Keep desktop command sync off for ordinary monitored use. Enable it only for an explicit Supabase smoke test, then disable it again.
 

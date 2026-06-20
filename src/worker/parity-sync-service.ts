@@ -37,6 +37,14 @@ export const PARITY_COMMAND_STATUSES: readonly ParityCommandStatus[] = [
   "cancelled"
 ];
 
+const REMOTE_ACTION_PAYLOAD_KEYS = new Set([
+  "requestedFrom",
+  "guardedRemoteAction",
+  "desktopGuardRequired",
+  "webappDoesNotClick",
+  "credentialsStayLocal"
+]);
+
 interface EffectiveParitySyncSettings {
   supabaseUrl: URL;
   publishableKey: string;
@@ -105,6 +113,7 @@ interface ParitySyncDependencies {
   buildDeviceStatusPayload: () => ParityDeviceStatusPayload;
   mergeRemoteSkippedDates?: (dates: string[]) => number;
   runAttendanceDryRun?: (confirmationId: string) => Promise<{ status: string; summary: string; details?: Record<string, string | number | boolean | null> }>;
+  runRemoteConfiguredAction?: (actionKey: AttendanceActionType, scheduleDate: string) => Promise<{ status: string; summary: string; details?: Record<string, string | number | boolean | null> }>;
   recalculateTodaySchedule?: () => { summary: string; details?: Record<string, string | number | boolean | null> };
   cancelPendingConfirmation?: (confirmationId?: string) => { status: "succeeded" | "rejected" | "cancelled"; summary: string; details?: Record<string, string | number | boolean | null> };
   broadcastSnapshot?: () => void;
@@ -273,6 +282,7 @@ export class ParitySyncService {
         logUploadEnabled: this.config.paritySync.logUploadEnabled,
         skipSyncEnabled: this.config.paritySync.skipSyncEnabled,
         commandSyncEnabled: this.config.paritySync.commandSyncEnabled,
+        remoteActionEnabled: this.config.paritySync.remoteActionEnabled,
         scheduleCompletionSyncEnabled: this.config.paritySync.scheduleCompletionSyncEnabled
       },
       lastStartedAt: this.lastStartedAt,
@@ -684,11 +694,7 @@ export class ParitySyncService {
     details: Record<string, string | number | boolean | null>;
   }> {
     if (command.commandType === "perform-configured-action") {
-      return {
-        status: "rejected",
-        summary: "Remote configured action is not enabled in this build.",
-        details: { commandType: command.commandType, executionDeferred: true, preflightOnly: true, noConfiguredSiteAction: true }
-      };
+      return this.executeRemoteConfiguredActionCommand(command);
     }
 
     if (command.commandType === "request-confirmation") {
@@ -771,6 +777,80 @@ export class ParitySyncService {
       status: "rejected",
       summary: "Unknown or unsupported command rejected.",
       details: { commandType: sanitizeStatusText(command.commandType, 80), noConfiguredSiteAction: true }
+    };
+  }
+
+  private async executeRemoteConfiguredActionCommand(command: ParityCommandRequestPayload): Promise<{
+    status: Extract<ParityCommandStatus, "succeeded" | "failed" | "expired" | "rejected" | "cancelled">;
+    summary: string;
+    details: Record<string, string | number | boolean | null>;
+  }> {
+    if (!this.config.paritySync.remoteActionEnabled) {
+      return {
+        status: "rejected",
+        summary: "Remote configured action is disabled in local desktop config.",
+        details: { commandType: command.commandType, remoteActionEnabled: false, noConfiguredSiteAction: true }
+      };
+    }
+
+    if (this.config.automation.executionMode !== "manual-confirm") {
+      return {
+        status: "rejected",
+        summary: "Remote configured action requires local manual-confirm mode.",
+        details: { commandType: command.commandType, executionMode: this.config.automation.executionMode, noConfiguredSiteAction: true }
+      };
+    }
+
+    const actionKey = sanitizeActionKey(command.actionKey);
+    const scheduleDate = sanitizeDateText(command.scheduleDate);
+    const today = localDateKey(new Date());
+
+    if (!actionKey || !scheduleDate) {
+      return {
+        status: "rejected",
+        summary: "Remote configured action requires an action key and schedule date.",
+        details: { commandType: command.commandType, reason: "missing-action-or-date", noConfiguredSiteAction: true }
+      };
+    }
+
+    if (scheduleDate !== today) {
+      return {
+        status: "rejected",
+        summary: "Remote configured action schedule date does not match the desktop local date.",
+        details: { commandType: command.commandType, actionKey, scheduleDate, localDate: today, noConfiguredSiteAction: true }
+      };
+    }
+
+    if (!isRemoteActionPayloadAllowed(command.payload)) {
+      return {
+        status: "rejected",
+        summary: "Remote configured action payload rejected by desktop sanitizer.",
+        details: { commandType: command.commandType, actionKey, scheduleDate, reason: "unsupported-payload", noConfiguredSiteAction: true }
+      };
+    }
+
+    if (!this.dependencies.runRemoteConfiguredAction) {
+      return missingCapability(command.commandType, "Remote configured action callback is not wired.");
+    }
+
+    const result = await this.dependencies.runRemoteConfiguredAction(actionKey, scheduleDate);
+    const remoteStatus = sanitizeStatusText(result.status, 80) ?? "rejected";
+    const status = remoteStatus === "succeeded"
+      ? "succeeded"
+      : remoteStatus === "failed"
+        ? "failed"
+        : "rejected";
+
+    return {
+      status,
+      summary: sanitizeStatusText(result.summary, 500) ?? "Remote configured action processed by desktop guard pipeline.",
+      details: sanitizeDetails({
+        commandType: command.commandType,
+        actionKey,
+        scheduleDate,
+        remoteStatus,
+        ...(result.details ?? {})
+      })
     };
   }
 
@@ -1165,6 +1245,20 @@ function sanitizeCommandPayload(payload: Record<string, string | number | boolea
   return hasUnsafeDetails(payload)
     ? { ...sanitized, payloadRejected: true, rejectReason: "forbidden-content" }
     : sanitized;
+}
+
+function isRemoteActionPayloadAllowed(payload: Record<string, string | number | boolean | null>): boolean {
+  return Object.entries(payload).every(([key, value]) => {
+    if (!REMOTE_ACTION_PAYLOAD_KEYS.has(key)) {
+      return false;
+    }
+
+    if (key === "requestedFrom") {
+      return value === "webapp";
+    }
+
+    return value === true;
+  });
 }
 
 function sanitizeCommandType(value: ParityCommandType | null | undefined): ParityCommandType | null {

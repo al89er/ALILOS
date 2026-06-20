@@ -51,6 +51,7 @@ const ids = [
 
 const elements = Object.fromEntries(ids.map((id) => [id, document.getElementById(id)]));
 const commandButtons = [...document.querySelectorAll("[data-command-type]")];
+const remoteActionButtons = [...document.querySelectorAll("[data-remote-action]")];
 const tabButtons = [...document.querySelectorAll("[data-tab-target]")];
 const tabPanels = [...document.querySelectorAll("[data-tab-panel]")];
 const pendingSkipDates = new Set();
@@ -58,6 +59,7 @@ const pendingSkipDates = new Set();
 render();
 bindTabs();
 bindCommandButtons();
+bindRemoteActionButtons();
 bindMonthButtons();
 void loadDashboard();
 
@@ -126,6 +128,14 @@ function bindCommandButtons() {
   }
 }
 
+function bindRemoteActionButtons() {
+  for (const button of remoteActionButtons) {
+    button.addEventListener("click", () => {
+      void submitRemoteConfiguredAction(button.dataset.remoteAction);
+    });
+  }
+}
+
 async function submitSafeCommand(commandType) {
   if (!SAFE_COMMAND_TYPES.has(commandType)) {
     setCommandMessage("Unsupported command rejected by webapp.", "bad");
@@ -172,6 +182,76 @@ async function submitSafeCommand(commandType) {
     setCommandMessage(sanitizeText(error.message, 160) ?? "Command submission failed.", "bad");
   } finally {
     setButtonsDisabled(false);
+  }
+}
+
+async function submitRemoteConfiguredAction(actionKey) {
+  if (!ACTION_KEYS.has(actionKey)) {
+    setCommandMessage("Unsupported guarded action rejected by webapp.", "bad");
+    return;
+  }
+
+  const schedule = (state.data.schedules ?? []).find((item) => item.actionKey === actionKey);
+  const scheduleDate = state.data.dateKey ?? todayKey();
+  if (!schedule || schedule.status !== "active") {
+    setCommandMessage("Guarded action not submitted: synced schedule is unavailable or inactive.", "warn");
+    return;
+  }
+
+  if (!isConfigured(config)) {
+    setCommandMessage("Guarded action not submitted: configure Supabase URL, anon key, and device id first.", "warn");
+    return;
+  }
+
+  const confirmed = window.confirm(`Request guarded ${actionLabel(actionKey).toLowerCase()} for ${scheduleDate}? The desktop must be online and will re-run all guard checks before any website click.`);
+  if (!confirmed) {
+    setCommandMessage("Guarded action request cancelled before submission.", "neutral");
+    return;
+  }
+
+  setButtonsDisabled(true);
+  setRemoteActionButtonsDisabled(true);
+  setCommandMessage(`Submitting guarded ${actionLabel(actionKey).toLowerCase()} request...`, "neutral");
+
+  try {
+    const endpoint = new URL("/functions/v1/alilos-command-sync", config.VITE_SUPABASE_URL);
+    const response = await fetch(endpoint.toString(), {
+      method: "POST",
+      headers: {
+        apikey: config.VITE_SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${config.VITE_SUPABASE_ANON_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        deviceId: config.VITE_ALILOS_DEVICE_ID,
+        operation: "create-command",
+        commandType: "perform-configured-action",
+        actionKey,
+        scheduleDate,
+        payload: {
+          requestedFrom: "webapp",
+          guardedRemoteAction: true,
+          desktopGuardRequired: true,
+          webappDoesNotClick: true,
+          credentialsStayLocal: true
+        }
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Command proxy returned HTTP ${response.status}.`);
+    }
+
+    const result = await response.json();
+    const id = result?.command?.id ? shortId(result.command.id) : "pending";
+    setCommandMessage(`Guarded ${actionLabel(actionKey).toLowerCase()} submitted as ${id}. Desktop must be online with remote action enabled locally.`, "good");
+    await loadDashboard();
+  } catch (error) {
+    setCommandMessage(sanitizeText(error.message, 160) ?? "Guarded action submission failed.", "bad");
+  } finally {
+    setButtonsDisabled(false);
+    setRemoteActionButtonsDisabled(false);
+    render();
   }
 }
 
@@ -282,6 +362,10 @@ function renderActionCard(actionKey, prefix, schedules, completions) {
       ? `${schedule.status} - ${schedule.source}`
       : "Schedule unavailable";
   elements[`${prefix}-readiness`].textContent = actionReadinessText(schedule, completion);
+  const button = document.querySelector(`[data-remote-action="${actionKey}"]`);
+  if (button) {
+    button.disabled = !remoteActionMaySubmit(schedule, completion);
+  }
 }
 
 function renderSchedules(schedules) {
@@ -387,6 +471,7 @@ const SAFE_COMMAND_TYPES = new Set([
   "recalculate-today-schedule",
   "cancel-confirmation"
 ]);
+const ACTION_KEYS = new Set(["clock-in", "clock-out"]);
 
 function listItem(title, value, detail) {
   const item = document.createElement("div");
@@ -454,18 +539,31 @@ function actionLabel(value) {
 
 function actionReadinessText(schedule, completion) {
   if (completion) {
-    return `Remote action deferred: completion is ${completion.state}.`;
+    return `Guarded action unavailable: completion is ${completion.state}.`;
   }
 
   if (!schedule) {
-    return "Remote action deferred: synced schedule unavailable.";
+    return "Guarded action unavailable: synced schedule unavailable.";
   }
 
   if (schedule.status !== "active") {
-    return `Remote action deferred: schedule is ${schedule.status}.`;
+    return `Guarded action unavailable: schedule is ${schedule.status}.`;
   }
 
-  return `Preflight only: synced schedule target ${schedule.targetTimeLocal}.`;
+  return `Guarded request available for synced target ${schedule.targetTimeLocal}.`;
+}
+
+function remoteActionMaySubmit(schedule, completion) {
+  if (completion || !schedule || schedule.status !== "active") {
+    return false;
+  }
+
+  if (state.data.heartbeat?.appStatus !== "manual-confirm") {
+    return false;
+  }
+
+  const freshness = heartbeatFreshness(state.data.heartbeat?.lastSeenAt ?? state.data.device?.lastSeenAt ?? null);
+  return freshness.state === "online";
 }
 
 function inferPortalStatus(networkStatus) {
@@ -502,6 +600,12 @@ function setSkipMessage(message, tone) {
 
 function setButtonsDisabled(disabled) {
   for (const button of commandButtons) {
+    button.disabled = disabled;
+  }
+}
+
+function setRemoteActionButtonsDisabled(disabled) {
+  for (const button of remoteActionButtons) {
     button.disabled = disabled;
   }
 }

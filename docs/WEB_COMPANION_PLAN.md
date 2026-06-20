@@ -1,6 +1,6 @@
 # Web Companion Plan
 
-WEB1-WEB4 documented the future mobile-friendly browser/PWA companion. PARITY8 created the first read-only implementation under `webapp/`. PARITY9 adds safe non-clicking command controls for status refresh, dry-run/check, schedule recalculation, and cancel confirmation. PARITY9B aligns the UI to the existing three-tab workflow: Dashboard, Skip dates, and Log history. PARITY9C adds whole-day skip/unskip calendar controls. PARITY9D documents the deployed safe-loop smoke-test runbook. PARITY10A adds disabled configured-action readiness/preflight surfaces only. It still does not add remote configured-action execution, Supabase table grants, Electron runtime behavior changes, configured-site login, credential handling, or unattended real execution approval.
+WEB1-WEB4 documented the future mobile-friendly browser/PWA companion. PARITY8 created the first read-only implementation under `webapp/`. PARITY9 adds safe non-clicking command controls for status refresh, dry-run/check, schedule recalculation, and cancel confirmation. PARITY9B aligns the UI to the existing three-tab workflow: Dashboard, Skip dates, and Log history. PARITY9C adds whole-day skip/unskip calendar controls. PARITY9D documents the deployed safe-loop smoke-test runbook. PARITY10B adds guarded configured-action request buttons behind desktop-side `paritySync.remoteActionEnabled`, which defaults to false. It still does not add Supabase table grants, configured-site login, credential handling, webapp browser automation, or unattended real execution approval.
 
 PARITY1B corrected target: the webapp/PWA plus Supabase control plane are required for the complete product milestone. Telegram is paused/deprioritized and is not a parity requirement. See `docs/LEGACY_PARITY_PLAN.md` for the full matrix and PARITY2-PARITY13 build sequence.
 
@@ -15,7 +15,7 @@ PARITY8 implementation note:
 - PARITY9B groups the UI into Dashboard, Skip dates, and Log history.
 - PARITY9C uses `/functions/v1/alilos-skip-sync` for whole-day scheduling skip/unskip from the calendar. Action-specific skip controls remain a future refinement.
 - PARITY9D runbook lives in `docs/PARITY_SAFE_LOOP_SMOKE.md` and validates the deployed status, dashboard, skip, schedule/completion, command, and sanitized-log loop without adding remote configured-action execution.
-- PARITY10A plan lives in `docs/PARITY_REMOTE_ACTION_PLAN.md`; the webapp shows configured-action readiness/deferred copy and disabled controls only.
+- PARITY10B plan lives in `docs/PARITY_REMOTE_ACTION_PLAN.md`; the webapp shows guarded configured-action request buttons with confirmation and safety copy, but desktop guard approval remains authoritative.
 
 ## Architecture Split
 
@@ -569,7 +569,7 @@ Example:
 - Web companion may display state.
 - PARITY9 may submit only safe non-clicking command requests for status refresh, dry-run/check, recalculate today schedule, and cancel pending confirmation.
 - Web companion may not trigger Perakam or Fortinet actions.
-- No action-specific skip toggles, mode switch, active guarded configured-action command, or confirmation execution controls in WEB4/PARITY9/PARITY9C/PARITY10A.
+- No action-specific skip toggles, mode switch, arbitrary configured-action payload editor, or webapp browser automation in WEB4/PARITY9/PARITY9C/PARITY10B.
 - No unattended execution pathway.
 
 ### Future Contract Dependencies
@@ -681,6 +681,7 @@ The web/PWA should represent these states clearly:
 5. PARITY9 safe non-clicking command buttons for status refresh, dry-run/check, recalculate today schedule, and cancel confirmation.
 6. PARITY9D deployed safe-loop smoke-test runbook.
 7. PARITY10A guarded configured-action preflight only.
-8. WEB5/PARITY10B guarded configured-action command execution only after explicit approval.
+8. PARITY10B guarded configured-action command execution, disabled by default through local desktop config.
+9. PARITY10C deployed field validation before operational reliance.
 9. WEB6 supervised controls after explicit approval.
 10. No unattended execution unless explicitly approved later.

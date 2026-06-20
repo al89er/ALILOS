@@ -42,9 +42,9 @@ Telegram remains useful as an existing local notification/fallback path, but Tel
 | Supabase logs | Partially implemented | PARITY2 schema exists; PARITY4 can publish conservative parity status events only when enabled and `logUploadEnabled` is true. |
 | Supabase skip dates | Partially implemented | PARITY5 desktop/Edge Function sync exists and is disabled by default; PARITY9C adds webapp whole-day skip/unskip through the same Edge Function. |
 | Supabase schedules/completions | Partially implemented | PARITY6 desktop/Edge Function sync exists and is disabled by default; it backs up local rows and surfaces remote completion warnings only. |
-| Supabase command requests/results | Partially implemented | PARITY7 dry-run/non-clicking command processing exists and is disabled by default. PARITY10A adds configured-action preflight/deferred shape only; execution is still missing/deferred. |
+| Supabase command requests/results | Partially implemented | PARITY7 dry-run/non-clicking command processing exists and is disabled by default. PARITY10B adds guarded configured-action processing behind `paritySync.remoteActionEnabled`, also disabled by default. |
 | Webapp monitoring | Partially implemented | PARITY8 adds a same-repo read-only static PWA shell and dashboard-read proxy; PARITY9B aligns it to Dashboard, Skip dates, and Log history tabs. Deployment/auth pairing remains future work. |
-| Webapp manual controls | Partially implemented | PARITY9 adds safe status refresh, dry-run/check, recalculate today schedule, and cancel confirmation controls. PARITY9C adds whole-day skip/unskip calendar controls. PARITY9D documents the safe-loop deployment/smoke runbook. PARITY10A adds disabled configured-action readiness surfaces only. Action-specific skip UI and guarded configured-action execution remain deferred. |
+| Webapp manual controls | Partially implemented | PARITY9 adds safe status refresh, dry-run/check, recalculate today schedule, and cancel confirmation controls. PARITY9C adds whole-day skip/unskip calendar controls. PARITY9D documents the safe-loop deployment/smoke runbook. PARITY10B adds guarded configured-action request buttons. Action-specific skip UI and operational remote-action reliance remain deferred. |
 | Telegram monitoring/commands | Paused | Existing Telegram code/config stays secondary; not required for completion. |
 | Background operation | Implemented | Tray/background packaged app works; field validation remains. |
 | Separate Playwright browser | Implemented | Persistent Playwright browser is separate from normal browser use. |
@@ -153,7 +153,7 @@ The desktop command poller remains disabled by default and requires both `parity
 - `recalculate-today-schedule`
 - `cancel-confirmation`
 
-`perform-configured-action` and remote confirmation creation are explicitly rejected/deferred. Commands must be claimed before processing, expired commands are marked expired, unsupported or unsafe payloads are rejected, errors are sanitized/non-fatal, and no command can send arbitrary selectors, scripts, forms, URLs, credentials, cookies, raw HTML, screenshots, tokenized query strings, or opaque `link=` values.
+`perform-configured-action` is available only through the PARITY10B guarded desktop path and only when `paritySync.remoteActionEnabled` is explicitly true in local config. Remote confirmation creation remains rejected/deferred. Commands must be claimed before processing, expired commands are marked expired, unsupported or unsafe payloads are rejected, errors are sanitized/non-fatal, and no command can send arbitrary selectors, scripts, forms, URLs, credentials, cookies, raw HTML, screenshots, tokenized query strings, or opaque `link=` values.
 
 ## PARITY8 Read-Only Webapp Result
 
@@ -172,11 +172,11 @@ PARITY8 does not add command creation UI, skip/unskip controls, mode switches, c
 - recalculate today's schedule
 - cancel pending confirmation
 
-`supabase/functions/alilos-command-sync/index.ts` supports `create-command` for those allowlisted command types only. The function requires an existing registered device, rejects unsupported command types such as `perform-configured-action` and remote confirmation creation, rejects arbitrary payloads and forbidden keys/strings, generates expiry server-side, and returns only sanitized command id/status/timestamps.
+`supabase/functions/alilos-command-sync/index.ts` supports `create-command` for the safe command types and PARITY10B guarded `perform-configured-action`. The function requires an existing registered device, rejects remote confirmation creation, rejects arbitrary payloads and forbidden keys/strings, generates expiry server-side, and returns only sanitized command id/status/timestamps.
 
 Production use requires the deployed command Edge Function, a placeholder-configured webapp using publishable/anon credentials, and desktop parity command sync explicitly enabled with both `paritySync.enabled` and `paritySync.commandSyncEnabled`. The buttons do not imply immediate execution when the desktop is offline or sync is disabled.
 
-PARITY9 does not add runtime mode switching, configured-site login, captive portal login, credential fields, service-role keys in the webapp, direct table grants, arbitrary command input, raw JSON editors, browser automation, remote `perform-configured-action`, or unattended execution.
+PARITY9/PARITY10B do not add runtime mode switching, configured-site login, captive portal login, credential fields, service-role keys in the webapp, direct table grants, arbitrary command input, raw JSON editors, browser automation, or unattended execution. PARITY10B guarded action requests are executed only by the desktop if local config and guard checks allow them.
 
 ## PARITY9B Webapp Tab Workflow Result
 
@@ -215,13 +215,13 @@ PARITY9D is docs-only. It does not deploy functions, add secrets, create `.env.l
 
 ## PARITY10A Guarded Remote Action Preflight Result
 
-`docs/PARITY_REMOTE_ACTION_PLAN.md` defines the PARITY10A/PARITY10B/PARITY10C split. PARITY10A adds the future `perform-configured-action` command shape only as preflight/deferred scaffolding.
+`docs/PARITY_REMOTE_ACTION_PLAN.md` defines the PARITY10A/PARITY10B/PARITY10C split. PARITY10A added the future `perform-configured-action` command shape as preflight scaffolding.
 
-`supabase/functions/alilos-command-sync/index.ts` recognizes `perform-configured-action` only when `deviceId`, `actionKey`, and `scheduleDate` are valid and the payload is minimal. It records the row as `rejected` with `executionDeferred`, `preflightOnly`, and `noConfiguredSiteAction`; it does not create a pending executable command.
+PARITY10B updates `supabase/functions/alilos-command-sync/index.ts` so `perform-configured-action` can create a pending command only when `deviceId`, `actionKey`, `scheduleDate`, and minimal guard metadata are valid.
 
-`webapp/` shows disabled configured-action readiness areas on the morning/evening cards. The desktop still rejects any remote `perform-configured-action` with `Remote configured action is not enabled in this build.`
+`webapp/` shows guarded configured-action request buttons on the morning/evening cards. The desktop still rejects any remote `perform-configured-action` unless `paritySync.remoteActionEnabled` is true, local mode is `manual-confirm`, the command date matches the desktop local date, the payload is constrained, and existing local guard checks pass.
 
-PARITY10A does not enable remote real configured website clicks, add credentials, expose service-role keys, weaken RLS/grants, add arbitrary selectors/scripts/forms/URLs, or change configured website adapter behavior.
+PARITY10B does not add credentials, expose service-role keys, weaken RLS/grants, add arbitrary selectors/scripts/forms/URLs, or change configured website adapter behavior. It routes through the existing desktop guard path only. PARITY10C field validation is required before operational reliance.
 
 PARITY3 does not poll or process command requests, implement webapp code, add secrets, or enable unattended execution. Supabase keys for this path must be publishable/anon only; service-role-looking keys are rejected from local parity-sync config.
 

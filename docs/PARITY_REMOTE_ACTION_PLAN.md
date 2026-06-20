@@ -20,9 +20,13 @@ PARITY10A does not execute a configured website action, create arbitrary payload
 
 ## PARITY10B Guarded Remote Execution
 
-Status: future explicit approval required.
+Status: implemented, disabled by default pending PARITY10C field validation.
 
-PARITY10B may only route `perform-configured-action` through the existing local desktop guard pipeline. It must not add a parallel click path.
+PARITY10B routes `perform-configured-action` through the existing local desktop guard pipeline. It does not add a parallel click path. The command is executable only when local desktop config explicitly enables `paritySync.remoteActionEnabled`; the default is `false`.
+
+The webapp can create a pending guarded command through `/functions/v1/alilos-command-sync` only with `deviceId`, `actionKey`, `scheduleDate`, and minimal guard metadata. The webapp requires a browser confirmation step, never receives credentials, never runs browser automation, and cannot submit selectors, scripts, forms, URLs, or arbitrary payloads.
+
+The desktop command poller still requires `paritySync.enabled` and `paritySync.commandSyncEnabled`. When a guarded command is claimed, the desktop rejects it unless `paritySync.remoteActionEnabled` is true and local execution mode is `manual-confirm`. If enabled, it calls the same confirmation/dry-run/guarded-click path used by local monitored execution and records local completion/verification before any optional sync.
 
 Required guard checks before any remote requested action can execute:
 
@@ -43,6 +47,8 @@ Required guard checks before any remote requested action can execute:
 - Every disagreement or missing prerequisite fails safe toward no action.
 
 PARITY10B must still reject arbitrary selectors, scripts, forms, URLs, credentials, cookies, raw HTML, screenshots, full URLs, tokenized query strings, opaque `link=` values, portal hidden values, and service-role keys.
+
+Do not rely on PARITY10B operationally until PARITY10C validates the deployed Edge Function, webapp, desktop polling, guard failures, successful supervised path, completion sync, and rollback with sanitized evidence.
 
 ## PARITY10C Field Validation
 

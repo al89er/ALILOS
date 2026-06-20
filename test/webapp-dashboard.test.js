@@ -52,18 +52,22 @@ test("webapp implements required dashboard sections and safe command controls", 
     assert.match(app, new RegExp(`"${commandType}"`));
   }
 
-  assert.match(html, /These controls only request non-clicking desktop checks/);
-  assert.match(html, /Remote configured-action execution is not enabled yet/);
-  assert.match(html, /data-deferred-action="clock-in"/);
-  assert.match(html, /data-deferred-action="clock-out"/);
-  assert.match(html, /Configured action disabled/);
-  assert.match(html, /Remote configured action is not enabled yet/);
+  assert.match(html, /Safe commands request non-clicking checks/);
+  assert.match(html, /Guarded action requests require confirmation and desktop guard approval/);
+  assert.match(html, /data-remote-action="clock-in"/);
+  assert.match(html, /data-remote-action="clock-out"/);
+  assert.match(html, /Request guarded action/);
+  assert.match(html, /Credentials stay local/);
   assert.match(app, /renderActionCards/);
   assert.match(app, /actionReadinessText/);
-  assert.match(app, /Preflight only: synced schedule target/);
-  assert.doesNotMatch(html, /perform-configured-action/i);
+  assert.match(app, /Guarded request available for synced target/);
+  assert.match(app, /window\.confirm/);
+  assert.match(app, /"perform-configured-action"/);
+  assert.match(app, /desktopGuardRequired: true/);
+  assert.match(app, /webappDoesNotClick: true/);
+  assert.match(app, /credentialsStayLocal: true/);
   assert.doesNotMatch(html, /data-command-type="perform/i);
-  assert.doesNotMatch(html, /password|raw JSON|selector|<form/i);
+  assert.doesNotMatch(html, /password|raw JSON|<form/i);
   assert.match(manifest, /"display": "standalone"/);
 });
 
@@ -92,7 +96,7 @@ test("webapp calendar skip toggles call skip-sync with whole-day payloads", () =
   assert.match(app, /source: "webapp-command"/);
   assert.match(app, /reason: "webapp calendar toggle"/);
   assert.match(app, /Scheduling only; no website action was triggered/);
-  assert.doesNotMatch(app, /perform-configured-action|request-confirmation|service[_-]?role|sb_secret_/i);
+  assert.doesNotMatch(app, /request-confirmation|service[_-]?role|sb_secret_/i);
 });
 
 test("webapp log history renders sanitized event rows without sensitive samples", () => {
@@ -117,5 +121,8 @@ test("webapp command submission uses command Edge Function and anon key placehol
   assert.match(app, /VITE_SUPABASE_ANON_KEY/);
   assert.match(app, /Authorization: `Bearer \$\{config\.VITE_SUPABASE_ANON_KEY\}`/);
   assert.match(app, /noConfiguredSiteAction: true/);
-  assert.doesNotMatch(app, /perform-configured-action|request-confirmation|eval\(|service[_-]?role|sb_secret_/i);
+  assert.match(app, /submitRemoteConfiguredAction/);
+  assert.match(app, /commandType: "perform-configured-action"/);
+  assert.match(app, /Desktop must be online with remote action enabled locally/);
+  assert.doesNotMatch(app, /request-confirmation|eval\(|service[_-]?role|sb_secret_|textarea|raw JSON/i);
 });

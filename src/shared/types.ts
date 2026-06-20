@@ -283,6 +283,7 @@ export interface ParitySyncSettings {
   logUploadEnabled: boolean;
   skipSyncEnabled: boolean;
   commandSyncEnabled: boolean;
+  remoteActionEnabled: boolean;
   scheduleCompletionSyncEnabled: boolean;
 }
 
@@ -441,6 +442,7 @@ export interface ParitySyncSnapshot {
     logUploadEnabled: boolean;
     skipSyncEnabled: boolean;
     commandSyncEnabled: boolean;
+    remoteActionEnabled: boolean;
     scheduleCompletionSyncEnabled: boolean;
   };
   lastStartedAt: string | null;
