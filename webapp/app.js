@@ -22,8 +22,10 @@ const ids = [
   "last-error",
   "morning-time",
   "morning-state",
+  "morning-readiness",
   "evening-time",
   "evening-state",
+  "evening-readiness",
   "schedule-freshness",
   "schedule-list",
   "next-action",
@@ -279,6 +281,7 @@ function renderActionCard(actionKey, prefix, schedules, completions) {
     : schedule
       ? `${schedule.status} - ${schedule.source}`
       : "Schedule unavailable";
+  elements[`${prefix}-readiness`].textContent = actionReadinessText(schedule, completion);
 }
 
 function renderSchedules(schedules) {
@@ -447,6 +450,22 @@ function latestTimestampLabel(rows) {
 
 function actionLabel(value) {
   return value === "clock-in" ? "Morning action" : value === "clock-out" ? "Evening action" : "Action";
+}
+
+function actionReadinessText(schedule, completion) {
+  if (completion) {
+    return `Remote action deferred: completion is ${completion.state}.`;
+  }
+
+  if (!schedule) {
+    return "Remote action deferred: synced schedule unavailable.";
+  }
+
+  if (schedule.status !== "active") {
+    return `Remote action deferred: schedule is ${schedule.status}.`;
+  }
+
+  return `Preflight only: synced schedule target ${schedule.targetTimeLocal}.`;
 }
 
 function inferPortalStatus(networkStatus) {

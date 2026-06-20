@@ -902,7 +902,9 @@ test("command sync rejects unsupported perform-configured-action", async () => {
     const complete = requests.find((body) => body.operation === "complete-command");
 
     assert.equal(complete.status, "rejected");
-    assert.match(complete.summary, /deferred/);
+    assert.equal(complete.summary, "Remote configured action is not enabled in this build.");
+    assert.equal(complete.details.executionDeferred, true);
+    assert.equal(complete.details.preflightOnly, true);
     assert.equal(complete.details.noConfiguredSiteAction, true);
     assert.equal(status.commandSync.rejectedCount, 1);
   } finally {

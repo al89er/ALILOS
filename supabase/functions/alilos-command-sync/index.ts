@@ -54,6 +54,15 @@ const CREATE_COMMAND_TYPES = new Set([
   "cancel-confirmation",
   "recalculate-today-schedule"
 ]);
+const PREFLIGHT_ONLY_COMMAND_TYPES = new Set([
+  "perform-configured-action"
+]);
+const CONFIGURED_ACTION_PREFLIGHT_PAYLOAD_KEYS = new Set([
+  "requestedFrom",
+  "preflightOnly",
+  "executionDeferred",
+  "noConfiguredSiteAction"
+]);
 const FINAL_STATUSES = new Set(["succeeded", "failed", "expired", "rejected", "cancelled"]);
 const EVENT_TYPES = new Set(["created", "claimed", "progress", "succeeded", "failed", "expired", "rejected", "cancelled"]);
 const FORBIDDEN_KEY_NAMES = new Set([
@@ -165,11 +174,76 @@ Deno.serve(async (request) => {
   }
 
   if (payload.operation === "create-command") {
-    if (!payload.commandType || !CREATE_COMMAND_TYPES.has(payload.commandType)) {
+    if (!payload.commandType || (!CREATE_COMMAND_TYPES.has(payload.commandType) && !PREFLIGHT_ONLY_COMMAND_TYPES.has(payload.commandType))) {
       return jsonResponse({ success: false, error: "unsupported-command-type" }, 400);
     }
 
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    if (payload.commandType === "perform-configured-action") {
+      if (!payload.actionKey || !payload.scheduleDate) {
+        return jsonResponse({ success: false, error: "missing-configured-action-preflight-fields" }, 400);
+      }
+
+      if (!isConfiguredActionPreflightPayload(payload.commandPayload)) {
+        return jsonResponse({ success: false, error: "invalid-configured-action-preflight-payload" }, 400);
+      }
+
+      const preflightPayload = {
+        requestedFrom: "webapp",
+        preflightOnly: true,
+        executionDeferred: true,
+        noConfiguredSiteAction: true
+      };
+      const resultDetails = {
+        commandType: payload.commandType,
+        actionKey: payload.actionKey,
+        scheduleDate: payload.scheduleDate,
+        preflightOnly: true,
+        executionDeferred: true,
+        noConfiguredSiteAction: true
+      };
+      const summary = "Remote configured action is not enabled in this build.";
+      const { data, error } = await supabase
+        .from("command_requests")
+        .insert({
+          device_id: payload.deviceId,
+          command_type: payload.commandType,
+          action_key: payload.actionKey,
+          schedule_date: payload.scheduleDate,
+          payload: preflightPayload,
+          status: "rejected",
+          requested_by: "webapp-preflight",
+          requested_at: acceptedAt,
+          expires_at: expiresAt,
+          completed_at: acceptedAt,
+          result_summary: summary,
+          result_details: resultDetails
+        })
+        .select("id, status, requested_at, expires_at")
+        .single();
+
+      if (error || !data) {
+        return jsonResponse({ success: false, error: "command-preflight-create-failed" }, 500);
+      }
+
+      await appendCommandEvent(supabase, payload.deviceId, readUuid(data.id) ?? "00000000-0000-4000-8000-000000000000", "rejected", summary, resultDetails);
+
+      return jsonResponse({
+        success: true,
+        operation: payload.operation,
+        acceptedAt,
+        command: {
+          id: readUuid(data.id) ?? "00000000-0000-4000-8000-000000000000",
+          status: readCommandStatus(data.status) ?? "rejected",
+          requestedAt: readIsoDate(data.requested_at) ?? acceptedAt,
+          expiresAt: readIsoDate(data.expires_at) ?? expiresAt,
+          preflightOnly: true,
+          executionDeferred: true,
+          summary
+        }
+      }, 202);
+    }
+
     const { data, error } = await supabase
       .from("command_requests")
       .insert({
@@ -470,6 +544,20 @@ function readJsonDetails(value: unknown): Record<string, string | number | boole
   return details;
 }
 
+function isConfiguredActionPreflightPayload(payload: Record<string, string | number | boolean | null>): boolean {
+  return Object.entries(payload).every(([key, value]) => {
+    if (!CONFIGURED_ACTION_PREFLIGHT_PAYLOAD_KEYS.has(key)) {
+      return false;
+    }
+
+    if (key === "requestedFrom") {
+      return value === "webapp";
+    }
+
+    return value === true;
+  });
+}
+
 function containsForbiddenKeyOrValue(value: unknown): boolean {
   if (Array.isArray(value)) {
     return true;
@@ -576,7 +664,12 @@ function readNullableDate(value: unknown): string | null {
   }
 
   const text = String(value).trim();
-  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+    return null;
+  }
+
+  const date = new Date(`${text}T00:00:00.000Z`);
+  return Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== text ? null : text;
 }
 
 function readIsoDate(value: unknown): string | null {

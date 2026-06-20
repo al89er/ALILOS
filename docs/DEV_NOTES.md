@@ -18,6 +18,7 @@
 - PARITY9B aligns the webapp with the existing three-tab mental model: Dashboard, Skip dates, and Log history. Log history displays sanitized event summaries only.
 - PARITY9C makes the Skip dates calendar interactive for whole-day scheduling skip/unskip through `supabase/functions/alilos-skip-sync`. It does not create command requests or configured-site actions.
 - PARITY9D documents the deployed safe-loop smoke test in `docs/PARITY_SAFE_LOOP_SMOKE.md`. It validates deployed Edge Functions, existing-device setup, status publishing, dashboard reads, skip upsert/delete, safe command processing, schedule/completion visibility, sanitized logs, and rollback without adding runtime code.
+- PARITY10A adds configured-action preflight/deferred scaffolding only. `perform-configured-action` can be validated and recorded as rejected/deferred, the webapp shows disabled readiness copy, and desktop execution remains rejected.
 - Do not implement migrations, configured-action command execution, captive portal reconnect, or unattended execution from these notes alone.
 - Credentials stay local: configured website credentials and future captive portal credentials must not be sent to Supabase or the webapp, and must not appear in logs/docs. Service-role keys never ship in desktop or webapp clients.
 
@@ -125,7 +126,7 @@ Each line is a JSON object with timestamp, level, and message. The renderer disp
 
 Live data comes from `/functions/v1/alilos-dashboard-read` when deployed and configured. It may include sanitized device, schedule, completion, command, monthly skip-date, and event-log summaries. Missing config, unavailable Supabase, or missing synced data shows static/mock unavailable states and must not imply action readiness.
 
-Safe command creation goes to `/functions/v1/alilos-command-sync` with `operation: "create-command"` and only the PARITY7 non-clicking command types. The webapp has no `perform-configured-action` button, credential forms, arbitrary command input, raw JSON editor, service-role key, or browser automation.
+Safe command creation goes to `/functions/v1/alilos-command-sync` with `operation: "create-command"` and only the PARITY7 non-clicking command types. PARITY10A server-side preflight may validate `perform-configured-action` shape but records it as rejected/deferred, not pending executable work. The webapp has no active `perform-configured-action` button, credential forms, arbitrary command input, raw JSON editor, service-role key, or browser automation.
 
 The Skip dates tab uses `/functions/v1/alilos-skip-sync` with `upsert-skip` and `delete-skip` for whole-day skip/unskip only. These changes affect scheduling only and never trigger configured-site navigation, confirmation, clicking, command requests, credentials, or browser automation. Action-specific skip controls remain a future refinement.
 
@@ -287,7 +288,7 @@ Operational notes after W validation:
 - RC3 packaged validation passed. The latest `ALILOS.exe` includes the helper and safety label; recalculation alone did not open browser/Perakam, click Perakam, create a completion record, or create an execution result. Validation and packaging passed.
 - Local Perakam auto-login is enabled on the test machine and succeeded during W4/W5 without credential-value logging. Intentionally decide whether it should be enabled or disabled before future tests.
 - Fully unattended real attendance action is not approved or validated.
-- Supabase parity sync remains disabled by default; do not enable status, skip, schedule/completion, or command sync against a live project without explicit approval and the deployment runbooks, especially `docs/PARITY_SAFE_LOOP_SMOKE.md` for the combined safe loop.
+- Supabase parity sync remains disabled by default; do not enable status, skip, schedule/completion, or command sync against a live project without explicit approval and the deployment runbooks, especially `docs/PARITY_SAFE_LOOP_SMOKE.md` for the combined safe loop. PARITY10A does not approve remote configured-action execution.
 - Installer and signed release remain optional release decisions, not blockers for local unpacked operation.
 
 Safe defaults:
@@ -382,7 +383,7 @@ RC1 notes:
 
 ## Planning The Web Companion Safely
 
-- WEB1 was docs-only; PARITY8 created the first `webapp/` monitoring shell, PARITY9 adds safe non-clicking command controls, PARITY9B aligns the shell to Dashboard/Skip dates/Log history, PARITY9C adds whole-day skip/unskip calendar controls, and PARITY9D documents the deployed safe-loop smoke test. Do not add frontend dependencies, migrations, `.env.local`, secrets, configured-action command execution, or Electron runtime changes from the old plan alone.
+- WEB1 was docs-only; PARITY8 created the first `webapp/` monitoring shell, PARITY9 adds safe non-clicking command controls, PARITY9B aligns the shell to Dashboard/Skip dates/Log history, PARITY9C adds whole-day skip/unskip calendar controls, PARITY9D documents the deployed safe-loop smoke test, and PARITY10A adds disabled configured-action readiness surfaces. Do not add frontend dependencies, migrations, `.env.local`, secrets, configured-action command execution, or Electron runtime changes from the old plan alone.
 - The Electron desktop app remains the only local browser/session/action assistant. The web/PWA companion is a mobile status/control surface only.
 - WEB1 starts read-only: heartbeat/status when available, stale/offline warnings, placeholders until schedule/completion sync exists, and no control commands.
 - Future supervised controls require later explicit approval and must go through the Supabase/Edge Function/API control-plane boundary.

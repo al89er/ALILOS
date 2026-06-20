@@ -30,9 +30,10 @@ test("command sync Edge Function exposes constrained command operations only", (
   assert.doesNotMatch(source, /grant\s+.*\s+to\s+(anon|authenticated)/i);
 });
 
-test("command sync Edge Function create-command only allows safe non-clicking commands", () => {
+test("command sync Edge Function create-command allows safe commands and deferred configured-action preflight", () => {
   const source = readFunctionSource();
   const createSet = source.match(/const CREATE_COMMAND_TYPES = new Set\(\[([\s\S]*?)\]\);/)[1];
+  const preflightSet = source.match(/const PREFLIGHT_ONLY_COMMAND_TYPES = new Set\(\[([\s\S]*?)\]\);/)[1];
 
   assert.match(createSet, /"request-status-refresh"/);
   assert.match(createSet, /"request-dry-run"/);
@@ -40,8 +41,16 @@ test("command sync Edge Function create-command only allows safe non-clicking co
   assert.match(createSet, /"cancel-confirmation"/);
   assert.doesNotMatch(createSet, /"perform-configured-action"/);
   assert.doesNotMatch(createSet, /"request-confirmation"/);
+  assert.match(preflightSet, /"perform-configured-action"/);
+  assert.match(source, /missing-configured-action-preflight-fields/);
+  assert.match(source, /invalid-configured-action-preflight-payload/);
+  assert.match(source, /executionDeferred: true/);
+  assert.match(source, /preflightOnly: true/);
+  assert.match(source, /status: "rejected"/);
+  assert.match(source, /Remote configured action is not enabled in this build\./);
   assert.match(source, /\.insert\(\{/);
   assert.match(source, /requested_by: "webapp"/);
+  assert.match(source, /requested_by: "webapp-preflight"/);
   assert.match(source, /expiresAt = new Date\(Date\.now\(\) \+ 10 \* 60 \* 1000\)/);
   assert.match(source, /unsupported-command-type/);
 });

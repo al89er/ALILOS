@@ -683,10 +683,18 @@ export class ParitySyncService {
     summary: string;
     details: Record<string, string | number | boolean | null>;
   }> {
-    if (command.commandType === "perform-configured-action" || command.commandType === "request-confirmation") {
+    if (command.commandType === "perform-configured-action") {
       return {
         status: "rejected",
-        summary: `${command.commandType} is deferred in PARITY7; no remote configured action is allowed.`,
+        summary: "Remote configured action is not enabled in this build.",
+        details: { commandType: command.commandType, executionDeferred: true, preflightOnly: true, noConfiguredSiteAction: true }
+      };
+    }
+
+    if (command.commandType === "request-confirmation") {
+      return {
+        status: "rejected",
+        summary: "Remote confirmation creation is deferred; no remote configured action is allowed.",
         details: { commandType: command.commandType, noConfiguredSiteAction: true }
       };
     }

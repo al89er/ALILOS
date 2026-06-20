@@ -35,11 +35,21 @@
             <span>Morning action</span>
             <strong id="morning-time">--</strong>
             <small id="morning-state">Schedule unavailable</small>
+            <div class="remote-action-status">
+              <small id="morning-readiness">Readiness unavailable</small>
+              <button type="button" class="deferred-action-button" data-deferred-action="clock-in" disabled>Configured action disabled</button>
+              <small>Remote configured action is not enabled yet. Use dry-run/check for preflight.</small>
+            </div>
           </article>
           <article class="action-card" id="evening-card">
             <span>Evening action</span>
             <strong id="evening-time">--</strong>
             <small id="evening-state">Schedule unavailable</small>
+            <div class="remote-action-status">
+              <small id="evening-readiness">Readiness unavailable</small>
+              <button type="button" class="deferred-action-button" data-deferred-action="clock-out" disabled>Configured action disabled</button>
+              <small>Remote configured action is not enabled yet. Use dry-run/check for preflight.</small>
+            </div>
           </article>
         </section>
 
@@ -112,7 +122,7 @@
             <li>Safe controls create requests only; the desktop agent performs all local checks.</li>
             <li>This webapp cannot log in to Perakam or Fortinet.</li>
             <li>Credentials and browser sessions remain local to the desktop.</li>
-            <li>Remote configured-action command is not implemented yet.</li>
+            <li>Remote configured-action execution is not enabled yet.</li>
           </ul>
         </section>
       </section>

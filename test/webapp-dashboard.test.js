@@ -53,9 +53,16 @@ test("webapp implements required dashboard sections and safe command controls", 
   }
 
   assert.match(html, /These controls only request non-clicking desktop checks/);
-  assert.match(html, /Remote configured-action command is not implemented yet/);
+  assert.match(html, /Remote configured-action execution is not enabled yet/);
+  assert.match(html, /data-deferred-action="clock-in"/);
+  assert.match(html, /data-deferred-action="clock-out"/);
+  assert.match(html, /Configured action disabled/);
+  assert.match(html, /Remote configured action is not enabled yet/);
   assert.match(app, /renderActionCards/);
+  assert.match(app, /actionReadinessText/);
+  assert.match(app, /Preflight only: synced schedule target/);
   assert.doesNotMatch(html, /perform-configured-action/i);
+  assert.doesNotMatch(html, /data-command-type="perform/i);
   assert.doesNotMatch(html, /password|raw JSON|selector|<form/i);
   assert.match(manifest, /"display": "standalone"/);
 });

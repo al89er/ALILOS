@@ -188,6 +188,26 @@ dt,
   line-height: 1;
 }
 
+.remote-action-status {
+  display: grid;
+  gap: 7px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.deferred-action-button {
+  border-color: var(--border);
+  background: #f8fafc;
+  color: var(--muted);
+  text-align: center;
+}
+
+.deferred-action-button:disabled {
+  cursor: not-allowed;
+  opacity: 1;
+}
+
 .section-heading {
   display: flex;
   align-items: center;
