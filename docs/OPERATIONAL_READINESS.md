@@ -21,6 +21,7 @@ PARITY1B corrected target: monitored desktop use is release-candidate ready for 
 - Checked logs remained sanitized.
 - Supabase heartbeat skeleton exists but remains disabled/deferred.
 - Supabase PARITY7 command sync exists but remains disabled by default. PARITY10B guarded configured-action handling also exists, but it requires `paritySync.remoteActionEnabled=true` in local desktop config and still needs PARITY10C field validation before operational reliance.
+- PARITY10C field-validation planning is documented in `docs/PARITY_REMOTE_ACTION_FIELD_VALIDATION.md`: first validate disabled-gate rejection with `remoteActionEnabled=false`, then guard-failure rejection with `remoteActionEnabled=true`, then a supervised legitimate-window action only if explicitly approved.
 - Local Perakam auto-login is enabled on the test machine and should be intentionally controlled before future tests.
 
 ## O Track Consolidation
@@ -178,6 +179,7 @@ PARITY1B corrected target: monitored desktop use is release-candidate ready for 
 - Fully unattended real action remains not approved and not validated.
 - Installer and signing remain optional release decisions.
 - Supabase schedule/completion sync exists through the disabled-by-default PARITY6 Edge Function path, dry-run/non-clicking command sync exists through the disabled-by-default PARITY7 Edge Function path, and guarded configured-action handling exists through PARITY10B. Keep sync and `paritySync.remoteActionEnabled` off for ordinary monitored desktop use unless a separate Supabase smoke/field test is explicitly approved.
+- PARITY10C is the only documented remote guarded-action field test. Abort it on wrong page, ambiguous target, captive portal/interstitial uncertainty, stale unrecoverable session, unsanitized logs, command payload mismatch, date mismatch, prior completion, desktop offline/sleeping, or user uncertainty.
 
 ## RC1 Monitored Real-World Observation Plan
 

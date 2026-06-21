@@ -44,7 +44,7 @@ Telegram remains useful as an existing local notification/fallback path, but Tel
 | Supabase schedules/completions | Partially implemented | PARITY6 desktop/Edge Function sync exists and is disabled by default; it backs up local rows and surfaces remote completion warnings only. |
 | Supabase command requests/results | Partially implemented | PARITY7 dry-run/non-clicking command processing exists and is disabled by default. PARITY10B adds guarded configured-action processing behind `paritySync.remoteActionEnabled`, also disabled by default. |
 | Webapp monitoring | Partially implemented | PARITY8 adds a same-repo read-only static PWA shell and dashboard-read proxy; PARITY9B aligns it to Dashboard, Skip dates, and Log history tabs. Deployment/auth pairing remains future work. |
-| Webapp manual controls | Partially implemented | PARITY9 adds safe status refresh, dry-run/check, recalculate today schedule, and cancel confirmation controls. PARITY9C adds whole-day skip/unskip calendar controls. PARITY9D documents the safe-loop deployment/smoke runbook. PARITY10B adds guarded configured-action request buttons. Action-specific skip UI and operational remote-action reliance remain deferred. |
+| Webapp manual controls | Partially implemented | PARITY9 adds safe status refresh, dry-run/check, recalculate today schedule, and cancel confirmation controls. PARITY9C adds whole-day skip/unskip calendar controls. PARITY9D documents the safe-loop deployment/smoke runbook. PARITY10B adds guarded configured-action request buttons. PARITY10C field validation is documented but not passed. Action-specific skip UI and operational remote-action reliance remain deferred. |
 | Telegram monitoring/commands | Paused | Existing Telegram code/config stays secondary; not required for completion. |
 | Background operation | Implemented | Tray/background packaged app works; field validation remains. |
 | Separate Playwright browser | Implemented | Persistent Playwright browser is separate from normal browser use. |
@@ -209,7 +209,7 @@ Action-specific skip UI remains a future refinement because the current desktop 
 
 ## PARITY9D Safe Loop Smoke Runbook Result
 
-`docs/PARITY_SAFE_LOOP_SMOKE.md` documents the manual deployed safe-loop smoke test before any remote real configured-action command is added. It covers Edge Function deployment, existing-device setup, desktop parity sync flags, webapp local config, status heartbeat publishing, dashboard reads, skip calendar upsert/delete, safe web command creation, desktop safe command processing, schedule/completion visibility, sanitized log history, troubleshooting, and rollback.
+`docs/PARITY_SAFE_LOOP_SMOKE.md` documents the manual deployed safe-loop smoke test that intentionally avoids remote configured-action execution. It covers Edge Function deployment, existing-device setup, desktop parity sync flags, webapp local config, status heartbeat publishing, dashboard reads, skip calendar upsert/delete, safe web command creation, desktop safe command processing, schedule/completion visibility, sanitized log history, troubleshooting, and rollback.
 
 PARITY9D is docs-only. It does not deploy functions, add secrets, create `.env.local`, change RLS/table grants, implement runtime code, enable configured-action command execution, or approve unattended execution.
 
@@ -222,6 +222,18 @@ PARITY10B updates `supabase/functions/alilos-command-sync/index.ts` so `perform-
 `webapp/` shows guarded configured-action request buttons on the morning/evening cards. The desktop still rejects any remote `perform-configured-action` unless `paritySync.remoteActionEnabled` is true, local mode is `manual-confirm`, the command date matches the desktop local date, the payload is constrained, and existing local guard checks pass.
 
 PARITY10B does not add credentials, expose service-role keys, weaken RLS/grants, add arbitrary selectors/scripts/forms/URLs, or change configured website adapter behavior. It routes through the existing desktop guard path only. PARITY10C field validation is required before operational reliance.
+
+## PARITY10C Remote Action Field Validation Runbook
+
+`docs/PARITY_REMOTE_ACTION_FIELD_VALIDATION.md` documents the supervised PARITY10C field-validation process. It is docs-only and does not deploy services, add secrets, change RLS/grants, or approve unattended execution.
+
+The validation order is:
+
+1. Phase A disabled-gate validation with `paritySync.remoteActionEnabled=false`.
+2. Phase B guard-failure validation with `remoteActionEnabled=true` but no valid due action.
+3. Phase C supervised valid-window validation only during a legitimate configured action window.
+
+The runbook includes abort conditions, expected no-click failure behavior, duplicate-prevention checks, sanitized log/result review, rollback steps, and a result template. Remote guarded configured-action execution remains not operationally approved until PARITY10C passes.
 
 PARITY3 does not poll or process command requests, implement webapp code, add secrets, or enable unattended execution. Supabase keys for this path must be publishable/anon only; service-role-looking keys are rejected from local parity-sync config.
 

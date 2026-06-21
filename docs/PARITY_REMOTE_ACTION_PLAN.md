@@ -52,13 +52,16 @@ Do not rely on PARITY10B operationally until PARITY10C validates the deployed Ed
 
 ## PARITY10C Field Validation
 
-Status: future explicit approval required.
+Status: runbook documented; execution still requires explicit approval.
 
-PARITY10C is the deployed end-to-end field validation step after PARITY10B implementation. It must be supervised, use sanitized evidence only, and verify:
+PARITY10C is the deployed end-to-end field validation step after PARITY10B implementation. The detailed runbook is `docs/PARITY_REMOTE_ACTION_FIELD_VALIDATION.md`. It must be supervised, use sanitized evidence only, and verify:
 
 - Edge Function deployment.
 - Webapp guarded action UX.
 - Desktop command polling/claim/complete flow.
+- Phase A disabled-gate rejection with `paritySync.remoteActionEnabled=false`.
+- Phase B guard-failure rejection with `remoteActionEnabled=true` but no valid due action.
+- Phase C supervised valid-window behavior only during a legitimate configured action window.
 - Existing local guard pipeline execution.
 - Duplicate prevention.
 - Skip handling.
@@ -66,4 +69,4 @@ PARITY10C is the deployed end-to-end field validation step after PARITY10B imple
 - Sanitized logs/history.
 - Safe rollback.
 
-PARITY10C does not approve fully unattended real execution. Any unattended policy change requires a separate explicit decision.
+PARITY10C does not approve fully unattended real execution. Any unattended policy change requires a separate explicit decision. Do not rely on remote configured action operationally until Phase A, Phase B, and a supervised Phase C observation pass.
