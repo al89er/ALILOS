@@ -435,6 +435,11 @@ export interface ParitySyncSnapshot {
   enabled: boolean;
   configured: boolean;
   active: boolean;
+  manualSyncInProgress: boolean;
+  lastManualSyncAttemptAt: string | null;
+  lastManualSyncSuccessAt: string | null;
+  lastManualSyncResult: string | null;
+  lastManualSyncError: string | null;
   health: ParitySyncHealth;
   endpointHost: string | null;
   keyStatus: TelegramSecretStatus;
@@ -1093,6 +1098,7 @@ export interface AlilosApi {
   skipDate: (dateKey: string) => Promise<DashboardSnapshot>;
   unskipDate: (dateKey: string) => Promise<DashboardSnapshot>;
   recalculateTodaySchedule: () => Promise<DashboardSnapshot>;
+  syncParityNow: () => Promise<DashboardSnapshot>;
   getAppSettings: () => Promise<AppSettingsSnapshot>;
   saveAppSettings: (settings: AppSettingsInput) => Promise<AppSettingsSnapshot>;
   getTelegramSettings: () => Promise<TelegramSettingsSnapshot>;

@@ -12,6 +12,7 @@ const api: AlilosApi = {
   skipDate: (dateKey) => ipcRenderer.invoke("schedule:skip-date", dateKey),
   unskipDate: (dateKey) => ipcRenderer.invoke("schedule:unskip-date", dateKey),
   recalculateTodaySchedule: () => ipcRenderer.invoke("schedule:recalculate-today"),
+  syncParityNow: () => ipcRenderer.invoke("parity:sync-now"),
   getAppSettings: () => ipcRenderer.invoke("settings:get"),
   saveAppSettings: (settings) => ipcRenderer.invoke("settings:save", settings),
   getTelegramSettings: () => ipcRenderer.invoke("telegram:get-settings"),

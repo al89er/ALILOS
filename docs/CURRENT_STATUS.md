@@ -52,6 +52,8 @@
 - PARITY10C guarded remote action field-validation planning is documented in `docs/PARITY_REMOTE_ACTION_FIELD_VALIDATION.md`. It requires disabled-gate validation first, guard-failure validation second, and supervised valid-window validation last.
 - DEPLOY1 live safe-loop setup guidance is documented in `docs/DEPLOY1_SAFE_LOOP_CHECKLIST.md`. It prepares Supabase/webapp/desktop smoke testing with `remoteActionEnabled=false`, safe commands only, no real configured-site click, placeholder-only commands, pass/fail criteria, and rollback.
 - DEPLOY1B exposes the disabled-by-default `paritySync` settings in the desktop Settings tab for safe-loop smoke setup. The UI keeps the publishable/anon key masked/blank after load, rejects service-role-looking keys, reconfigures `ParitySyncService` after save, and keeps `remoteActionEnabled=false` by default.
+- DEPLOY1 safe loop passed through Stage 4: desktop status publishing, GitHub Pages live dashboard read, skip sync ON/OFF, schedule/completion sync, and safe command sync all passed with `remoteActionEnabled=false`.
+- DEPLOY1D adds a desktop `Sync now` control that runs enabled parity sync paths once without waiting for intervals. It respects all feature flags, skips disabled sync paths, and does not bypass the remote-action gate.
 - WEB1 docs-only web/PWA companion planning is documented in `docs/WEB_COMPANION_PLAN.md`.
 - WEB2 static/read-only web companion UI design is documented in `docs/WEB_COMPANION_PLAN.md`.
 - WEB3 legacy webapp relationship is documented in `docs/WEB_COMPANION_PLAN.md`.
@@ -112,7 +114,8 @@ The active implementation focus appears to be hardening the guarded manual-confi
 - PARITY8 read-only web monitoring is implemented. It requires the deployed `alilos-dashboard-read` Edge Function for live data, uses publishable/anon web credentials only, and does not change direct table privileges.
 - PARITY9 safe web controls are implemented. They require the deployed `alilos-command-sync` Edge Function with `create-command` and desktop command sync enabled to be useful.
 - PARITY9B web workflow alignment is implemented. PARITY9C whole-day skip/unskip calendar controls are implemented through the existing skip-sync Edge Function. PARITY9D safe-loop deployment/smoke guidance is documented. PARITY10B guarded remote configured-action execution is implemented behind `paritySync.remoteActionEnabled = false` by default. PARITY10C field-validation guidance is documented, but the field test has not passed yet. Action-specific skip UI remains deferred.
-- DEPLOY1 is the next live safe-loop setup and smoke pass before PARITY10C. It must keep `remoteActionEnabled=false` and validate only status, dashboard read, skip sync, schedule/completion visibility, safe command processing, and sanitized history.
+- DEPLOY1 safe-loop setup has passed through Stage 4. Current approved operational state is monitored local use with Supabase/webapp status publishing, skip sync, schedule/completion sync, and safe command sync enabled while `remoteActionEnabled=false`.
+- Remote configured-site action remains not approved for general use and still requires explicit PARITY10C field validation approval.
 - Parity sync remains disabled by default. When explicitly enabled, the desktop still uses only a publishable/anon key and no command can send arbitrary selectors, scripts, forms, URLs, credentials, cookies, raw HTML, screenshots, or opaque `link=` values.
 - Webapp configured-action command creation is available only as a guarded request. Operational reliance remains deferred until PARITY10C validates the deployed field path; all credentials stay local to desktop and every disagreement fails safe toward no action.
 

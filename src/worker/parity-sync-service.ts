@@ -174,6 +174,11 @@ export class ParitySyncService {
   private commandFailedCount = 0;
   private commandExpiredCount = 0;
   private currentCommandId: string | null = null;
+  private manualSyncInFlight = false;
+  private lastManualSyncAttemptAt: string | null = null;
+  private lastManualSyncSuccessAt: string | null = null;
+  private lastManualSyncResult: string | null = null;
+  private lastManualSyncError: string | null = null;
   private hasLoggedDisabled = false;
 
   constructor(
@@ -278,6 +283,11 @@ export class ParitySyncService {
       enabled,
       configured,
       active,
+      manualSyncInProgress: this.manualSyncInFlight,
+      lastManualSyncAttemptAt: this.lastManualSyncAttemptAt,
+      lastManualSyncSuccessAt: this.lastManualSyncSuccessAt,
+      lastManualSyncResult: this.lastManualSyncResult,
+      lastManualSyncError: this.lastManualSyncError,
       health: !enabled ? "disabled" : configured ? this.lastError ? "error" : active ? "active" : "idle" : "not-configured",
       endpointHost: effectiveSettings?.supabaseUrl.host ?? null,
       keyStatus: this.keyStatus(),
@@ -382,6 +392,70 @@ export class ParitySyncService {
       this.logger.warn(`Supabase parity status publish failed: ${this.lastError}`);
     } finally {
       this.inFlight = false;
+    }
+
+    return this.getStatus();
+  }
+
+  async syncNow(): Promise<ParitySyncSnapshot> {
+    if (this.manualSyncInFlight || this.inFlight || this.skipInFlight || this.scheduleCompletionInFlight || this.commandInFlight) {
+      this.lastManualSyncResult = "Sync already in progress; manual request was skipped.";
+      this.lastManualSyncError = null;
+      this.logger.info(this.lastManualSyncResult);
+      return this.getStatus();
+    }
+
+    if (!this.config.paritySync.enabled) {
+      this.lastManualSyncResult = "Parity sync is disabled; manual sync did not run.";
+      this.lastManualSyncError = null;
+      this.logger.info(this.lastManualSyncResult);
+      return this.getStatus();
+    }
+
+    const settings = this.effectiveSettings();
+    if (!settings) {
+      this.lastManualSyncResult = "Parity sync is not configured; manual sync did not run.";
+      this.lastManualSyncError = null;
+      this.logger.info(this.lastManualSyncResult);
+      return this.getStatus();
+    }
+
+    this.manualSyncInFlight = true;
+    this.lastManualSyncAttemptAt = new Date().toISOString();
+    this.lastCheckedAt = this.lastManualSyncAttemptAt;
+    this.lastManualSyncResult = "Manual parity sync started.";
+    this.lastManualSyncError = null;
+
+    const tasks = ["status"];
+
+    try {
+      await this.publishStatus("manual-sync");
+
+      if (this.config.paritySync.skipSyncEnabled) {
+        tasks.push("skip");
+        await this.syncSkipDates("manual-sync");
+      }
+
+      if (this.config.paritySync.scheduleCompletionSyncEnabled) {
+        tasks.push("schedule/completion");
+        await this.syncScheduleCompletions("manual-sync");
+      }
+
+      if (this.config.paritySync.commandSyncEnabled) {
+        tasks.push("command");
+        await this.pollCommands("manual-sync");
+      }
+
+      this.lastManualSyncSuccessAt = new Date().toISOString();
+      this.lastManualSyncResult = `Manual parity sync completed for ${tasks.join(", ")}. Remote configured-site action remains ${this.config.paritySync.remoteActionEnabled ? "guarded by desktop approval" : "not allowed"}.`;
+      this.lastManualSyncError = null;
+      this.logger.info(this.lastManualSyncResult);
+    } catch (error) {
+      this.lastManualSyncError = sanitizeError(error);
+      this.lastManualSyncResult = "Manual parity sync finished with an error; local desktop operation continues.";
+      this.logger.warn(`Manual parity sync failed: ${this.lastManualSyncError}`);
+    } finally {
+      this.manualSyncInFlight = false;
     }
 
     return this.getStatus();

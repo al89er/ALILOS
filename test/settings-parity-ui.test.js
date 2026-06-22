@@ -54,6 +54,24 @@ test("desktop schedule UI exposes arbitrary skip date manager", () => {
   assert.match(main, /schedule:unskip-date/);
 });
 
+test("desktop parity UI exposes safe sync now control", () => {
+  const html = readRepoFile("src", "renderer", "index.html");
+  const renderer = readRepoFile("src", "renderer", "renderer.ts");
+  const preload = readRepoFile("src", "preload", "preload.ts");
+  const main = readRepoFile("src", "main", "main.ts");
+  const service = readRepoFile("src", "worker", "parity-sync-service.ts");
+
+  assert.match(html, /id="parity-sync-now"/);
+  assert.match(html, />Sync now</);
+  assert.match(renderer, /window\.alilos\.syncParityNow\(\)/);
+  assert.match(renderer, /manualSyncInProgress/);
+  assert.match(renderer, /lastManualSyncResult/);
+  assert.match(preload, /parity:sync-now/);
+  assert.match(main, /parity:sync-now/);
+  assert.match(service, /async syncNow\(\)/);
+  assert.match(service, /remoteActionEnabled/);
+});
+
 test("renderer loads and saves parity settings without exposing key values", () => {
   const renderer = readRepoFile("src", "renderer", "renderer.ts");
 

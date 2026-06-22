@@ -377,6 +377,11 @@ app.whenReady().then(() => {
     await broadcastSnapshot();
     return buildSnapshot();
   });
+  ipcMain.handle("parity:sync-now", async () => {
+    await paritySyncService.syncNow();
+    await broadcastSnapshot();
+    return buildSnapshot();
+  });
   ipcMain.handle("settings:get", () => buildAppSettingsSnapshot());
   ipcMain.handle("settings:save", async (_event, settings: Partial<AppSettingsInput> | null) => {
     const previousWorkerEnabled = config.worker.enabled;

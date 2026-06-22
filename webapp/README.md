@@ -12,6 +12,7 @@ PARITY8 added a same-repo, static, read-only web/PWA dashboard shell under `weba
 - Guarded configured-action requests also go through `/functions/v1/alilos-command-sync` with constrained `perform-configured-action` payloads.
 - Whole-day skip/unskip goes through `/functions/v1/alilos-skip-sync` with `upsert-skip` and `delete-skip`.
 - GitHub Pages browser calls require the Supabase Edge Functions to answer CORS preflight requests and include CORS headers on success and error responses.
+- DEPLOY1 safe-loop validation has passed through status publishing, live dashboard read, skip ON/OFF, schedule/completion sync, and safe command sync with desktop `remoteActionEnabled=false`.
 
 ## Layout
 
@@ -33,6 +34,8 @@ Use placeholder names only:
 
 - Safe command buttons only: status refresh, dry-run/check, recalculate today, and cancel confirmation.
 - Guarded configured-action buttons only create constrained command requests after user confirmation. The desktop must have command sync and `paritySync.remoteActionEnabled` enabled locally, then it re-runs local guard checks before any configured-site click.
+- Remote configured-site action remains unapproved for general use. Keep desktop `remoteActionEnabled=false` unless explicitly running supervised PARITY10C validation.
+- Desktop `Sync now` can be used to run enabled parity sync paths once without waiting for intervals; it does not make the webapp perform configured-site actions.
 - Skip-date calendar cells toggle whole-day scheduling skips only.
 - Action-specific skip controls remain a future refinement.
 - No Perakam/Fortinet login.

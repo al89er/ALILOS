@@ -65,6 +65,7 @@ const heartbeatLastSuccess = document.querySelector<HTMLElement>("#heartbeat-las
 const heartbeatError = document.querySelector<HTMLElement>("#heartbeat-error");
 const paritySyncStatus = document.querySelector<HTMLElement>("#parity-sync-status");
 const paritySyncDetail = document.querySelector<HTMLElement>("#parity-sync-detail");
+const paritySyncNow = document.querySelector<HTMLButtonElement>("#parity-sync-now");
 const automationAuditList = document.querySelector<HTMLOListElement>("#automation-audit-list");
 const todayDate = document.querySelector<HTMLElement>("#today-date");
 const scheduleSummary = document.querySelector<HTMLElement>("#schedule-summary");
@@ -293,6 +294,7 @@ const elements = {
   heartbeatError: requireElement(heartbeatError, "heartbeat-error"),
   paritySyncStatus: requireElement(paritySyncStatus, "parity-sync-status"),
   paritySyncDetail: requireElement(paritySyncDetail, "parity-sync-detail"),
+  paritySyncNow: requireElement(paritySyncNow, "parity-sync-now"),
   automationAuditList: requireElement(automationAuditList, "automation-audit-list"),
   todayDate: requireElement(todayDate, "today-date"),
   scheduleSummary: requireElement(scheduleSummary, "schedule-summary"),
@@ -679,7 +681,8 @@ function renderAutomationTelemetry(snapshot: RendererDashboardSnapshot): void {
   elements.paritySyncStatus.textContent = paritySync.enabled
     ? paritySync.configured ? paritySyncHealthLabel(paritySync.health) : "Needs Supabase config"
     : "Disabled";
-  elements.paritySyncDetail.textContent = `${paritySync.note} Endpoint: ${paritySync.endpointHost ?? "none"}. Last attempt: ${formatOptionalTime(paritySync.lastAttemptAt)}. Last success: ${formatOptionalTime(paritySync.lastSuccessAt)}. Published: ${paritySync.publishCount}; failures: ${paritySync.failureCount}. Skip sync ${paritySync.skipSync.enabled ? "enabled" : "disabled"}; skip last attempt ${formatOptionalTime(paritySync.skipSync.lastAttemptAt)}; skip last success ${formatOptionalTime(paritySync.skipSync.lastSuccessAt)}; skip rows received/applied ${paritySync.skipSync.rowsReceived}/${paritySync.skipSync.rowsApplied}; remote removals applied/preserved ${paritySync.skipSync.remoteRemovalsApplied}/${paritySync.skipSync.remoteRemovalsPreserved}; skip uploads/deletes ${paritySync.skipSync.uploadCount}/${paritySync.skipSync.deleteCount}; local user removals ${paritySync.skipSync.localRemovalCount}; skip failures ${paritySync.skipSync.failureCount}; skip error ${paritySync.skipSync.lastError ?? "--"}. Schedule/completion sync ${paritySync.scheduleCompletionSync.enabled ? "enabled" : "disabled"}; last attempt ${formatOptionalTime(paritySync.scheduleCompletionSync.lastAttemptAt)}; last success ${formatOptionalTime(paritySync.scheduleCompletionSync.lastSuccessAt)}; fetched schedules/completions ${paritySync.scheduleCompletionSync.fetchedScheduleRows}/${paritySync.scheduleCompletionSync.fetchedCompletionRows}; uploaded schedules/completions ${paritySync.scheduleCompletionSync.scheduleUploadCount}/${paritySync.scheduleCompletionSync.completionUploadCount}; warnings/failures ${paritySync.scheduleCompletionSync.warningCount}/${paritySync.scheduleCompletionSync.failureCount}; warning ${paritySync.scheduleCompletionSync.lastWarning ?? "--"}; sync error ${paritySync.scheduleCompletionSync.lastError ?? "--"}. Command sync ${paritySync.commandSync.enabled ? "enabled" : "disabled"}; last poll ${formatOptionalTime(paritySync.commandSync.lastAttemptAt)}; last success ${formatOptionalTime(paritySync.commandSync.lastSuccessAt)}; received/claimed/completed ${paritySync.commandSync.receivedCount}/${paritySync.commandSync.claimedCount}/${paritySync.commandSync.completedCount}; rejected/failed/expired ${paritySync.commandSync.rejectedCount}/${paritySync.commandSync.failedCount}/${paritySync.commandSync.expiredCount}; processing ${paritySync.commandSync.currentCommandId ?? "--"}; command error ${paritySync.commandSync.lastError ?? "--"}. Error: ${paritySync.lastError ?? "--"}.`;
+  elements.paritySyncDetail.textContent = `${paritySync.note} Endpoint: ${paritySync.endpointHost ?? "none"}. Manual sync ${paritySync.manualSyncInProgress ? "in progress" : "idle"}; manual attempt ${formatOptionalTime(paritySync.lastManualSyncAttemptAt)}; manual success ${formatOptionalTime(paritySync.lastManualSyncSuccessAt)}; manual result ${paritySync.lastManualSyncResult ?? "--"}; manual error ${paritySync.lastManualSyncError ?? "--"}. Last scheduled/status attempt: ${formatOptionalTime(paritySync.lastAttemptAt)}. Last status success: ${formatOptionalTime(paritySync.lastSuccessAt)}. Published: ${paritySync.publishCount}; failures: ${paritySync.failureCount}. Skip sync ${paritySync.skipSync.enabled ? "enabled" : "disabled"}; skip last attempt ${formatOptionalTime(paritySync.skipSync.lastAttemptAt)}; skip last success ${formatOptionalTime(paritySync.skipSync.lastSuccessAt)}; skip rows received/applied ${paritySync.skipSync.rowsReceived}/${paritySync.skipSync.rowsApplied}; remote removals applied/preserved ${paritySync.skipSync.remoteRemovalsApplied}/${paritySync.skipSync.remoteRemovalsPreserved}; skip uploads/deletes ${paritySync.skipSync.uploadCount}/${paritySync.skipSync.deleteCount}; local user removals ${paritySync.skipSync.localRemovalCount}; skip failures ${paritySync.skipSync.failureCount}; skip error ${paritySync.skipSync.lastError ?? "--"}. Schedule/completion sync ${paritySync.scheduleCompletionSync.enabled ? "enabled" : "disabled"}; last attempt ${formatOptionalTime(paritySync.scheduleCompletionSync.lastAttemptAt)}; last success ${formatOptionalTime(paritySync.scheduleCompletionSync.lastSuccessAt)}; fetched schedules/completions ${paritySync.scheduleCompletionSync.fetchedScheduleRows}/${paritySync.scheduleCompletionSync.fetchedCompletionRows}; uploaded schedules/completions ${paritySync.scheduleCompletionSync.scheduleUploadCount}/${paritySync.scheduleCompletionSync.completionUploadCount}; warnings/failures ${paritySync.scheduleCompletionSync.warningCount}/${paritySync.scheduleCompletionSync.failureCount}; warning ${paritySync.scheduleCompletionSync.lastWarning ?? "--"}; sync error ${paritySync.scheduleCompletionSync.lastError ?? "--"}. Command sync ${paritySync.commandSync.enabled ? "enabled" : "disabled"}; last poll ${formatOptionalTime(paritySync.commandSync.lastAttemptAt)}; last success ${formatOptionalTime(paritySync.commandSync.lastSuccessAt)}; received/claimed/completed ${paritySync.commandSync.receivedCount}/${paritySync.commandSync.claimedCount}/${paritySync.commandSync.completedCount}; rejected/failed/expired ${paritySync.commandSync.rejectedCount}/${paritySync.commandSync.failedCount}/${paritySync.commandSync.expiredCount}; processing ${paritySync.commandSync.currentCommandId ?? "--"}; command error ${paritySync.commandSync.lastError ?? "--"}. Error: ${paritySync.lastError ?? "--"}.`;
+  elements.paritySyncNow.disabled = paritySync.manualSyncInProgress || !paritySync.enabled || !paritySync.configured;
 
   const auditItems = automation.auditEvents.length > 0
     ? automation.auditEvents.map((event) => {
@@ -792,6 +795,7 @@ elements.unskipToday.addEventListener("click", () => runScheduleAction(() => win
 elements.skipTomorrow.addEventListener("click", () => runScheduleAction(() => window.alilos.skipTomorrow()));
 elements.unskipTomorrow.addEventListener("click", () => runScheduleAction(() => window.alilos.unskipTomorrow()));
 elements.recalculateTodaySchedule.addEventListener("click", () => runScheduleAction(() => window.alilos.recalculateTodaySchedule()));
+elements.paritySyncNow.addEventListener("click", () => runParitySyncNow());
 elements.addSkipDate.addEventListener("click", () => {
   const dateKey = elements.skipDateInput.value;
   if (!isDateKey(dateKey)) {
@@ -979,6 +983,15 @@ function runScheduleAction(action: () => Promise<RendererDashboardSnapshot>): vo
   action()
     .then(render)
     .finally(() => setControlsDisabled(false));
+}
+
+function runParitySyncNow(): void {
+  elements.paritySyncNow.disabled = true;
+  window.alilos.syncParityNow()
+    .then(render)
+    .finally(() => {
+      elements.paritySyncNow.disabled = latestSnapshot?.paritySync.manualSyncInProgress ?? false;
+    });
 }
 
 function setControlsDisabled(disabled: boolean): void {

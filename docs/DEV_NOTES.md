@@ -22,6 +22,8 @@
 - PARITY10C field-validation planning is documented in `docs/PARITY_REMOTE_ACTION_FIELD_VALIDATION.md`. Validate disabled-gate rejection first, guard-failure rejection second, and a supervised legitimate-window action last; abort on wrong page, ambiguous target, captive portal uncertainty, unsanitized logs, command payload mismatch, date mismatch, prior completion, desktop offline/sleeping, or user uncertainty.
 - DEPLOY1 safe-loop setup guidance is documented in `docs/DEPLOY1_SAFE_LOOP_CHECKLIST.md`. It is the first live Supabase/webapp/desktop smoke pass and keeps `remoteActionEnabled=false`, safe commands only, no real configured-site click, placeholder-only command snippets, and explicit rollback.
 - DEPLOY1B exposes `paritySync` in the desktop Settings tab for live safe-loop setup. It preserves disabled defaults, masks the publishable/anon key after load, rejects service-role-looking keys, and reconfigures `ParitySyncService` after settings are saved.
+- DEPLOY1 passed through Stage 4 for the safe loop: status publishing, GitHub Pages live dashboard read, skip ON/OFF, schedule/completion sync, and safe command sync. Current approved use is monitored local operation with `remoteActionEnabled=false`.
+- The desktop `Sync now` control runs the enabled parity sync paths once and reports manual attempt/result/error in parity detail. It does not enable disabled feature flags and does not bypass `remoteActionEnabled`.
 - Do not implement migrations, captive portal reconnect, or unattended execution from these notes alone.
 - Credentials stay local: configured website credentials and future captive portal credentials must not be sent to Supabase or the webapp, and must not appear in logs/docs. Service-role keys never ship in desktop or webapp clients.
 
@@ -145,6 +147,7 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 
 - The Settings tab edits only selected operational settings: worker enable/interval, Windows launch-at-login, automation execution mode/interval/dry-run browser preparation, scheduler windows/grace/reminders, Perakam dashboard URL, Supabase heartbeat enable/project URL/interval, and the parity sync safe-loop flags.
 - The Parity Sync / Webapp Supabase Sync section is separate from the legacy Heartbeat section. It stores only local desktop config values, uses publishable/anon keys only, leaves the key field blank after load to preserve the saved key, and rejects service-role-looking keys before saving.
+- Use `Sync now` when manual testing needs immediate status/skip/schedule-command parity sync instead of waiting for intervals. It is a sync convenience only; it must not be treated as approval for remote configured-site action.
 - `paritySync.remoteActionEnabled` remains false by default. Keep it off during DEPLOY1 and enable it only for supervised PARITY10C Phase B/C validation after explicit approval.
 - Launch-at-login is backed by top-level `startup.launchAtLogin`. It must not change execution mode, scheduler behavior, or any configured action path.
 - Supabase heartbeat is displayed as configured/not configured plus host and key source only. The URL input is blank on load; saving a blank URL preserves the existing local Supabase URL. The publishable key is configured through local config or `.env.local`, not exposed in the renderer.

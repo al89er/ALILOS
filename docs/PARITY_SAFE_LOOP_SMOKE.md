@@ -1,6 +1,6 @@
 # PARITY9D Safe Loop Smoke Test Runbook
 
-DEPLOY1 live setup support now lives in `docs/DEPLOY1_SAFE_LOOP_CHECKLIST.md`. Use that checklist for the first live Supabase/webapp/desktop setup pass. DEPLOY1 keeps `remoteActionEnabled=false` throughout and validates safe monitoring/control only.
+DEPLOY1 live setup support now lives in `docs/DEPLOY1_SAFE_LOOP_CHECKLIST.md`. DEPLOY1 has passed through Stage 4 for the safe Supabase/webapp/desktop loop: status publishing, live dashboard read, skip ON/OFF, schedule/completion sync, and safe command sync. DEPLOY1 keeps `remoteActionEnabled=false` throughout and validates safe monitoring/control only.
 
 This runbook validates the deployed Supabase plus webapp safe loop without exercising remote configured-action execution. PARITY10B has added the guarded command path, but remote-action field validation belongs in `docs/PARITY_REMOTE_ACTION_FIELD_VALIDATION.md`.
 
@@ -22,6 +22,8 @@ The smoke test must prove:
 - `paritySync.remoteActionEnabled` stays `false` for DEPLOY1 safe-loop smoke testing.
 
 For guarded remote configured-action validation, use `docs/PARITY_REMOTE_ACTION_FIELD_VALIDATION.md` after this safe-loop smoke path is healthy.
+
+The desktop `Sync now` button can be used during this runbook to immediately run the enabled parity sync paths once. It respects all parity feature flags, does not run disabled sync features, and does not bypass `remoteActionEnabled`.
 
 ## Prerequisites
 
@@ -184,6 +186,7 @@ Expected:
 - No schedule/completion rows are required.
 - No command is processed.
 - No configured website click occurs.
+- Desktop Sync now can refresh enabled status, skip, schedule/completion, and command sync paths without waiting for intervals.
 
 ### 3. Dashboard Read From Webapp
 

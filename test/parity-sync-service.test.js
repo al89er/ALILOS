@@ -755,6 +755,213 @@ test("parity status publishing records sanitized failure counters", async () => 
   }
 });
 
+test("sync now triggers enabled parity tasks once", async () => {
+  const temp = createTempConfigStore();
+
+  try {
+    const config = temp.store.load();
+    config.paritySync.enabled = true;
+    config.paritySync.supabaseUrl = "https://example.supabase.co";
+    config.paritySync.publishableKey = "anon-publishable-key";
+    config.paritySync.skipSyncEnabled = true;
+    config.paritySync.scheduleCompletionSyncEnabled = true;
+    config.paritySync.commandSyncEnabled = true;
+    config.paritySync.remoteActionEnabled = false;
+    const logger = createLogger();
+    const requests = [];
+    const service = new ParitySyncService(config, logger, { supabaseUrl: "", publishableKey: "" }, {
+      buildDeviceStatusPayload: () => createStatusPayload(),
+      applyRemoteSkippedDates: () => ({ added: 0, remoteRemovalsApplied: 0, remoteRemovalsPreserved: 0 }),
+      fetchFn: async (url, init) => {
+        const body = JSON.parse(init.body);
+        requests.push({ url, body });
+        if (url.endsWith("/alilos-parity-status")) {
+          return { ok: true, status: 202, json: async () => ({ success: true }) };
+        }
+        if (url.endsWith("/alilos-skip-sync")) {
+          return { ok: true, status: 200, json: async () => ({ success: true, skips: [] }) };
+        }
+        if (url.endsWith("/alilos-schedule-completion-sync")) {
+          return { ok: true, status: 200, json: async () => ({ success: true, schedules: [], completions: [] }) };
+        }
+        if (url.endsWith("/alilos-command-sync")) {
+          return { ok: true, status: 200, json: async () => ({ success: true, commands: [] }) };
+        }
+        throw new Error(`Unexpected URL ${url}`);
+      }
+    });
+
+    const status = await service.syncNow();
+
+    assert.deepEqual(requests.map((request) => request.url), [
+      "https://example.supabase.co/functions/v1/alilos-parity-status",
+      "https://example.supabase.co/functions/v1/alilos-skip-sync",
+      "https://example.supabase.co/functions/v1/alilos-schedule-completion-sync",
+      "https://example.supabase.co/functions/v1/alilos-command-sync"
+    ]);
+    assert.equal(requests[1].body.operation, "list-skips");
+    assert.equal(requests[2].body.operation, "get-day-state");
+    assert.equal(requests[3].body.operation, "list-pending");
+    assert.match(status.lastManualSyncResult, /status, skip, schedule\/completion, command/);
+    assert.equal(status.featureFlags.remoteActionEnabled, false);
+  } finally {
+    temp.cleanup();
+  }
+});
+
+test("sync now does not trigger disabled parity tasks", async () => {
+  const temp = createTempConfigStore();
+
+  try {
+    const config = temp.store.load();
+    config.paritySync.enabled = true;
+    config.paritySync.supabaseUrl = "https://example.supabase.co";
+    config.paritySync.publishableKey = "anon-publishable-key";
+    config.paritySync.skipSyncEnabled = false;
+    config.paritySync.scheduleCompletionSyncEnabled = false;
+    config.paritySync.commandSyncEnabled = false;
+    const logger = createLogger();
+    const requests = [];
+    const service = new ParitySyncService(config, logger, { supabaseUrl: "", publishableKey: "" }, {
+      buildDeviceStatusPayload: () => createStatusPayload(),
+      fetchFn: async (url, init) => {
+        requests.push({ url, body: JSON.parse(init.body) });
+        return { ok: true, status: 202, json: async () => ({ success: true }) };
+      }
+    });
+
+    await service.syncNow();
+
+    assert.deepEqual(requests.map((request) => request.url), [
+      "https://example.supabase.co/functions/v1/alilos-parity-status"
+    ]);
+  } finally {
+    temp.cleanup();
+  }
+});
+
+test("sync now does not enable or execute remote configured-site action", async () => {
+  const temp = createTempConfigStore();
+
+  try {
+    const config = temp.store.load();
+    config.paritySync.enabled = true;
+    config.paritySync.supabaseUrl = "https://example.supabase.co";
+    config.paritySync.publishableKey = "anon-publishable-key";
+    config.paritySync.commandSyncEnabled = true;
+    config.paritySync.remoteActionEnabled = false;
+    const logger = createLogger();
+    const requests = [];
+    let remoteActionCalls = 0;
+    const service = new ParitySyncService(config, logger, { supabaseUrl: "", publishableKey: "" }, {
+      buildDeviceStatusPayload: () => createStatusPayload(),
+      runRemoteConfiguredAction: async () => {
+        remoteActionCalls += 1;
+        return { status: "succeeded", summary: "Should not run." };
+      },
+      fetchFn: async (url, init) => {
+        const body = JSON.parse(init.body);
+        requests.push({ url, body });
+        if (url.endsWith("/alilos-parity-status")) {
+          return { ok: true, status: 202, json: async () => ({ success: true }) };
+        }
+        if (body.operation === "list-pending") {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              success: true,
+              commands: [
+                commandPayload(config, {
+                  commandType: "perform-configured-action",
+                  actionKey: "clock-out",
+                  scheduleDate: testDateKey(),
+                  payload: {
+                    requestedFrom: "webapp",
+                    guardedRemoteAction: true,
+                    desktopGuardRequired: true,
+                    webappDoesNotClick: true,
+                    credentialsStayLocal: true
+                  }
+                })
+              ]
+            })
+          };
+        }
+        if (body.operation === "claim-command") {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              success: true,
+              command: commandPayload(config, {
+                commandType: "perform-configured-action",
+                actionKey: "clock-out",
+                scheduleDate: testDateKey(),
+                status: "claimed",
+                payload: {
+                  requestedFrom: "webapp",
+                  guardedRemoteAction: true,
+                  desktopGuardRequired: true,
+                  webappDoesNotClick: true,
+                  credentialsStayLocal: true
+                }
+              })
+            })
+          };
+        }
+        return { ok: true, status: 202, json: async () => ({ success: true }) };
+      }
+    });
+
+    await service.syncNow();
+
+    assert.equal(remoteActionCalls, 0);
+    assert.equal(config.paritySync.remoteActionEnabled, false);
+    assert.equal(requests.at(-1).body.operation, "complete-command");
+    assert.equal(requests.at(-1).body.status, "rejected");
+    assert.match(requests.at(-1).body.summary, /disabled/);
+  } finally {
+    temp.cleanup();
+  }
+});
+
+test("sync now handles already-running sync safely", async () => {
+  const temp = createTempConfigStore();
+
+  try {
+    const config = temp.store.load();
+    config.paritySync.enabled = true;
+    config.paritySync.supabaseUrl = "https://example.supabase.co";
+    config.paritySync.publishableKey = "anon-publishable-key";
+    const logger = createLogger();
+    let releaseFetch;
+    let fetchCalls = 0;
+    const service = new ParitySyncService(config, logger, { supabaseUrl: "", publishableKey: "" }, {
+      buildDeviceStatusPayload: () => createStatusPayload(),
+      fetchFn: async () => {
+        fetchCalls += 1;
+        await new Promise((resolve) => {
+          releaseFetch = resolve;
+        });
+        return { ok: true, status: 202, json: async () => ({ success: true }) };
+      }
+    });
+
+    const first = service.syncNow();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const secondStatus = await service.syncNow();
+    releaseFetch();
+    await first;
+
+    assert.equal(fetchCalls, 1);
+    assert.equal(secondStatus.manualSyncInProgress, true);
+    assert.match(secondStatus.lastManualSyncResult, /already in progress/);
+  } finally {
+    temp.cleanup();
+  }
+});
+
 test("parity command constants match migration allow lists", () => {
   assert.deepEqual([...PARITY_COMMAND_TYPES], [
     "request-status-refresh",

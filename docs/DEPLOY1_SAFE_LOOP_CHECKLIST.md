@@ -2,6 +2,8 @@
 
 DEPLOY1 prepares live Supabase, webapp, and desktop smoke testing for the safe monitoring/control loop. It must not enable remote real configured-action execution.
 
+Status: DEPLOY1 passed through Stage 4 for the safe loop. Status publishing, GitHub Pages live dashboard read, skip sync ON/OFF, schedule/completion sync, and safe command sync have been validated with `remoteActionEnabled=false`.
+
 Hard safety rule:
 
 - Keep `remoteActionEnabled=false` for the entire DEPLOY1 test.
@@ -134,9 +136,21 @@ Configure only local desktop app/userData values from the packaged app Settings 
 
 The publishable/anon key field is password-style and blank after loading; leave it blank to preserve the current local key. The Settings save path rejects service-role-looking keys with a sanitized error. Never use a service-role key locally. Never commit the desktop config.
 
+Current validated safe-loop operational config after DEPLOY1:
+
+- `paritySync.enabled=true`
+- `skipSyncEnabled=true`
+- `scheduleCompletionSyncEnabled=true`
+- `commandSyncEnabled=true`
+- `remoteActionEnabled=false`
+
+This state is approved for monitored local use with Supabase/webapp status, skip, schedule/completion, and safe command sync. It is not approval for remote configured-site action or unattended execution.
+
 ## Smoke Sequence
 
 Run in this order.
+
+Use the desktop `Sync now` button in the Automation / Heartbeat parity detail area when you need an immediate one-shot parity sync instead of waiting for intervals. It publishes status and runs only the enabled skip, schedule/completion, and command sync paths. It does not run disabled sync features, does not expose keys, and does not bypass `remoteActionEnabled`.
 
 ### 1. Packaged Desktop Baseline
 
@@ -209,6 +223,16 @@ Pass: schedule metadata appears safely, and no remote completion row triggers lo
 
 Pass: safe commands are created, processed, and recorded without any configured website click.
 
+### 6B. Manual Sync Now
+
+1. With the current safe-loop flags enabled, click `Sync now` in the desktop parity detail area.
+2. Confirm parity detail shows a manual sync attempt/result.
+3. Confirm status publish, skip sync, schedule/completion sync, and command sync update according to their enabled flags.
+4. Confirm disabled features remain disabled.
+5. Confirm remote configured-site action remains not allowed because `remoteActionEnabled=false`.
+
+Pass: manual sync reduces waiting without changing safety gates or triggering a configured website click.
+
 ### 7. Sanitized Log/History Review
 
 1. Keep `logUploadEnabled=false` unless deliberately testing log history.
@@ -227,6 +251,7 @@ DEPLOY1 passes only if:
 - Safe commands are created and processed.
 - Command results appear.
 - Schedule state appears when schedule/completion sync is enabled and rows exist.
+- Desktop `Sync now` can run the enabled safe parity sync paths without waiting for intervals.
 - No real configured website action occurs.
 - No sensitive data appears in UI, logs, command history, Supabase rows, docs, or committed files.
 - `remoteActionEnabled` remains false.
