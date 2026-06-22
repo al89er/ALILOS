@@ -11,6 +11,7 @@ PARITY8 added a same-repo, static, read-only web/PWA dashboard shell under `weba
 - Safe command creation goes through `/functions/v1/alilos-command-sync` with `create-command`.
 - Guarded configured-action requests also go through `/functions/v1/alilos-command-sync` with constrained `perform-configured-action` payloads.
 - Whole-day skip/unskip goes through `/functions/v1/alilos-skip-sync` with `upsert-skip` and `delete-skip`.
+- GitHub Pages browser calls require the Supabase Edge Functions to answer CORS preflight requests and include CORS headers on success and error responses.
 
 ## Layout
 
@@ -41,3 +42,4 @@ Use placeholder names only:
 - No direct table writes or table grants.
 - No arbitrary `perform-configured-action` payloads, selectors, scripts, forms, URLs, or credential fields.
 - Missing live data falls back to a static mock state and must not imply action readiness.
+- Browser `Failed to fetch` usually means CORS, network reachability, or deployed function availability; it should not be worked around by adding service-role keys to the webapp.

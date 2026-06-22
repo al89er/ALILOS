@@ -165,6 +165,7 @@ Pass: desktop status publish succeeds, and payload/status text is sanitized.
 2. Confirm `/functions/v1/alilos-dashboard-read` returns dashboard data for `<existing-device-uuid>`.
 3. Confirm dashboard shows online/recent status or a clear stale/unavailable state.
 4. Confirm missing schedule/completion data is not shown as action-ready.
+5. If the browser shows `Failed to fetch`, check deployed Edge Function reachability and CORS preflight handling before changing auth or table grants.
 
 Pass: webapp reads sanitized dashboard data through the Edge Function and exposes no secrets.
 
@@ -233,6 +234,7 @@ DEPLOY1 passes only if:
 Stop and treat as a blocker if any of these occur:
 
 - Function auth failure that cannot be explained by missing placeholder config.
+- Browser `Failed to fetch`, especially from GitHub Pages, indicating likely CORS, network, or function reachability failure.
 - Edge Function server secret missing or misconfigured.
 - Unknown device id.
 - Desktop does not publish after sync is enabled.

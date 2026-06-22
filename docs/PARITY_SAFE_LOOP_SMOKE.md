@@ -191,12 +191,14 @@ Expected:
 2. Confirm the Dashboard tab loads via `/functions/v1/alilos-dashboard-read`.
 3. Confirm device status shows online or recently seen.
 4. Confirm missing data is shown as unavailable/deferred rather than action-ready.
+5. If the browser reports `Failed to fetch`, check CORS preflight support, network reachability, and deployed function availability before changing auth, RLS, or table grants.
 
 Expected:
 
 - Dashboard shows sanitized device/status data.
 - Safety notices remain visible.
 - The webapp does not expose credentials or service-role keys.
+- GitHub Pages browser calls require CORS-enabled Edge Functions.
 
 ### 4. Skip Calendar Upsert/Delete
 

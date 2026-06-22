@@ -37,14 +37,12 @@ jobs:
           cp -R webapp/. dist-webapp/
 
       - name: Add GitHub Pages config
+        env:
+          ALILOS_SUPABASE_URL: ${{ vars.ALILOS_SUPABASE_URL }}
+          ALILOS_SUPABASE_ANON_KEY: ${{ vars.ALILOS_SUPABASE_ANON_KEY }}
+          ALILOS_DEVICE_ID: ${{ vars.ALILOS_DEVICE_ID }}
         run: |
-          cat > dist-webapp/config.js <<'EOF'
-          window.ALILOS_CONFIG = {
-            supabaseUrl: "${{ vars.ALILOS_SUPABASE_URL }}",
-            supabaseAnonKey: "${{ vars.ALILOS_SUPABASE_ANON_KEY }}",
-            deviceId: "${{ vars.ALILOS_DEVICE_ID }}"
-          };
-          EOF
+          node -e 'const fs = require("fs"); const config = { supabaseUrl: process.env.ALILOS_SUPABASE_URL || "", supabaseAnonKey: process.env.ALILOS_SUPABASE_ANON_KEY || "", deviceId: process.env.ALILOS_DEVICE_ID || "" }; fs.writeFileSync("dist-webapp/config.js", `window.ALILOS_CONFIG = ${JSON.stringify(config, null, 2)};\n`);'
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5

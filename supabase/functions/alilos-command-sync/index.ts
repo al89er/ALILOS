@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders, corsPreflightResponse } from "../_shared/cors.ts";
 
 type JsonObject = Record<string, unknown>;
 type Operation = "list-pending" | "create-command" | "claim-command" | "complete-command" | "append-command-event";
@@ -93,6 +94,10 @@ const FORBIDDEN_KEY_NAMES = new Set([
 ]);
 
 Deno.serve(async (request) => {
+  if (request.method === "OPTIONS") {
+    return corsPreflightResponse();
+  }
+
   if (request.method !== "POST") {
     return jsonResponse({ success: false, error: "method-not-allowed" }, 405);
   }
@@ -696,6 +701,7 @@ function jsonResponse(body: JsonObject, status: number): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
+      ...corsHeaders,
       "Content-Type": "application/json",
       "Cache-Control": "no-store"
     }
