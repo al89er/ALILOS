@@ -121,7 +121,9 @@ There is no React, router, component framework, or frontend build tool beyond Ty
 
 The tab structure is presentation-only. Existing DOM IDs, preload API calls, target mappings, Telegram commands, network detection, and confirmation/execution paths are preserved.
 
-The Settings tab uses the typed settings IPC to edit selected operational config only. It masks heartbeat endpoint and Telegram credential values visually, preserves blank secret fields, and leaves generated schedules, completions, audit events, target mappings, raw logs, raw page content, cookies/session data, screenshots, and personal identifiers out of editable settings.
+The Settings tab uses the typed settings IPC to edit selected operational config only. It masks heartbeat endpoint, parity publishable/anon key, and Telegram credential values visually, preserves blank secret fields, and leaves generated schedules, completions, audit events, target mappings, raw logs, raw page content, cookies/session data, screenshots, and personal identifiers out of editable settings.
+
+The Parity Sync / Webapp Supabase Sync fieldset is the desktop UI for DEPLOY1 safe-loop setup. It edits the disabled-by-default `paritySync` config, rejects service-role-looking keys, reconfigures `ParitySyncService` after save, and keeps read-only snapshots limited to status, endpoint host, key source/status, device id/label, intervals, and feature flags. The key value itself is never exposed in dashboard snapshots.
 
 ## Shared Types
 
@@ -152,6 +154,7 @@ The Settings tab uses the typed settings IPC to edit selected operational config
 - network monitor settings
 - automation execution mode and audit events
 - heartbeat settings
+- parity sync settings
 
 UPM passwords are stored encrypted with Electron `safeStorage` when available. Telegram bot tokens and chat IDs are currently stored in the local config file, so they must not be committed or printed.
 

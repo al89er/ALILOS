@@ -187,6 +187,19 @@ const settingsHeartbeatEnabled = document.querySelector<HTMLInputElement>("#sett
 const settingsHeartbeatEndpoint = document.querySelector<HTMLInputElement>("#settings-heartbeat-endpoint");
 const settingsHeartbeatEndpointState = document.querySelector<HTMLElement>("#settings-heartbeat-endpoint-state");
 const settingsHeartbeatInterval = document.querySelector<HTMLInputElement>("#settings-heartbeat-interval");
+const settingsParityEnabled = document.querySelector<HTMLInputElement>("#settings-parity-enabled");
+const settingsParityUrl = document.querySelector<HTMLInputElement>("#settings-parity-url");
+const settingsParityKey = document.querySelector<HTMLInputElement>("#settings-parity-key");
+const settingsParityKeyState = document.querySelector<HTMLElement>("#settings-parity-key-state");
+const settingsParityDeviceId = document.querySelector<HTMLInputElement>("#settings-parity-device-id");
+const settingsParityDeviceLabel = document.querySelector<HTMLInputElement>("#settings-parity-device-label");
+const settingsParityHeartbeatInterval = document.querySelector<HTMLInputElement>("#settings-parity-heartbeat-interval");
+const settingsParityCommandInterval = document.querySelector<HTMLInputElement>("#settings-parity-command-interval");
+const settingsParityLogUpload = document.querySelector<HTMLInputElement>("#settings-parity-log-upload");
+const settingsParitySkipSync = document.querySelector<HTMLInputElement>("#settings-parity-skip-sync");
+const settingsParityScheduleCompletionSync = document.querySelector<HTMLInputElement>("#settings-parity-schedule-completion-sync");
+const settingsParityCommandSync = document.querySelector<HTMLInputElement>("#settings-parity-command-sync");
+const settingsParityRemoteAction = document.querySelector<HTMLInputElement>("#settings-parity-remote-action");
 const settingsSave = document.querySelector<HTMLButtonElement>("#settings-save");
 const settingsReload = document.querySelector<HTMLButtonElement>("#settings-reload");
 const settingsResult = document.querySelector<HTMLElement>("#settings-result");
@@ -195,6 +208,7 @@ const settingsBrowserSummary = document.querySelector<HTMLElement>("#settings-br
 const settingsNetworkSummary = document.querySelector<HTMLElement>("#settings-network-summary");
 const settingsTelegramSummary = document.querySelector<HTMLElement>("#settings-telegram-summary");
 const settingsHeartbeatSummary = document.querySelector<HTMLElement>("#settings-heartbeat-summary");
+const settingsParitySummary = document.querySelector<HTMLElement>("#settings-parity-summary");
 const settingsConfigPath = document.querySelector<HTMLElement>("#settings-config-path");
 const settingsLogPath = document.querySelector<HTMLElement>("#settings-log-path");
 let currentTelegramSettings: RendererTelegramSettingsSnapshot | null = null;
@@ -399,6 +413,19 @@ const elements = {
   settingsHeartbeatEndpoint: requireElement(settingsHeartbeatEndpoint, "settings-heartbeat-endpoint"),
   settingsHeartbeatEndpointState: requireElement(settingsHeartbeatEndpointState, "settings-heartbeat-endpoint-state"),
   settingsHeartbeatInterval: requireElement(settingsHeartbeatInterval, "settings-heartbeat-interval"),
+  settingsParityEnabled: requireElement(settingsParityEnabled, "settings-parity-enabled"),
+  settingsParityUrl: requireElement(settingsParityUrl, "settings-parity-url"),
+  settingsParityKey: requireElement(settingsParityKey, "settings-parity-key"),
+  settingsParityKeyState: requireElement(settingsParityKeyState, "settings-parity-key-state"),
+  settingsParityDeviceId: requireElement(settingsParityDeviceId, "settings-parity-device-id"),
+  settingsParityDeviceLabel: requireElement(settingsParityDeviceLabel, "settings-parity-device-label"),
+  settingsParityHeartbeatInterval: requireElement(settingsParityHeartbeatInterval, "settings-parity-heartbeat-interval"),
+  settingsParityCommandInterval: requireElement(settingsParityCommandInterval, "settings-parity-command-interval"),
+  settingsParityLogUpload: requireElement(settingsParityLogUpload, "settings-parity-log-upload"),
+  settingsParitySkipSync: requireElement(settingsParitySkipSync, "settings-parity-skip-sync"),
+  settingsParityScheduleCompletionSync: requireElement(settingsParityScheduleCompletionSync, "settings-parity-schedule-completion-sync"),
+  settingsParityCommandSync: requireElement(settingsParityCommandSync, "settings-parity-command-sync"),
+  settingsParityRemoteAction: requireElement(settingsParityRemoteAction, "settings-parity-remote-action"),
   settingsSave: requireElement(settingsSave, "settings-save"),
   settingsReload: requireElement(settingsReload, "settings-reload"),
   settingsResult: requireElement(settingsResult, "settings-result"),
@@ -407,6 +434,7 @@ const elements = {
   settingsNetworkSummary: requireElement(settingsNetworkSummary, "settings-network-summary"),
   settingsTelegramSummary: requireElement(settingsTelegramSummary, "settings-telegram-summary"),
   settingsHeartbeatSummary: requireElement(settingsHeartbeatSummary, "settings-heartbeat-summary"),
+  settingsParitySummary: requireElement(settingsParitySummary, "settings-parity-summary"),
   settingsConfigPath: requireElement(settingsConfigPath, "settings-config-path"),
   settingsLogPath: requireElement(settingsLogPath, "settings-log-path")
 };
@@ -581,7 +609,15 @@ function renderSettingsSummaries(snapshot: RendererDashboardSnapshot): void {
     ? `${currentTelegramSettings.enabled ? "Enabled" : "Disabled"}; bot token ${telegramSecretStatusLabel(currentTelegramSettings.secretStatus.botToken)}; chat ${telegramSecretStatusLabel(currentTelegramSettings.secretStatus.chatId)}; prefix ${commandPrefixLabel(currentTelegramSettings.commandPrefix)}.`
     : `${snapshot.telegram.enabled ? "Enabled" : "Disabled"}; settings are loaded through the secure preload bridge.`;
   elements.settingsHeartbeatSummary.textContent = `${(settings?.heartbeat.enabled ?? snapshot.heartbeat.enabled) ? "Enabled" : "Disabled"}; ${(settings?.heartbeat.configured ?? snapshot.heartbeat.configured) ? `Supabase ${(settings?.heartbeat.endpointHost ?? snapshot.heartbeat.endpointHost) ?? "configured"}` : "Supabase URL/key not configured"}.`;
-  elements.settingsHeartbeatSummary.textContent += ` Parity sync ${snapshot.paritySync.enabled ? "enabled" : "disabled"}; ${snapshot.paritySync.note}`;
+  const paritySettings = settings?.paritySync;
+  const parityFlags = [
+    (paritySettings?.logUploadEnabled ?? snapshot.paritySync.featureFlags.logUploadEnabled) ? "logs" : null,
+    (paritySettings?.skipSyncEnabled ?? snapshot.paritySync.featureFlags.skipSyncEnabled) ? "skips" : null,
+    (paritySettings?.scheduleCompletionSyncEnabled ?? snapshot.paritySync.featureFlags.scheduleCompletionSyncEnabled) ? "schedule/completion" : null,
+    (paritySettings?.commandSyncEnabled ?? snapshot.paritySync.featureFlags.commandSyncEnabled) ? "commands" : null,
+    (paritySettings?.remoteActionEnabled ?? snapshot.paritySync.featureFlags.remoteActionEnabled) ? "remote action" : null
+  ].filter(Boolean).join(", ") || "no feature flags enabled";
+  elements.settingsParitySummary.textContent = `${(paritySettings?.enabled ?? snapshot.paritySync.enabled) ? "Enabled" : "Disabled"}; ${(paritySettings?.configured ?? snapshot.paritySync.configured) ? `Supabase ${(paritySettings?.endpointHost ?? snapshot.paritySync.endpointHost) ?? "configured"}` : "Supabase URL/key/device not configured"}; key ${telegramSecretStatusLabel(paritySettings?.keyStatus ?? snapshot.paritySync.keyStatus)}; ${parityFlags}.`;
   elements.settingsConfigPath.textContent = snapshot.configPath;
   elements.settingsLogPath.textContent = snapshot.logPath;
 }
@@ -891,7 +927,19 @@ elements.settingsForm.addEventListener("submit", (event) => {
   elements.settingsDashboardUrl,
   elements.settingsHeartbeatEnabled,
   elements.settingsHeartbeatEndpoint,
-  elements.settingsHeartbeatInterval
+  elements.settingsHeartbeatInterval,
+  elements.settingsParityEnabled,
+  elements.settingsParityUrl,
+  elements.settingsParityKey,
+  elements.settingsParityDeviceId,
+  elements.settingsParityDeviceLabel,
+  elements.settingsParityHeartbeatInterval,
+  elements.settingsParityCommandInterval,
+  elements.settingsParityLogUpload,
+  elements.settingsParitySkipSync,
+  elements.settingsParityScheduleCompletionSync,
+  elements.settingsParityCommandSync,
+  elements.settingsParityRemoteAction
 ].forEach((input) => {
   input.addEventListener("change", markAppSettingsDirty);
   input.addEventListener("input", markAppSettingsDirty);
@@ -1904,15 +1952,33 @@ function renderAppSettings(settings: RendererAppSettingsSnapshot, options: { for
     elements.settingsDashboardUrl.value = settings.perakam.dashboardUrl;
     elements.settingsHeartbeatEnabled.checked = settings.heartbeat.enabled;
     elements.settingsHeartbeatEndpoint.value = "";
-  elements.settingsHeartbeatEndpoint.placeholder = settings.heartbeat.configured
+    elements.settingsHeartbeatEndpoint.placeholder = settings.heartbeat.configured
       ? "Configured - leave blank to keep"
       : "Not configured";
     elements.settingsHeartbeatInterval.value = String(settings.heartbeat.intervalSeconds);
+    elements.settingsParityEnabled.checked = settings.paritySync.enabled;
+    elements.settingsParityUrl.value = settings.paritySync.supabaseUrl;
+    elements.settingsParityKey.value = "";
+    elements.settingsParityKey.placeholder = settings.paritySync.keyStatus === "missing"
+      ? "Not configured"
+      : "Configured - leave blank to keep";
+    elements.settingsParityDeviceId.value = settings.paritySync.deviceId;
+    elements.settingsParityDeviceLabel.value = settings.paritySync.deviceLabel;
+    elements.settingsParityHeartbeatInterval.value = String(settings.paritySync.heartbeatIntervalSeconds);
+    elements.settingsParityCommandInterval.value = String(settings.paritySync.commandPollIntervalSeconds);
+    elements.settingsParityLogUpload.checked = settings.paritySync.logUploadEnabled;
+    elements.settingsParitySkipSync.checked = settings.paritySync.skipSyncEnabled;
+    elements.settingsParityScheduleCompletionSync.checked = settings.paritySync.scheduleCompletionSyncEnabled;
+    elements.settingsParityCommandSync.checked = settings.paritySync.commandSyncEnabled;
+    elements.settingsParityRemoteAction.checked = settings.paritySync.remoteActionEnabled;
   }
 
   elements.settingsHeartbeatEndpointState.textContent = settings.heartbeat.configured
     ? `Configured for ${settings.heartbeat.endpointHost ?? "Supabase project"} with key ${telegramSecretStatusLabel(settings.heartbeat.keyStatus)}; leave blank to keep the current URL.`
     : `Supabase URL/key not configured; key ${telegramSecretStatusLabel(settings.heartbeat.keyStatus)}.`;
+  elements.settingsParityKeyState.textContent = settings.paritySync.configured
+    ? `Configured for ${settings.paritySync.endpointHost ?? "Supabase project"} with key ${telegramSecretStatusLabel(settings.paritySync.keyStatus)}; leave key blank to keep the current value. Use publishable/anon key only.`
+    : `Parity sync not fully configured; key ${telegramSecretStatusLabel(settings.paritySync.keyStatus)}. Use publishable/anon key only. Never enter service-role key.`;
 
   if (latestSnapshot) {
     renderSettingsSummaries(latestSnapshot);
@@ -1931,6 +1997,28 @@ function readAppSettings(): RendererAppSettingsInput {
 
   if (endpointUrl.length > 0) {
     heartbeat.endpointUrl = endpointUrl;
+  }
+  const parityKey = elements.settingsParityKey.value.trim();
+  if (parityKey && looksLikeServiceRoleKeyText(parityKey)) {
+    throw new Error("Parity sync publishable key must be a publishable/anon key, not a service-role key.");
+  }
+
+  const paritySync: RendererAppSettingsInput["paritySync"] = {
+    enabled: elements.settingsParityEnabled.checked,
+    supabaseUrl: elements.settingsParityUrl.value.trim(),
+    deviceId: elements.settingsParityDeviceId.value.trim(),
+    deviceLabel: elements.settingsParityDeviceLabel.value.trim(),
+    heartbeatIntervalSeconds: readPositiveNumber(elements.settingsParityHeartbeatInterval.value, "Parity sync heartbeat interval"),
+    commandPollIntervalSeconds: readPositiveNumber(elements.settingsParityCommandInterval.value, "Parity sync command poll interval"),
+    logUploadEnabled: elements.settingsParityLogUpload.checked,
+    skipSyncEnabled: elements.settingsParitySkipSync.checked,
+    scheduleCompletionSyncEnabled: elements.settingsParityScheduleCompletionSync.checked,
+    commandSyncEnabled: elements.settingsParityCommandSync.checked,
+    remoteActionEnabled: elements.settingsParityRemoteAction.checked
+  };
+
+  if (parityKey.length > 0) {
+    paritySync.publishableKey = parityKey;
   }
 
   return {
@@ -1965,7 +2053,8 @@ function readAppSettings(): RendererAppSettingsInput {
     perakam: {
       dashboardUrl: elements.settingsDashboardUrl.value.trim()
     },
-    heartbeat
+    heartbeat,
+    paritySync
   };
 }
 
@@ -1988,6 +2077,18 @@ function setAppSettingsControlsDisabled(disabled: boolean): void {
   elements.settingsHeartbeatEnabled.disabled = disabled;
   elements.settingsHeartbeatEndpoint.disabled = disabled;
   elements.settingsHeartbeatInterval.disabled = disabled;
+  elements.settingsParityEnabled.disabled = disabled;
+  elements.settingsParityUrl.disabled = disabled;
+  elements.settingsParityKey.disabled = disabled;
+  elements.settingsParityDeviceId.disabled = disabled;
+  elements.settingsParityDeviceLabel.disabled = disabled;
+  elements.settingsParityHeartbeatInterval.disabled = disabled;
+  elements.settingsParityCommandInterval.disabled = disabled;
+  elements.settingsParityLogUpload.disabled = disabled;
+  elements.settingsParitySkipSync.disabled = disabled;
+  elements.settingsParityScheduleCompletionSync.disabled = disabled;
+  elements.settingsParityCommandSync.disabled = disabled;
+  elements.settingsParityRemoteAction.disabled = disabled;
   elements.settingsSave.disabled = disabled;
   elements.settingsReload.disabled = disabled;
 }
@@ -2022,6 +2123,28 @@ function readPositiveNumber(value: string, label: string): number {
   }
 
   return Math.round(parsed);
+}
+
+function looksLikeServiceRoleKeyText(value: string): boolean {
+  const key = value.trim();
+  if (key.startsWith("sb_secret_")) {
+    return true;
+  }
+
+  const parts = key.split(".");
+  if (parts.length < 2) {
+    return false;
+  }
+
+  try {
+    const normalizedPayload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const paddedPayload = normalizedPayload.padEnd(Math.ceil(normalizedPayload.length / 4) * 4, "=");
+    const payloadJson = atob(paddedPayload);
+    const payload = JSON.parse(payloadJson) as { role?: unknown };
+    return payload.role === "service_role";
+  } catch {
+    return false;
+  }
 }
 
 function validateTimePair(start: string, end: string, label: string): void {

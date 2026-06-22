@@ -544,6 +544,22 @@ export interface AppSettingsSnapshot {
     keyStatus: TelegramSecretStatus;
     intervalSeconds: number;
   };
+  paritySync: {
+    enabled: boolean;
+    supabaseUrl: string;
+    configured: boolean;
+    endpointHost: string | null;
+    keyStatus: TelegramSecretStatus;
+    deviceId: string;
+    deviceLabel: string;
+    heartbeatIntervalSeconds: number;
+    commandPollIntervalSeconds: number;
+    logUploadEnabled: boolean;
+    skipSyncEnabled: boolean;
+    scheduleCompletionSyncEnabled: boolean;
+    commandSyncEnabled: boolean;
+    remoteActionEnabled: boolean;
+  };
 }
 
 export interface AppSettingsInput {
@@ -572,6 +588,20 @@ export interface AppSettingsInput {
     enabled: boolean;
     endpointUrl?: string;
     intervalSeconds: number;
+  };
+  paritySync: {
+    enabled: boolean;
+    supabaseUrl: string;
+    publishableKey?: string;
+    deviceId: string;
+    deviceLabel: string;
+    heartbeatIntervalSeconds: number;
+    commandPollIntervalSeconds: number;
+    logUploadEnabled: boolean;
+    skipSyncEnabled: boolean;
+    scheduleCompletionSyncEnabled: boolean;
+    commandSyncEnabled: boolean;
+    remoteActionEnabled: boolean;
   };
 }
 

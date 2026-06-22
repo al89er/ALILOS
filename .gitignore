@@ -6,6 +6,7 @@ dist/
 !.env.example
 out/
 release/
+supabase/.temp/
 *.tsbuildinfo
 Tampermonkey Script - Perakam Waktu.txt
 perkamwaktu3 website.html

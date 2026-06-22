@@ -608,6 +608,61 @@
                   <input id="settings-heartbeat-interval" type="number" min="30" step="1" />
                 </label>
               </fieldset>
+
+              <fieldset class="settings-group">
+                <legend>Parity Sync / Webapp Supabase Sync</legend>
+                <p class="summary-text">DEPLOY1 safe-loop settings. The older Heartbeat section above is the legacy status-only sender; this section controls the newer parity sync path.</p>
+                <label class="checkbox-field">
+                  <input id="settings-parity-enabled" type="checkbox" />
+                  <span>Enable parity sync</span>
+                </label>
+                <label class="field">
+                  <span>Supabase project URL</span>
+                  <input id="settings-parity-url" type="url" autocomplete="off" spellcheck="false" />
+                </label>
+                <label class="field">
+                  <span>Publishable / anon key</span>
+                  <input id="settings-parity-key" type="password" autocomplete="off" spellcheck="false" />
+                </label>
+                <p id="settings-parity-key-state" class="summary-text">Use publishable/anon key only. Never enter service-role key.</p>
+                <label class="field">
+                  <span>Device ID</span>
+                  <input id="settings-parity-device-id" type="text" autocomplete="off" spellcheck="false" />
+                </label>
+                <label class="field">
+                  <span>Device label</span>
+                  <input id="settings-parity-device-label" type="text" autocomplete="off" spellcheck="false" />
+                </label>
+                <label class="field">
+                  <span>Status heartbeat interval seconds</span>
+                  <input id="settings-parity-heartbeat-interval" type="number" min="30" step="1" />
+                </label>
+                <label class="field">
+                  <span>Command poll interval seconds</span>
+                  <input id="settings-parity-command-interval" type="number" min="30" step="1" />
+                </label>
+                <label class="checkbox-field">
+                  <input id="settings-parity-log-upload" type="checkbox" />
+                  <span>Enable sanitized log upload</span>
+                </label>
+                <label class="checkbox-field">
+                  <input id="settings-parity-skip-sync" type="checkbox" />
+                  <span>Enable skip-date sync</span>
+                </label>
+                <label class="checkbox-field">
+                  <input id="settings-parity-schedule-completion-sync" type="checkbox" />
+                  <span>Enable schedule/completion sync</span>
+                </label>
+                <label class="checkbox-field">
+                  <input id="settings-parity-command-sync" type="checkbox" />
+                  <span>Enable safe command sync</span>
+                </label>
+                <label class="checkbox-field">
+                  <input id="settings-parity-remote-action" type="checkbox" />
+                  <span>Enable guarded remote configured action</span>
+                </label>
+                <p class="summary-text">Keep remote action off during DEPLOY1. Enable only for supervised PARITY10C Phase B/C validation.</p>
+              </fieldset>
             </div>
             <div class="button-group form-actions">
               <button id="settings-save" type="button">Save settings</button>
@@ -623,6 +678,7 @@
             <div><dt>Network monitor</dt><dd id="settings-network-summary">--</dd></div>
             <div><dt>Telegram</dt><dd id="settings-telegram-summary">--</dd></div>
             <div><dt>Heartbeat</dt><dd id="settings-heartbeat-summary">--</dd></div>
+            <div><dt>Parity sync</dt><dd id="settings-parity-summary">--</dd></div>
             <div><dt>Config path</dt><dd id="settings-config-path">--</dd></div>
             <div><dt>Log path</dt><dd id="settings-log-path">--</dd></div>
           </dl>

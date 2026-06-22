@@ -11,7 +11,7 @@ import { ParitySyncService } from "../worker/parity-sync-service";
 import { ReminderService } from "../worker/reminder-service";
 import { Scheduler } from "../worker/scheduler";
 import { TestClickService } from "../worker/test-click-service";
-import { ConfigStore } from "./config-store";
+import { ConfigStore, looksLikeSupabaseServiceRoleKey } from "./config-store";
 import { AppLogger } from "./logger";
 import { decryptSecret, encryptSecret, isSecureStorageAvailable } from "./secret-store";
 import { TelegramService } from "./telegram-service";
@@ -403,6 +403,23 @@ app.whenReady().then(() => {
         : config.heartbeat.supabaseUrl,
       intervalSeconds: next.heartbeat.intervalSeconds
     };
+    config.paritySync = {
+      ...config.paritySync,
+      enabled: next.paritySync.enabled,
+      supabaseUrl: next.paritySync.supabaseUrl,
+      publishableKey: typeof next.paritySync.publishableKey === "string" && next.paritySync.publishableKey.trim()
+        ? next.paritySync.publishableKey.trim()
+        : config.paritySync.publishableKey,
+      deviceId: next.paritySync.deviceId,
+      deviceLabel: next.paritySync.deviceLabel,
+      heartbeatIntervalSeconds: next.paritySync.heartbeatIntervalSeconds,
+      commandPollIntervalSeconds: next.paritySync.commandPollIntervalSeconds,
+      logUploadEnabled: next.paritySync.logUploadEnabled,
+      skipSyncEnabled: next.paritySync.skipSyncEnabled,
+      scheduleCompletionSyncEnabled: next.paritySync.scheduleCompletionSyncEnabled,
+      commandSyncEnabled: next.paritySync.commandSyncEnabled,
+      remoteActionEnabled: next.paritySync.remoteActionEnabled
+    };
 
     configStore.save(config);
 
@@ -414,9 +431,10 @@ app.whenReady().then(() => {
     }
     automationMonitor.configure();
     heartbeatService.configure();
+    paritySyncService.configure();
     applyLaunchAtLoginSetting("settings");
 
-    logger.info(`App settings saved. Execution mode: ${config.automation.executionMode}. Worker: ${config.worker.enabled ? "enabled" : "disabled"}. Launch at login: ${config.startup.launchAtLogin ? "enabled" : "disabled"}.`);
+    logger.info(`App settings saved. Execution mode: ${config.automation.executionMode}. Worker: ${config.worker.enabled ? "enabled" : "disabled"}. Launch at login: ${config.startup.launchAtLogin ? "enabled" : "disabled"}. Parity sync: ${config.paritySync.enabled ? "enabled" : "disabled"}.`);
     await broadcastSnapshot();
     return buildAppSettingsSnapshot();
   });
@@ -803,6 +821,22 @@ function buildAppSettingsSnapshot(): AppSettingsSnapshot {
           ? "env-local"
           : "missing",
       intervalSeconds: config.heartbeat.intervalSeconds
+    },
+    paritySync: {
+      enabled: config.paritySync.enabled,
+      supabaseUrl: config.paritySync.supabaseUrl,
+      configured: Boolean(effectiveParitySyncUrl()) && Boolean(effectiveParitySyncPublishableKey()) && isUuidText(config.paritySync.deviceId),
+      endpointHost: effectiveParitySyncUrl()?.host ?? null,
+      keyStatus: paritySyncKeyStatus(),
+      deviceId: config.paritySync.deviceId,
+      deviceLabel: config.paritySync.deviceLabel,
+      heartbeatIntervalSeconds: config.paritySync.heartbeatIntervalSeconds,
+      commandPollIntervalSeconds: config.paritySync.commandPollIntervalSeconds,
+      logUploadEnabled: config.paritySync.logUploadEnabled,
+      skipSyncEnabled: config.paritySync.skipSyncEnabled,
+      scheduleCompletionSyncEnabled: config.paritySync.scheduleCompletionSyncEnabled,
+      commandSyncEnabled: config.paritySync.commandSyncEnabled,
+      remoteActionEnabled: config.paritySync.remoteActionEnabled
     }
   };
 }
@@ -812,6 +846,7 @@ function normalizeAppSettings(settings: Partial<AppSettingsInput> | null): AppSe
   const clockOutWindow = normalizeTimeWindow(settings?.scheduler?.clockOutWindow, config.scheduler.clockOutWindow, "Evening action window");
   const dashboardUrl = normalizeRequiredHttpUrl(settings?.perakam?.dashboardUrl ?? config.perakam.dashboardUrl, "Perakam dashboard URL");
   const heartbeatEndpoint = normalizeOptionalSupabaseUrl(settings?.heartbeat?.endpointUrl, "Supabase project URL");
+  const paritySync = normalizeParitySyncSettingsInput(settings?.paritySync);
 
   return {
     worker: {
@@ -839,7 +874,32 @@ function normalizeAppSettings(settings: Partial<AppSettingsInput> | null): AppSe
       enabled: settings?.heartbeat?.enabled ?? config.heartbeat.enabled,
       endpointUrl: heartbeatEndpoint ?? undefined,
       intervalSeconds: clampSettingNumber(settings?.heartbeat?.intervalSeconds, 30, 24 * 60 * 60, config.heartbeat.intervalSeconds, "Heartbeat interval")
-    }
+    },
+    paritySync
+  };
+}
+
+function normalizeParitySyncSettingsInput(settings: Partial<AppSettingsInput["paritySync"]> | undefined): AppSettingsInput["paritySync"] {
+  const supabaseUrl = normalizeOptionalSupabaseUrl(settings?.supabaseUrl ?? config.paritySync.supabaseUrl, "Parity sync Supabase URL") ?? "";
+  const publishableKey = typeof settings?.publishableKey === "string" ? settings.publishableKey.trim() : "";
+
+  if (publishableKey && looksLikeSupabaseServiceRoleKey(publishableKey)) {
+    throw new Error("Parity sync publishable key must be a publishable/anon key, not a service-role key.");
+  }
+
+  return {
+    enabled: settings?.enabled ?? config.paritySync.enabled,
+    supabaseUrl,
+    publishableKey: publishableKey || undefined,
+    deviceId: normalizeSettingsDeviceId(settings?.deviceId ?? config.paritySync.deviceId),
+    deviceLabel: sanitizeSettingsText(settings?.deviceLabel ?? config.paritySync.deviceLabel, 120) || config.paritySync.deviceLabel,
+    heartbeatIntervalSeconds: clampSettingNumber(settings?.heartbeatIntervalSeconds, 30, 24 * 60 * 60, config.paritySync.heartbeatIntervalSeconds, "Parity sync heartbeat interval"),
+    commandPollIntervalSeconds: clampSettingNumber(settings?.commandPollIntervalSeconds, 30, 24 * 60 * 60, config.paritySync.commandPollIntervalSeconds, "Parity sync command poll interval"),
+    logUploadEnabled: settings?.logUploadEnabled ?? config.paritySync.logUploadEnabled,
+    skipSyncEnabled: settings?.skipSyncEnabled ?? config.paritySync.skipSyncEnabled,
+    scheduleCompletionSyncEnabled: settings?.scheduleCompletionSyncEnabled ?? config.paritySync.scheduleCompletionSyncEnabled,
+    commandSyncEnabled: settings?.commandSyncEnabled ?? config.paritySync.commandSyncEnabled,
+    remoteActionEnabled: settings?.remoteActionEnabled ?? config.paritySync.remoteActionEnabled
   };
 }
 
@@ -870,6 +930,27 @@ function normalizeTimeText(value: unknown, label: string): string {
   }
 
   return text;
+}
+
+function normalizeSettingsDeviceId(value: unknown): string {
+  const text = String(value ?? "").trim();
+  if (!isUuidText(text)) {
+    throw new Error("Parity sync device ID must be a UUID.");
+  }
+
+  return text;
+}
+
+function isUuidText(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function sanitizeSettingsText(value: unknown, maximumLength: number): string {
+  return String(value ?? "")
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maximumLength);
 }
 
 function minutesFromTimeText(value: string): number {
@@ -956,6 +1037,36 @@ function effectiveSupabaseUrl(): URL | null {
 function effectiveSupabasePublishableKey(): string {
   const key = config.heartbeat.publishableKey.trim() || configStore.supabaseEnvLocal.publishableKey.trim();
   return looksLikeSecretKey(key) ? "" : key;
+}
+
+function effectiveParitySyncUrl(): URL | null {
+  const raw = config.paritySync.supabaseUrl.trim() || configStore.supabaseEnvLocal.supabaseUrl.trim();
+  const parsed = parseHttpUrl(raw);
+  if (!parsed || parsed.protocol !== "https:") {
+    return null;
+  }
+
+  parsed.pathname = "/";
+  parsed.search = "";
+  parsed.hash = "";
+  return parsed;
+}
+
+function effectiveParitySyncPublishableKey(): string {
+  const key = config.paritySync.publishableKey.trim() || configStore.supabaseEnvLocal.publishableKey.trim();
+  return looksLikeSupabaseServiceRoleKey(key) ? "" : key;
+}
+
+function paritySyncKeyStatus(): TelegramSecretStatus {
+  if (config.paritySync.publishableKey.trim() && !looksLikeSupabaseServiceRoleKey(config.paritySync.publishableKey)) {
+    return "configured";
+  }
+
+  if (configStore.supabaseEnvLocal.publishableKey.trim() && !looksLikeSupabaseServiceRoleKey(configStore.supabaseEnvLocal.publishableKey)) {
+    return "env-local";
+  }
+
+  return "missing";
 }
 
 function looksLikeSecretKey(value: string): boolean {

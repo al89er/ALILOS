@@ -52,6 +52,7 @@ Current Supabase status:
 - PARITY9B aligns the webapp to Dashboard, Skip dates, and Log history tabs. PARITY9C makes Skip dates calendar cells interactive for whole-day scheduling skip/unskip through `/functions/v1/alilos-skip-sync`; log history shows sanitized event summaries only. PARITY9D documents the combined deployed safe-loop smoke test. PARITY10B adds guarded configured-action requests but keeps operational reliance deferred until PARITY10C field validation.
 - PARITY10C field-validation planning is documented in `docs/PARITY_REMOTE_ACTION_FIELD_VALIDATION.md`: disabled-gate rejection, guard-failure rejection, supervised valid-window execution, duplicate prevention, sanitized result review, and rollback.
 - DEPLOY1 safe-loop setup checklist is documented in `docs/DEPLOY1_SAFE_LOOP_CHECKLIST.md`: live deployment prerequisites, placeholder commands, desktop/webapp config checks, safe smoke sequence, pass/fail criteria, and rollback with `remoteActionEnabled=false` throughout.
+- DEPLOY1B parity sync settings UI is available in the desktop Settings tab. Use it to configure the DEPLOY1 Supabase URL, publishable/anon key, device id/label, and parity feature flags; the older Heartbeat controls are legacy status-only controls and do not enable the full safe loop.
 - S3D write-path decision documented: prefer Edge Function/API proxy plus explicit device pairing/token.
 - Parity sync remains disabled by default.
 - Guarded configured-action command execution is implemented but disabled by default and remains pending PARITY10C field validation; unattended execution remains deferred.
@@ -111,6 +112,7 @@ Recommended next major track:
 - Telegram tab keeps token/chat fields masked and shows the configured command prefix.
 - Logs tab shows recent logs plus automation/heartbeat audit details.
 - Settings tab shows current execution mode, edits safe operational settings, masks heartbeat/Telegram secrets, and preserves existing secrets when blank fields are saved.
+- Settings tab shows Parity Sync / Webapp Supabase Sync controls, masks the publishable/anon key after load, rejects service-role-looking keys, and keeps `remoteActionEnabled=false` unless explicitly changed for supervised PARITY10C validation.
 - Telegram settings save with placeholder/test values only; real bot token is never committed or printed.
 - Telegram test notification works only with owner-provided local credentials.
 - Browser starts and stops.
@@ -126,6 +128,7 @@ Recommended next major track:
 - Confirm no simulated dry-run calls `attendance:execute` or `clickVisibleAttendanceControl`.
 - In Settings, switch execution mode between `notify-only`, `manual-confirm`, and `dry-run`, save, reload, and confirm the summary reflects the saved value.
 - In Settings, leave the heartbeat endpoint blank and save other heartbeat fields; confirm the endpoint remains configured when one already exists.
+- In Settings, configure parity sync with a placeholder-safe live project/device during DEPLOY1, leave the parity key blank on later saves to preserve it, and confirm summaries/status never display the key value.
 - In Telegram, leave token/chat blank while changing command prefix; confirm configured or `.env.local` token/chat are preserved and not displayed.
 - With local config Telegram secrets blank and `.env.local` containing `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID`, confirm the UI shows available-from-env-local status and Telegram test notification works after enabling Telegram.
 

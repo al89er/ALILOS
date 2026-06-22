@@ -21,6 +21,7 @@
 - PARITY10B adds guarded configured-action requests through the existing desktop guard pipeline. It remains disabled by default through `paritySync.remoteActionEnabled = false`, requires `manual-confirm`, and must not be relied on operationally before PARITY10C field validation.
 - PARITY10C field-validation planning is documented in `docs/PARITY_REMOTE_ACTION_FIELD_VALIDATION.md`. Validate disabled-gate rejection first, guard-failure rejection second, and a supervised legitimate-window action last; abort on wrong page, ambiguous target, captive portal uncertainty, unsanitized logs, command payload mismatch, date mismatch, prior completion, desktop offline/sleeping, or user uncertainty.
 - DEPLOY1 safe-loop setup guidance is documented in `docs/DEPLOY1_SAFE_LOOP_CHECKLIST.md`. It is the first live Supabase/webapp/desktop smoke pass and keeps `remoteActionEnabled=false`, safe commands only, no real configured-site click, placeholder-only command snippets, and explicit rollback.
+- DEPLOY1B exposes `paritySync` in the desktop Settings tab for live safe-loop setup. It preserves disabled defaults, masks the publishable/anon key after load, rejects service-role-looking keys, and reconfigures `ParitySyncService` after settings are saved.
 - Do not implement migrations, captive portal reconnect, or unattended execution from these notes alone.
 - Credentials stay local: configured website credentials and future captive portal credentials must not be sent to Supabase or the webapp, and must not appear in logs/docs. Service-role keys never ship in desktop or webapp clients.
 
@@ -120,7 +121,7 @@ Each line is a JSON object with timestamp, level, and message. The renderer disp
 - Network: notify-only connectivity, Perakam reachability, captive portal evidence, portal actions, and network monitor settings.
 - Telegram: masked Telegram token/chat settings, command prefix summary, and test notification.
 - Logs: recent logs plus Phase 6A automation/heartbeat telemetry.
-- Settings: safe editor for worker, automation, scheduler window/reminder, Perakam dashboard URL, and heartbeat settings, plus read-only config/log paths and active setting summaries.
+- Settings: safe editor for worker, automation, scheduler window/reminder, Perakam dashboard URL, legacy heartbeat settings, and parity sync safe-loop settings, plus read-only config/log paths and active setting summaries.
 
 ## Webapp
 
@@ -136,7 +137,9 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 
 ## Settings Editor Safety
 
-- The Settings tab edits only selected operational settings: worker enable/interval, Windows launch-at-login, automation execution mode/interval/dry-run browser preparation, scheduler windows/grace/reminders, Perakam dashboard URL, and Supabase heartbeat enable/project URL/interval.
+- The Settings tab edits only selected operational settings: worker enable/interval, Windows launch-at-login, automation execution mode/interval/dry-run browser preparation, scheduler windows/grace/reminders, Perakam dashboard URL, Supabase heartbeat enable/project URL/interval, and the parity sync safe-loop flags.
+- The Parity Sync / Webapp Supabase Sync section is separate from the legacy Heartbeat section. It stores only local desktop config values, uses publishable/anon keys only, leaves the key field blank after load to preserve the saved key, and rejects service-role-looking keys before saving.
+- `paritySync.remoteActionEnabled` remains false by default. Keep it off during DEPLOY1 and enable it only for supervised PARITY10C Phase B/C validation after explicit approval.
 - Launch-at-login is backed by top-level `startup.launchAtLogin`. It must not change execution mode, scheduler behavior, or any configured action path.
 - Supabase heartbeat is displayed as configured/not configured plus host and key source only. The URL input is blank on load; saving a blank URL preserves the existing local Supabase URL. The publishable key is configured through local config or `.env.local`, not exposed in the renderer.
 - Telegram token and chat fields are password inputs and are blank on load. The renderer receives only configured/env-local/missing status, never the actual token or chat ID. Saving blank fields preserves existing local or `.env.local` effective values; typing a new value saves it into local app config.

@@ -57,6 +57,8 @@ PARITY2 payloads and details are constrained to sanitized JSON objects and must 
 
 The desktop app includes a disabled-by-default `paritySync` config section and `ParitySyncService`. It reports local health/status and keeps all runtime writes and command processing disabled unless specific parity feature flags are explicitly enabled. When disabled, the service starts no sync timers. If explicitly enabled in local config later, approved status, skip, schedule/completion, command, and guarded remote-action proxy paths can process only sanitized payloads. Guarded remote action also requires `paritySync.remoteActionEnabled`, which defaults to false.
 
+The desktop Settings tab exposes these `paritySync` fields for DEPLOY1 setup: enablement, Supabase project URL, publishable/anon key, device id/label, heartbeat and command intervals, log upload, skip sync, schedule/completion sync, command sync, and remote action. The publishable/anon key field is blank after load and preserves the saved local key unless a replacement key is entered. Service-role-looking keys are rejected locally. Read-only dashboard/status snapshots expose only key status/source and endpoint host, never the key value.
+
 Security boundaries:
 
 - Use publishable/anon keys only for desktop configuration.
@@ -102,6 +104,8 @@ Deployment and smoke testing are documented in `docs/PARITY_SKIP_SYNC_DEPLOYMENT
 `docs/PARITY_SAFE_LOOP_SMOKE.md` documents the later combined safe-loop smoke sequence for deployed status publishing, dashboard reads, skip upsert/delete, schedule/completion visibility, safe command processing, and sanitized logs. That runbook does not add secrets, weaken RLS/grants, deploy functions by itself, or approve remote configured-action execution.
 
 `docs/DEPLOY1_SAFE_LOOP_CHECKLIST.md` is the live setup checklist for the first safe-loop smoke pass. It keeps `paritySync.remoteActionEnabled=false`, uses publishable/anon keys in desktop/webapp clients, keeps `SUPABASE_SERVICE_ROLE_KEY` server-side only in Edge Function secrets, requires an existing safe device row, and forbids table-grant changes or real configured-site clicks during DEPLOY1.
+
+For DEPLOY1, configure the desktop through Settings > Parity Sync / Webapp Supabase Sync. Do not treat the older Heartbeat section as the full parity safe-loop configuration.
 
 ## PARITY6 Schedule/Completion Sync
 

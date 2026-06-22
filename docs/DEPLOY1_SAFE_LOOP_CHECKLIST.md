@@ -29,7 +29,7 @@ Confirm before smoke testing:
   - `SUPABASE_URL`
   - `SUPABASE_SERVICE_ROLE_KEY`
 - A safe existing device row exists in `public.devices`.
-- Desktop parity sync uses only a publishable/anon key.
+- Desktop parity sync is configured from Settings > Parity Sync / Webapp Supabase Sync and uses only a publishable/anon key.
 - Desktop `paritySync.remoteActionEnabled=false`.
 - Webapp local config is created from `webapp/config.example.js`.
 - `webapp/config.js` is ignored and untracked.
@@ -117,7 +117,7 @@ Expected:
 
 ## Desktop Config Checklist
 
-Configure only local desktop app/userData values:
+Configure only local desktop app/userData values from the packaged app Settings tab, under `Parity Sync / Webapp Supabase Sync`. The older `Heartbeat` settings are legacy status-only settings and are not enough for the DEPLOY1 parity safe-loop smoke.
 
 - `paritySync.enabled=false` for the baseline step.
 - `paritySync.supabaseUrl=https://<project-ref>.supabase.co`
@@ -130,7 +130,7 @@ Configure only local desktop app/userData values:
 - `paritySync.commandSyncEnabled=false` initially.
 - `paritySync.remoteActionEnabled=false` throughout DEPLOY1.
 
-Never use a service-role key locally. Never commit the desktop config.
+The publishable/anon key field is password-style and blank after loading; leave it blank to preserve the current local key. The Settings save path rejects service-role-looking keys with a sanitized error. Never use a service-role key locally. Never commit the desktop config.
 
 ## Smoke Sequence
 
@@ -140,10 +140,11 @@ Run in this order.
 
 1. Launch packaged `release/win-unpacked/ALILOS.exe`.
 2. Confirm app opens and local operation is normal.
-3. Confirm parity sync is disabled or all sync flags are off.
-4. Confirm mode is `dry-run` or `manual-confirm`.
-5. Confirm `remoteActionEnabled=false`.
-6. Confirm no configured website click occurs.
+3. Open Settings and confirm the Parity Sync / Webapp Supabase Sync section is available.
+4. Confirm parity sync is disabled or all sync flags are off.
+5. Confirm mode is `dry-run` or `manual-confirm`.
+6. Confirm `remoteActionEnabled=false`.
+7. Confirm no configured website click occurs.
 
 Pass: desktop runs locally with no Supabase dependency and no real action.
 
