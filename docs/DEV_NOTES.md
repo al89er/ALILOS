@@ -80,6 +80,12 @@ These are local safety checks. They are not runtime app checks.
 | `src/renderer/renderer.ts` | Dashboard rendering, tab navigation, form handling, and UI actions. |
 | `src/renderer/styles.css` | Tabbed dashboard styling and responsive layout. |
 
+## App Icon Assets
+
+- `assets/app-icon.svg` is the canonical project-owned atom-like ALILOS icon source.
+- `assets/app-icon.ico` is generated from the SVG for Windows packaging, BrowserWindow, and tray use. It should include 16, 24, 32, 48, 64, 128, and 256 px entries with transparency preserved.
+- Do not regenerate the SVG from the `.ico`; treat the `.ico` as the derived Windows asset.
+
 ## Config Storage
 
 Runtime config is stored at:

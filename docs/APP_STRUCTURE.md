@@ -27,6 +27,10 @@ Scripts:
 | `npm run check:identity` | Check local GitHub/Supabase identity guard files. |
 | `npm run check:supabase` | Check local Supabase identity safety. |
 
+## App Icon
+
+The canonical ALILOS app/tray icon source is `assets/app-icon.svg`, an atom-like project-owned vector. `assets/app-icon.ico` is generated from that SVG for Windows packaging and tray/window use. The package config points Electron Builder at `assets/app-icon.ico`, and the main/tray process resolves the same icon through `appIconPath()`.
+
 ## Main Process
 
 Main process files live in `src/main`:
@@ -34,7 +38,7 @@ Main process files live in `src/main`:
 | File | Responsibility |
 | --- | --- |
 | `main.ts` | App lifecycle, single-instance lock, BrowserWindow creation, service wiring, IPC handlers, snapshot building, tray behavior coordination, Perakam auto-login orchestration. |
-| `tray.ts` | Tray creation with show/hide/quit controls. The tray currently uses an empty native image. |
+| `tray.ts` | Tray creation with show/hide/quit controls using the packaged ALILOS icon asset. |
 | `config-store.ts` | Loads/saves local JSON config and normalizes defaults/migrations. |
 | `logger.ts` | Appends JSON-line logs under user data and returns recent entries. |
 | `secret-store.ts` | Wraps Electron `safeStorage` for local password encryption/decryption. |

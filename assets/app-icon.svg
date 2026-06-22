@@ -1,5 +1,24 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="ALILOS icon">
-  <rect width="256" height="256" rx="48" fill="#12343b"/>
-  <path d="M64 184 112 72h32l48 112h-31l-8-22H103l-8 22H64Zm48-48h32l-16-44-16 44Z" fill="#ffffff"/>
-  <path d="M74 202h108" stroke="#29c7ac" stroke-width="14" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="ALILOS atom icon">
+  <defs>
+    <linearGradient id="bg" x1="32" y1="24" x2="224" y2="232" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#10353d"/>
+      <stop offset="1" stop-color="#071a21"/>
+    </linearGradient>
+    <linearGradient id="orbit" x1="48" y1="52" x2="208" y2="204" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7df4dc"/>
+      <stop offset="1" stop-color="#26b9d5"/>
+    </linearGradient>
+    <filter id="soft-shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#031014" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <rect x="18" y="18" width="220" height="220" rx="54" fill="url(#bg)"/>
+  <g fill="none" stroke="url(#orbit)" stroke-width="11" stroke-linecap="round" filter="url(#soft-shadow)">
+    <ellipse cx="128" cy="128" rx="82" ry="32"/>
+    <ellipse cx="128" cy="128" rx="82" ry="32" transform="rotate(60 128 128)"/>
+    <ellipse cx="128" cy="128" rx="82" ry="32" transform="rotate(120 128 128)"/>
+  </g>
+  <circle cx="128" cy="128" r="24" fill="#f7fffb"/>
+  <circle cx="128" cy="128" r="11" fill="#24c7b3"/>
+  <path d="M92 192h72" stroke="#f7fffb" stroke-width="10" stroke-linecap="round" opacity="0.92"/>
 </svg>
