@@ -30,9 +30,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Prepare webapp artifact
+        run: |
+          rm -rf dist-webapp
+          mkdir -p dist-webapp
+          cp -R webapp/. dist-webapp/
+
       - name: Add GitHub Pages config
         run: |
-          cat > webapp/config.js <<'EOF'
+          cat > dist-webapp/config.js <<'EOF'
           window.ALILOS_CONFIG = {
             supabaseUrl: "${{ vars.ALILOS_SUPABASE_URL }}",
             supabaseAnonKey: "${{ vars.ALILOS_SUPABASE_ANON_KEY }}",
@@ -40,10 +46,13 @@ jobs:
           };
           EOF
 
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
       - name: Upload webapp artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: webapp
+          path: dist-webapp
 
       - name: Deploy to GitHub Pages
         id: deployment

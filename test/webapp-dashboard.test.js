@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const vm = require("node:vm");
 
 const webappDir = path.join(process.cwd(), "webapp");
 
@@ -16,10 +17,16 @@ test("webapp uses safe monitor shell and placeholder client config only", () => 
 
   assert.match(html, /Safe desktop monitor/);
   assert.match(app, /alilos-dashboard-read/);
+  assert.match(app, /window\.ALILOS_CONFIG/);
+  assert.match(app, /window\.ALILOS_WEBAPP_CONFIG/);
+  assert.match(app, /supabaseUrl/);
+  assert.match(app, /supabaseAnonKey/);
+  assert.match(app, /deviceId/);
   assert.match(app, /VITE_SUPABASE_URL/);
   assert.match(app, /VITE_SUPABASE_ANON_KEY/);
   assert.match(app, /VITE_ALILOS_DEVICE_ID/);
-  assert.match(config, /PUBLISHABLE_OR_ANON_KEY/);
+  assert.match(config, /window\.ALILOS_CONFIG/);
+  assert.match(config, /<publishable-or-anon-key>/);
   assert.doesNotMatch(`${html}\n${app}\n${config}`, /service[_-]?role|sb_secret_|password|cookie|raw_html|link=/i);
 });
 
@@ -117,12 +124,200 @@ test("webapp command submission uses command Edge Function and anon key placehol
   assert.match(app, /alilos-command-sync/);
   assert.match(app, /operation: "create-command"/);
   assert.match(app, /commandType/);
-  assert.match(app, /VITE_SUPABASE_URL/);
-  assert.match(app, /VITE_SUPABASE_ANON_KEY/);
-  assert.match(app, /Authorization: `Bearer \$\{config\.VITE_SUPABASE_ANON_KEY\}`/);
+  assert.match(app, /new URL\("\/functions\/v1\/alilos-command-sync", config\.supabaseUrl\)/);
+  assert.match(app, /Authorization: `Bearer \$\{config\.supabaseAnonKey\}`/);
   assert.match(app, /noConfiguredSiteAction: true/);
   assert.match(app, /submitRemoteConfiguredAction/);
   assert.match(app, /commandType: "perform-configured-action"/);
   assert.match(app, /Desktop must be online with remote action enabled locally/);
   assert.doesNotMatch(app, /request-confirmation|eval\(|service[_-]?role|sb_secret_|textarea|raw JSON/i);
 });
+
+test("webapp accepts deployed ALILOS_CONFIG shape as live config", () => {
+  const context = createWebappContext({
+    ALILOS_CONFIG: {
+      supabaseUrl: "https://live-project.supabase.co",
+      supabaseAnonKey: "anon-live-key",
+      deviceId: "11111111-1111-4111-8111-111111111111"
+    }
+  });
+
+  assert.equal(context.configStatus(context.normalizeRuntimeConfig(context.window.ALILOS_CONFIG)), "ready");
+});
+
+test("webapp detects placeholder config values", () => {
+  const context = createWebappContext({
+    ALILOS_CONFIG: {
+      supabaseUrl: "https://<project-ref>.supabase.co",
+      supabaseAnonKey: "<publishable-or-anon-key>",
+      deviceId: "<device-id>"
+    }
+  });
+
+  assert.equal(context.configStatus(context.normalizeRuntimeConfig(context.window.ALILOS_CONFIG)), "placeholder");
+});
+
+test("webapp mock banner appears only for mock fallback config", async () => {
+  const context = createWebappContext({
+    ALILOS_CONFIG: {
+      supabaseUrl: "https://<project-ref>.supabase.co",
+      supabaseAnonKey: "<publishable-or-anon-key>",
+      deviceId: "<device-id>"
+    }
+  });
+
+  await context.loadDashboard();
+
+  assert.match(context.elements["connection-pill"].textContent, /Mock data:/);
+  assert.doesNotMatch(context.elements["connection-pill"].textContent, /Live read failed/);
+});
+
+test("webapp hides mock warning after successful live dashboard response", async () => {
+  const context = createWebappContext({
+    ALILOS_CONFIG: {
+      supabaseUrl: "https://live-project.supabase.co",
+      supabaseAnonKey: "anon-live-key",
+      deviceId: "11111111-1111-4111-8111-111111111111"
+    },
+    fetch: async () => ({
+      ok: true,
+      status: 200,
+      json: async () => liveDashboardPayload()
+    })
+  });
+
+  await context.loadDashboard();
+
+  assert.equal(context.elements["connection-pill"].textContent, "Live read proxy");
+  assert.equal(context.elements["connection-pill"].className, "pill good");
+});
+
+test("webapp live fetch failure shows live error instead of placeholder warning", async () => {
+  const context = createWebappContext({
+    ALILOS_CONFIG: {
+      supabaseUrl: "https://live-project.supabase.co",
+      supabaseAnonKey: "anon-live-key",
+      deviceId: "11111111-1111-4111-8111-111111111111"
+    },
+    fetch: async () => ({
+      ok: false,
+      status: 503,
+      json: async () => ({ success: false })
+    })
+  });
+
+  await context.loadDashboard();
+
+  assert.match(context.elements["connection-pill"].textContent, /Live read failed: Read proxy returned HTTP 503/);
+  assert.doesNotMatch(context.elements["connection-pill"].textContent, /configure placeholder values/);
+});
+
+test("GitHub Pages workflow generates clean ALILOS_CONFIG from variables", () => {
+  const workflow = fs.readFileSync(path.join(process.cwd(), ".github", "workflows", "deploy-webapp.yml"), "utf8");
+
+  assert.match(workflow, /ALILOS_SUPABASE_URL: \$\{\{ vars\.ALILOS_SUPABASE_URL \}\}/);
+  assert.match(workflow, /ALILOS_SUPABASE_ANON_KEY: \$\{\{ vars\.ALILOS_SUPABASE_ANON_KEY \}\}/);
+  assert.match(workflow, /ALILOS_DEVICE_ID: \$\{\{ vars\.ALILOS_DEVICE_ID \}\}/);
+  assert.match(workflow, /window\.ALILOS_CONFIG = \$\{JSON\.stringify\(config, null, 2\)\};\\n/);
+  assert.doesNotMatch(workflow, /SERVICE_ROLE|sb_secret_/i);
+});
+
+function createWebappContext({ ALILOS_CONFIG, ALILOS_WEBAPP_CONFIG, fetch } = {}) {
+  const app = readWebappFile("app.js");
+  const elements = {};
+  const document = {
+    getElementById(id) {
+      elements[id] ??= createElement();
+      return elements[id];
+    },
+    querySelectorAll() {
+      return [];
+    },
+    querySelector() {
+      return null;
+    },
+    createElement
+  };
+  const context = {
+    window: {
+      ALILOS_CONFIG,
+      ALILOS_WEBAPP_CONFIG,
+      confirm: () => false
+    },
+    document,
+    fetch: fetch ?? (async () => ({ ok: false, status: 500, json: async () => ({ success: false }) })),
+    console,
+    Date,
+    URL,
+    Set,
+    Map,
+    Object,
+    String,
+    Number,
+    Boolean,
+    RegExp,
+    Math,
+    JSON
+  };
+
+  vm.createContext(context);
+  vm.runInContext(app, context);
+  context.elements = elements;
+  return context;
+}
+
+function createElement() {
+  const children = {};
+  return {
+    textContent: "",
+    className: "",
+    dataset: {},
+    hidden: false,
+    disabled: false,
+    type: "",
+    innerHTML: "",
+    classList: {
+      add() {},
+      toggle() {}
+    },
+    setAttribute() {},
+    addEventListener() {},
+    replaceChildren(...items) {
+      this.children = items;
+    },
+    querySelector(selector) {
+      children[selector] ??= createElement();
+      return children[selector];
+    }
+  };
+}
+
+function liveDashboardPayload() {
+  const now = new Date().toISOString();
+  return {
+    success: true,
+    dateKey: "2026-06-22",
+    monthKey: "2026-06",
+    device: {
+      deviceId: "11111111-1111-4111-8111-111111111111",
+      label: "ALILOS test device",
+      lastSeenAt: now
+    },
+    heartbeat: {
+      appStatus: "manual-confirm",
+      networkStatus: "online",
+      configuredSiteStatus: "dashboard",
+      statusText: "desktop online",
+      lastErrorText: null,
+      lastSeenAt: now
+    },
+    schedules: [],
+    skips: [],
+    completions: [],
+    eventLogs: [],
+    commandSync: {
+      counters: { pending: 0, claimed: 0, succeeded: 0, failed: 0, expired: 0, rejected: 0, cancelled: 0 },
+      latest: null
+    }
+  };
+}

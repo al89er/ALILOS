@@ -96,12 +96,14 @@ Create local-only `webapp/config.js` from `webapp/config.example.js`.
 Use this placeholder shape:
 
 ```js
-window.ALILOS_WEBAPP_CONFIG = {
-  VITE_SUPABASE_URL: "https://<project-ref>.supabase.co",
-  VITE_SUPABASE_ANON_KEY: "<publishable-or-anon-key>",
-  VITE_ALILOS_DEVICE_ID: "<existing-device-uuid>"
+window.ALILOS_CONFIG = {
+  supabaseUrl: "https://<project-ref>.supabase.co",
+  supabaseAnonKey: "<publishable-or-anon-key>",
+  deviceId: "<existing-device-uuid>"
 };
 ```
+
+The webapp also accepts the earlier `window.ALILOS_WEBAPP_CONFIG` / `VITE_*` names as aliases, but GitHub Pages should generate the canonical `window.ALILOS_CONFIG` shape.
 
 Verify it is ignored and untracked:
 

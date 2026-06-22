@@ -1,8 +1,9 @@
-const config = window.ALILOS_WEBAPP_CONFIG ?? {};
+const config = normalizeRuntimeConfig(window.ALILOS_CONFIG ?? window.ALILOS_WEBAPP_CONFIG ?? {});
 const today = new Date();
 const state = {
   data: sampleDashboard(monthKey(today)),
   source: "mock",
+  statusReason: "config-placeholder",
   monthKey: monthKey(today),
   activeTab: "dashboard-panel"
 };
@@ -64,22 +65,25 @@ bindMonthButtons();
 void loadDashboard();
 
 async function loadDashboard() {
-  if (!isConfigured(config)) {
-    render("Mock data: configure placeholder values to use the read proxy.", "neutral");
+  const configReason = configStatus(config);
+  if (configReason !== "ready") {
+    state.source = "mock";
+    state.statusReason = configReason;
+    render(configReason === "missing" ? "Mock data: live config is missing." : "Mock data: live config still contains placeholder values.", "neutral");
     return;
   }
 
   try {
-    const endpoint = new URL("/functions/v1/alilos-dashboard-read", config.VITE_SUPABASE_URL);
+    const endpoint = new URL("/functions/v1/alilos-dashboard-read", config.supabaseUrl);
     const response = await fetch(endpoint.toString(), {
       method: "POST",
       headers: {
-        apikey: config.VITE_SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${config.VITE_SUPABASE_ANON_KEY}`,
+        apikey: config.supabaseAnonKey,
+        Authorization: `Bearer ${config.supabaseAnonKey}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        deviceId: config.VITE_ALILOS_DEVICE_ID,
+        deviceId: config.deviceId,
         dateKey: todayKey(),
         monthKey: state.monthKey
       })
@@ -91,10 +95,12 @@ async function loadDashboard() {
 
     state.data = sanitizeDashboard(await response.json());
     state.source = "live";
+    state.statusReason = "live";
     render("Live read proxy", "good");
   } catch (error) {
     state.source = "mock";
-    render(sanitizeText(error.message, 120) ?? "Live read unavailable; showing mock state.", "warn");
+    state.statusReason = "live-fetch-failed";
+    render(`Live read failed: ${sanitizeText(error.message, 120) ?? "proxy unavailable"}. Showing mock fallback.`, "warn");
   }
 }
 
@@ -142,7 +148,7 @@ async function submitSafeCommand(commandType) {
     return;
   }
 
-  if (!isConfigured(config)) {
+  if (configStatus(config) !== "ready") {
     setCommandMessage("Command not submitted: configure Supabase URL, anon key, and device id first.", "warn");
     return;
   }
@@ -151,16 +157,16 @@ async function submitSafeCommand(commandType) {
   setCommandMessage(`Submitting ${commandLabel(commandType)}...`, "neutral");
 
   try {
-    const endpoint = new URL("/functions/v1/alilos-command-sync", config.VITE_SUPABASE_URL);
+    const endpoint = new URL("/functions/v1/alilos-command-sync", config.supabaseUrl);
     const response = await fetch(endpoint.toString(), {
       method: "POST",
       headers: {
-        apikey: config.VITE_SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${config.VITE_SUPABASE_ANON_KEY}`,
+        apikey: config.supabaseAnonKey,
+        Authorization: `Bearer ${config.supabaseAnonKey}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        deviceId: config.VITE_ALILOS_DEVICE_ID,
+        deviceId: config.deviceId,
         operation: "create-command",
         commandType,
         payload: {
@@ -198,7 +204,7 @@ async function submitRemoteConfiguredAction(actionKey) {
     return;
   }
 
-  if (!isConfigured(config)) {
+  if (configStatus(config) !== "ready") {
     setCommandMessage("Guarded action not submitted: configure Supabase URL, anon key, and device id first.", "warn");
     return;
   }
@@ -214,16 +220,16 @@ async function submitRemoteConfiguredAction(actionKey) {
   setCommandMessage(`Submitting guarded ${actionLabel(actionKey).toLowerCase()} request...`, "neutral");
 
   try {
-    const endpoint = new URL("/functions/v1/alilos-command-sync", config.VITE_SUPABASE_URL);
+    const endpoint = new URL("/functions/v1/alilos-command-sync", config.supabaseUrl);
     const response = await fetch(endpoint.toString(), {
       method: "POST",
       headers: {
-        apikey: config.VITE_SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${config.VITE_SUPABASE_ANON_KEY}`,
+        apikey: config.supabaseAnonKey,
+        Authorization: `Bearer ${config.supabaseAnonKey}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        deviceId: config.VITE_ALILOS_DEVICE_ID,
+        deviceId: config.deviceId,
         operation: "create-command",
         commandType: "perform-configured-action",
         actionKey,
@@ -261,7 +267,7 @@ async function submitSkipToggle(skipDate, isSkipped) {
     return;
   }
 
-  if (!isConfigured(config)) {
+  if (configStatus(config) !== "ready") {
     setSkipMessage("Skip toggle not submitted: configure Supabase URL, anon key, and device id first.", "warn");
     return;
   }
@@ -272,16 +278,16 @@ async function submitSkipToggle(skipDate, isSkipped) {
   renderSkipCalendar(state.data.skips ?? []);
 
   try {
-    const endpoint = new URL("/functions/v1/alilos-skip-sync", config.VITE_SUPABASE_URL);
+    const endpoint = new URL("/functions/v1/alilos-skip-sync", config.supabaseUrl);
     const response = await fetch(endpoint.toString(), {
       method: "POST",
       headers: {
-        apikey: config.VITE_SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${config.VITE_SUPABASE_ANON_KEY}`,
+        apikey: config.supabaseAnonKey,
+        Authorization: `Bearer ${config.supabaseAnonKey}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        deviceId: config.VITE_ALILOS_DEVICE_ID,
+        deviceId: config.deviceId,
         operation,
         skipDate,
         actionKey: null,
@@ -502,8 +508,57 @@ function sanitizeDashboard(value) {
   return value;
 }
 
-function isConfigured(value) {
-  return Boolean(value.VITE_SUPABASE_URL && value.VITE_SUPABASE_ANON_KEY && value.VITE_ALILOS_DEVICE_ID);
+function normalizeRuntimeConfig(value) {
+  return {
+    supabaseUrl: firstText(value.supabaseUrl, value.VITE_SUPABASE_URL),
+    supabaseAnonKey: firstText(value.supabaseAnonKey, value.supabaseKey, value.anonKey, value.publishableKey, value.VITE_SUPABASE_ANON_KEY),
+    deviceId: firstText(value.deviceId, value.deviceID, value.VITE_ALILOS_DEVICE_ID)
+  };
+}
+
+function firstText(...values) {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return "";
+}
+
+function configStatus(value) {
+  if (!value.supabaseUrl || !value.supabaseAnonKey || !value.deviceId) {
+    return "missing";
+  }
+
+  if ([value.supabaseUrl, value.supabaseAnonKey, value.deviceId].some(isPlaceholderValue)) {
+    return "placeholder";
+  }
+
+  return "ready";
+}
+
+function isPlaceholderValue(value) {
+  const text = String(value ?? "").trim().toLowerCase();
+  if (!text) {
+    return true;
+  }
+
+  return text.includes("vite_")
+    || text.includes("<")
+    || text.includes(">")
+    || text.includes("your-")
+    || text.includes("example")
+    || text.includes("project_ref")
+    || text.includes("project-ref")
+    || text.includes("project ref")
+    || text.includes("device-id")
+    || text.includes("device_id")
+    || text.includes("publishable-or-anon-key")
+    || text.includes("publishable_or_anon_key")
+    || text.includes("anon-key")
+    || text.includes("anon_key")
+    || text.includes("placeholder");
 }
 
 function heartbeatFreshness(value) {

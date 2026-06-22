@@ -136,14 +136,14 @@ Create local-only `webapp/config.js` from `webapp/config.example.js`.
 Placeholder shape:
 
 ```js
-window.ALILOS_WEBAPP_CONFIG = {
-  VITE_SUPABASE_URL: "<supabase-project-url>",
-  VITE_SUPABASE_ANON_KEY: "<publishable-or-anon-key>",
-  VITE_ALILOS_DEVICE_ID: "<safe-device-id>"
+window.ALILOS_CONFIG = {
+  supabaseUrl: "<supabase-project-url>",
+  supabaseAnonKey: "<publishable-or-anon-key>",
+  deviceId: "<safe-device-id>"
 };
 ```
 
-These are the local values for the logical `supabaseUrl`, `supabaseAnonKey`, and `deviceId` placeholders.
+These are the local values for the logical `supabaseUrl`, `supabaseAnonKey`, and `deviceId` placeholders. The earlier `window.ALILOS_WEBAPP_CONFIG` / `VITE_*` names remain accepted as aliases only.
 
 Confirm `webapp/config.js` is ignored by Git:
 

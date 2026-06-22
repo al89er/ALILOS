@@ -22,11 +22,11 @@ PARITY8 added a same-repo, static, read-only web/PWA dashboard shell under `weba
 
 Use placeholder names only:
 
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
-- `VITE_ALILOS_DEVICE_ID`
+- `supabaseUrl`
+- `supabaseAnonKey`
+- `deviceId`
 
-`config.example.js` documents the shape. Real local `config.js` is ignored by Git. Do not commit real project refs, keys, device ids, service-role keys, credentials, cookies, raw HTML, screenshots, full URLs, tokenized URLs, or opaque `link=` values.
+`config.example.js` documents the canonical `window.ALILOS_CONFIG` shape used by GitHub Pages. The app also accepts the earlier `window.ALILOS_WEBAPP_CONFIG` / `VITE_*` names as aliases. Real local `config.js` is ignored by Git. Do not commit real project refs, keys, device ids, service-role keys, credentials, cookies, raw HTML, screenshots, full URLs, tokenized URLs, or opaque `link=` values.
 
 ## Boundaries
 

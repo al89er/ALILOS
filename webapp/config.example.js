@@ -1,5 +1,5 @@
-window.ALILOS_WEBAPP_CONFIG = {
-  VITE_SUPABASE_URL: "https://PROJECT_REF.supabase.co",
-  VITE_SUPABASE_ANON_KEY: "PUBLISHABLE_OR_ANON_KEY",
-  VITE_ALILOS_DEVICE_ID: "00000000-0000-4000-8000-000000000000"
+window.ALILOS_CONFIG = {
+  supabaseUrl: "https://<project-ref>.supabase.co",
+  supabaseAnonKey: "<publishable-or-anon-key>",
+  deviceId: "<existing-device-uuid>"
 };
