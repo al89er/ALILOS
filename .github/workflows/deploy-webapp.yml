@@ -32,7 +32,13 @@ jobs:
 
       - name: Add GitHub Pages config
         run: |
-          cp webapp/config.example.js webapp/config.js
+          cat > webapp/config.js <<'EOF'
+          window.ALILOS_CONFIG = {
+            supabaseUrl: "${{ vars.ALILOS_SUPABASE_URL }}",
+            supabaseAnonKey: "${{ vars.ALILOS_SUPABASE_ANON_KEY }}",
+            deviceId: "${{ vars.ALILOS_DEVICE_ID }}"
+          };
+          EOF
 
       - name: Upload webapp artifact
         uses: actions/upload-pages-artifact@v3
