@@ -2,7 +2,7 @@
 
 WEB1-WEB4 documented the future mobile-friendly browser/PWA companion. PARITY8 created the first read-only implementation under `webapp/`. PARITY9 adds safe non-clicking command controls for status refresh, dry-run/check, schedule recalculation, and cancel confirmation. PARITY9B aligns the UI to the existing three-tab workflow: Dashboard, Skip dates, and Log history. PARITY9C adds whole-day skip/unskip calendar controls. PARITY9D documents the deployed safe-loop smoke-test runbook. PARITY10B adds guarded configured-action request buttons behind desktop-side `paritySync.remoteActionEnabled`, which defaults to false. PARITY10C field validation is documented in `docs/PARITY_REMOTE_ACTION_FIELD_VALIDATION.md` and must pass before operational reliance. The webapp still does not add Supabase table grants, configured-site login, credential handling, webapp browser automation, or unattended real execution approval.
 
-PARITY1B corrected target: the webapp/PWA plus Supabase control plane are required for the complete product milestone. Telegram is paused/deprioritized and is not a parity requirement. See `docs/LEGACY_PARITY_PLAN.md` for the full matrix and PARITY2-PARITY13 build sequence.
+PARITY1B corrected target: the webapp/PWA plus Supabase control plane are required for the complete product milestone. Telegram is paused/deprioritized and is not a parity requirement. DEPLOY1 live safe-loop setup is documented in `docs/DEPLOY1_SAFE_LOOP_CHECKLIST.md` and keeps `remoteActionEnabled=false` while validating live status, dashboard read, skip, schedule/completion, safe command, and sanitized-log paths. See `docs/LEGACY_PARITY_PLAN.md` for the full matrix and PARITY2-PARITY13 build sequence.
 
 PARITY2 adds schema-only tables for future skip dates, sanitized events, command requests, and command events. PARITY7 implements dry-run/non-clicking command processing, PARITY8 implements the read-only web monitor, PARITY9 adds safe web command creation for the PARITY7 non-clicking command types, and PARITY10B implements guarded configured-action requests behind the disabled local desktop gate.
 
@@ -15,6 +15,7 @@ PARITY8 implementation note:
 - PARITY9B groups the UI into Dashboard, Skip dates, and Log history.
 - PARITY9C uses `/functions/v1/alilos-skip-sync` for whole-day scheduling skip/unskip from the calendar. Action-specific skip controls remain a future refinement.
 - PARITY9D runbook lives in `docs/PARITY_SAFE_LOOP_SMOKE.md` and validates the deployed status, dashboard, skip, schedule/completion, command, and sanitized-log loop without adding remote configured-action execution.
+- DEPLOY1 checklist lives in `docs/DEPLOY1_SAFE_LOOP_CHECKLIST.md` and is the preferred first live setup checklist for Supabase/webapp/desktop safe-loop validation.
 - PARITY10B plan lives in `docs/PARITY_REMOTE_ACTION_PLAN.md`; the webapp shows guarded configured-action request buttons with confirmation and safety copy, but desktop guard approval remains authoritative.
 - PARITY10C runbook lives in `docs/PARITY_REMOTE_ACTION_FIELD_VALIDATION.md`; it validates disabled-gate rejection, guard-failure rejection, and supervised legitimate-window behavior before operational reliance.
 

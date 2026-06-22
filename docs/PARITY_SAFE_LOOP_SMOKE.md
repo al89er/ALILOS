@@ -1,5 +1,7 @@
 # PARITY9D Safe Loop Smoke Test Runbook
 
+DEPLOY1 live setup support now lives in `docs/DEPLOY1_SAFE_LOOP_CHECKLIST.md`. Use that checklist for the first live Supabase/webapp/desktop setup pass. DEPLOY1 keeps `remoteActionEnabled=false` throughout and validates safe monitoring/control only.
+
 This runbook validates the deployed Supabase plus webapp safe loop without exercising remote configured-action execution. PARITY10B has added the guarded command path, but remote-action field validation belongs in `docs/PARITY_REMOTE_ACTION_FIELD_VALIDATION.md`.
 
 It is manual and placeholder-only. Do not paste real Supabase URLs, anon keys, service-role keys, device ids, credentials, cookies, raw HTML, screenshots, full URLs, tokenized query strings, or opaque `link=` values into this document or any committed file.
@@ -17,6 +19,7 @@ The smoke test must prove:
 - Schedule/completion sync is visible when enabled.
 - Logs/history remain sanitized.
 - No real configured website click occurs.
+- `paritySync.remoteActionEnabled` stays `false` for DEPLOY1 safe-loop smoke testing.
 
 For guarded remote configured-action validation, use `docs/PARITY_REMOTE_ACTION_FIELD_VALIDATION.md` after this safe-loop smoke path is healthy.
 
@@ -38,6 +41,7 @@ For guarded remote configured-action validation, use `docs/PARITY_REMOTE_ACTION_
   - schedule/completion sync
   - command sync
 - Keep real configured-action command execution disabled/deferred.
+- Keep `paritySync.remoteActionEnabled=false` for DEPLOY1. Do not test `perform-configured-action` from this safe-loop runbook.
 - Keep execution mode as `dry-run` or `manual-confirm`; no unattended real execution is approved.
 - Start with `logUploadEnabled` disabled unless the log-history step is being tested deliberately.
 

@@ -2,6 +2,8 @@
 
 PARITY10C validates the PARITY10B guarded remote configured-action path in the field. It does not approve unattended execution. Do not treat remote configured action as operationally ready until this runbook passes with sanitized evidence.
 
+Run `docs/DEPLOY1_SAFE_LOOP_CHECKLIST.md` first. DEPLOY1 must pass with `remoteActionEnabled=false`, safe commands only, and no configured website click before any PARITY10C phase attempts remote guarded-action validation.
+
 The path remains local-first: the webapp creates a constrained command, Supabase stores sanitized command metadata through Edge Functions, and the desktop alone decides whether any configured-site action may run. Configured-site credentials, sessions, cookies, raw HTML, screenshots, full URLs, tokenized query strings, opaque `link=` values, staff identity, and service-role keys must stay out of Supabase, the webapp, docs, and logs.
 
 ## Preconditions
@@ -23,6 +25,7 @@ The path remains local-first: the webapp creates a constrained command, Supabase
 - Webapp config is local-only, copied from `webapp/config.example.js`, and `webapp/config.js` is ignored by Git.
 - Status, schedule/completion, and log sync flags are enabled only as needed for the observation being performed.
 - No live deployment, secret change, RLS change, or table grant change is performed from this document without separate explicit approval.
+- DEPLOY1 safe loop has passed with `remoteActionEnabled=false`, status publishing, dashboard read, skip round trip, safe commands, and sanitized logs.
 
 ## Phase A: Disabled-Gate Validation
 

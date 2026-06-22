@@ -101,6 +101,8 @@ Deployment and smoke testing are documented in `docs/PARITY_SKIP_SYNC_DEPLOYMENT
 
 `docs/PARITY_SAFE_LOOP_SMOKE.md` documents the later combined safe-loop smoke sequence for deployed status publishing, dashboard reads, skip upsert/delete, schedule/completion visibility, safe command processing, and sanitized logs. That runbook does not add secrets, weaken RLS/grants, deploy functions by itself, or approve remote configured-action execution.
 
+`docs/DEPLOY1_SAFE_LOOP_CHECKLIST.md` is the live setup checklist for the first safe-loop smoke pass. It keeps `paritySync.remoteActionEnabled=false`, uses publishable/anon keys in desktop/webapp clients, keeps `SUPABASE_SERVICE_ROLE_KEY` server-side only in Edge Function secrets, requires an existing safe device row, and forbids table-grant changes or real configured-site clicks during DEPLOY1.
+
 ## PARITY6 Schedule/Completion Sync
 
 `supabase/functions/alilos-schedule-completion-sync/index.ts` is the server-side endpoint for daily schedule and completion-record sync. It accepts POST requests only and supports constrained `get-day-state`, `upsert-schedule`, and `upsert-completion` operations. It requires a valid registered `deviceId`, allowed `clock-in` / `clock-out` action keys, ISO local dates, known schedule sources/statuses, and known completion/verification states.
