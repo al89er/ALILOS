@@ -72,6 +72,7 @@ function createDefaultConfig(): AppConfig {
       },
       schedulesByDate: {},
       skippedDates: [],
+      skipMetadataByDate: {},
       notificationsByDate: {}
     },
     telegram: {
@@ -226,6 +227,7 @@ export class ConfigStore {
           ...parsed.scheduler?.reminders
         },
         skippedDates: parsed.scheduler?.skippedDates ?? defaultConfig.scheduler.skippedDates,
+        skipMetadataByDate: normalizeSkipMetadataByDate(parsed.scheduler?.skipMetadataByDate),
         notificationsByDate: {
           ...defaultConfig.scheduler.notificationsByDate,
           ...parsed.scheduler?.notificationsByDate
@@ -475,6 +477,42 @@ function normalizeCompletionsByDate(
         verification: record.verification ?? null,
         manuallyVerifiedAt: record.manuallyVerifiedAt ?? null
       }));
+  }
+
+  return normalized;
+}
+
+function normalizeSkipMetadataByDate(value: AppConfig["scheduler"]["skipMetadataByDate"] | undefined): AppConfig["scheduler"]["skipMetadataByDate"] {
+  const normalized: AppConfig["scheduler"]["skipMetadataByDate"] = {};
+
+  for (const [dateKey, metadata] of Object.entries(value ?? {})) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
+      continue;
+    }
+
+    const source = metadata?.source === "local"
+      || metadata?.source === "remote-managed"
+      || metadata?.source === "uploaded-synced"
+      || metadata?.source === "unknown-legacy"
+      ? metadata.source
+      : "unknown-legacy";
+    const actionKey = metadata?.actionKey === "clock-in" || metadata?.actionKey === "clock-out" ? metadata.actionKey : null;
+    const remoteSource = metadata?.remoteSource === "desktop-local"
+      || metadata?.remoteSource === "webapp-command"
+      || metadata?.remoteSource === "manual-import"
+      ? metadata.remoteSource
+      : null;
+    const lastSeenRemoteAt = typeof metadata?.lastSeenRemoteAt === "string" && metadata.lastSeenRemoteAt ? metadata.lastSeenRemoteAt : null;
+    const updatedAt = typeof metadata?.updatedAt === "string" && metadata.updatedAt ? metadata.updatedAt : new Date().toISOString();
+
+    normalized[dateKey] = {
+      source,
+      scope: metadata?.scope === "action-specific" ? "action-specific" : "whole-day",
+      actionKey,
+      remoteSource,
+      lastSeenRemoteAt,
+      updatedAt
+    };
   }
 
   return normalized;

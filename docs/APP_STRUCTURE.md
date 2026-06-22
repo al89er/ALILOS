@@ -56,8 +56,8 @@ Worker-side files live in `src/worker`:
 | `automation-monitor.ts` | Phase 6A automation monitor that records due schedule events, prepares/checks the configured site profile in dry-run mode, and simulates web-action telemetry without clicking. |
 | `automation-audit.ts` | Bounded sanitized automation audit event persistence. |
 | `heartbeat-service.ts` | Disabled-by-default heartbeat sender and status snapshot built from sanitized app state. |
-| `parity-sync-service.ts` | Disabled-by-default parity-sync service for future Supabase/webapp monitoring/control. PARITY4 can publish sanitized status, PARITY5 can sync skip dates, PARITY6 can sync schedule/completion backup metadata, PARITY7 can process dry-run/non-clicking commands, and PARITY10B can route guarded configured-action commands through the existing desktop guard callback when explicitly enabled. |
-| `scheduler.ts` | Daily schedule generation, weekend/skip handling, due/grace/missed states, status transition logging. |
+| `parity-sync-service.ts` | Disabled-by-default parity-sync service for future Supabase/webapp monitoring/control. PARITY4 can publish sanitized status, PARITY5 can sync skip dates, PARITY6 can sync schedule/completion backup metadata, PARITY7 can process dry-run/non-clicking commands, and PARITY10B can route guarded configured-action commands through the existing desktop guard callback when explicitly enabled. Skip sync counters include rows received/applied, remote removals applied/preserved, and local user removals. |
+| `scheduler.ts` | Daily schedule generation, weekend/skip handling, skip-date ownership metadata, due/grace/missed states, status transition logging. |
 | `reminder-service.ts` | 30-second reminder evaluation, system notifications, Telegram reminders, duplicate suppression, notification-state retention. |
 | `browser-controller.ts` | Playwright persistent browser context, configured-site navigation/status classification, target button detection, guarded DOM clicks, test target diagnostics, auto-login form interaction, post-click verification. |
 | `confirmation-service.ts` | Manual action readiness, confirmation lifecycle, dry-run safety checks, guarded one-shot click execution, completion persistence, manual verification. |
@@ -94,7 +94,7 @@ Supabase Edge Functions live under `supabase/functions`:
 | `alilos-command-sync/index.ts` | POST-only command request/result proxy. It supports constrained `create-command`, `list-pending`, `claim-command`, `complete-command`, and `append-command-event`, rejects forbidden keys/tokenized values, requires an existing `devices.device_id`, writes only `command_requests` and `command_events`, and keeps service-role use server-side only. PARITY10B configured-action requests are pending commands with constrained guard metadata only. |
 | `alilos-dashboard-read/index.ts` | POST-only read dashboard proxy. It returns sanitized device, heartbeat, schedule, monthly skip, completion, command status, and event-log summaries for one registered device without changing RLS/table grants. |
 
-The desktop and webapp still use only publishable/anon credentials. Direct `anon` / `authenticated` table privileges remain closed. Skip sync affects scheduling only; schedule/completion sync backs up sanitized metadata and surfaces warnings only; command sync is disabled by default and guarded configured-action execution also requires `paritySync.remoteActionEnabled`. All desktop parity sync features are disabled by default.
+The desktop and webapp still use only publishable/anon credentials. Direct `anon` / `authenticated` table privileges remain closed. Skip sync affects scheduling only; remote skip deletion removes only skips known to be remote-managed or uploaded/synced, while local-only/legacy desktop skips are preserved until the user removes them in the desktop Schedule tab. Schedule/completion sync backs up sanitized metadata and surfaces warnings only; command sync is disabled by default and guarded configured-action execution also requires `paritySync.remoteActionEnabled`. All desktop parity sync features are disabled by default.
 
 ## Webapp
 
@@ -116,8 +116,8 @@ Renderer files live in `src/renderer`:
 
 | File | Responsibility |
 | --- | --- |
-| `index.html` | Single static dashboard page organized into tab panels: Overview, Schedule, Actions, Browser / Site, Network, Telegram, Logs, and Settings. |
-| `renderer.ts` | DOM wiring, tab navigation, snapshot rendering, form handling, IPC calls through `window.alilos`, button enable/disable logic. |
+| `index.html` | Single static dashboard page organized into tab panels: Overview, Schedule, Actions, Browser / Site, Network, Telegram, Logs, and Settings. The Schedule tab includes a skip-date manager for arbitrary whole-day skipped dates. |
+| `renderer.ts` | DOM wiring, tab navigation, snapshot rendering, skip-date add/remove controls, form handling, IPC calls through `window.alilos`, button enable/disable logic. |
 | `styles.css` | Plain CSS tabbed layout, cards, forms, status pills, and responsive styles. |
 | `global.d.ts` | Renderer global type declaration for `window.alilos`. |
 

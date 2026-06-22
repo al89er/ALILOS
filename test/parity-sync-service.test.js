@@ -334,6 +334,54 @@ test("skip sync list merges remote skip dates without deleting local skips", asy
   }
 });
 
+test("skip sync records remote removal and preservation counters", async () => {
+  const temp = createTempConfigStore();
+
+  try {
+    const config = temp.store.load();
+    config.paritySync.enabled = true;
+    config.paritySync.supabaseUrl = "https://example.supabase.co";
+    config.paritySync.publishableKey = "anon-publishable-key";
+    config.paritySync.skipSyncEnabled = true;
+    const logger = createLogger();
+    const service = new ParitySyncService(config, logger, { supabaseUrl: "", publishableKey: "" }, {
+      buildDeviceStatusPayload: () => createStatusPayload(),
+      applyRemoteSkippedDates: () => ({
+        added: 1,
+        remoteRemovalsApplied: 2,
+        remoteRemovalsPreserved: 3
+      }),
+      fetchFn: async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          skips: [
+            {
+              deviceId: config.paritySync.deviceId,
+              skipDate: "2026-06-21",
+              actionKey: null,
+              reason: "webapp requested",
+              source: "webapp-command"
+            }
+          ]
+        })
+      })
+    });
+
+    await service.syncSkipDates("test");
+    const status = service.getStatus();
+
+    assert.equal(status.skipSync.rowsReceived, 1);
+    assert.equal(status.skipSync.rowsApplied, 1);
+    assert.equal(status.skipSync.remoteRemovalsApplied, 2);
+    assert.equal(status.skipSync.remoteRemovalsPreserved, 3);
+    assert.match(logger.entries.at(-1).message, /removed 2 remote-managed skip/);
+  } finally {
+    temp.cleanup();
+  }
+});
+
 test("skip sync empty remote list preserves existing local skip", async () => {
   const temp = createTempConfigStore();
 
@@ -378,8 +426,12 @@ test("skip sync upsert and delete send sanitized scheduling-only payloads", asyn
     config.paritySync.skipSyncEnabled = true;
     const logger = createLogger();
     const requests = [];
+    const uploadedDates = [];
+    const clearedDates = [];
     const service = new ParitySyncService(config, logger, { supabaseUrl: "", publishableKey: "" }, {
       buildDeviceStatusPayload: () => createStatusPayload(),
+      markSkipDateUploaded: (dateKey) => uploadedDates.push(dateKey),
+      clearRemoteSkipMetadata: (dateKey) => clearedDates.push(dateKey),
       fetchFn: async (url, init) => {
         requests.push({ url, init });
         return { ok: true, status: 202, json: async () => ({ success: true, affectedCount: 1 }) };
@@ -402,7 +454,10 @@ test("skip sync upsert and delete send sanitized scheduling-only payloads", asyn
     assert.doesNotMatch(serialized, /token=abc|link=|magic=secret|magic=/);
     assert.equal(status.skipSync.uploadCount, 1);
     assert.equal(status.skipSync.deleteCount, 1);
+    assert.equal(status.skipSync.localRemovalCount, 1);
     assert.equal(status.skipSync.failureCount, 0);
+    assert.deepEqual(uploadedDates, ["2026-06-22"]);
+    assert.deepEqual(clearedDates, ["2026-06-22"]);
   } finally {
     temp.cleanup();
   }

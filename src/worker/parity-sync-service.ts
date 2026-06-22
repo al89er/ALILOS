@@ -12,6 +12,7 @@ import type {
   ParityEventLogPayload,
   ParitySchedulePayload,
   ParitySkipDatePayload,
+  SchedulerRemoteSkipMergeResult,
   ParitySyncSnapshot
 } from "../shared/types";
 import type { AppLogger } from "../main/logger";
@@ -112,6 +113,9 @@ interface CommandSyncClaimResponse {
 interface ParitySyncDependencies {
   buildDeviceStatusPayload: () => ParityDeviceStatusPayload;
   mergeRemoteSkippedDates?: (dates: string[]) => number;
+  applyRemoteSkippedDates?: (skips: ParitySkipDatePayload[]) => SchedulerRemoteSkipMergeResult;
+  markSkipDateUploaded?: (dateKey: string) => void;
+  clearRemoteSkipMetadata?: (dateKey: string) => void;
   runAttendanceDryRun?: (confirmationId: string) => Promise<{ status: string; summary: string; details?: Record<string, string | number | boolean | null> }>;
   runRemoteConfiguredAction?: (actionKey: AttendanceActionType, scheduleDate: string) => Promise<{ status: string; summary: string; details?: Record<string, string | number | boolean | null> }>;
   recalculateTodaySchedule?: () => { summary: string; details?: Record<string, string | number | boolean | null> };
@@ -146,6 +150,9 @@ export class ParitySyncService {
   private skipFailureCount = 0;
   private skipRowsReceived = 0;
   private skipRowsApplied = 0;
+  private skipRemoteRemovalsApplied = 0;
+  private skipRemoteRemovalsPreserved = 0;
+  private skipLocalRemovalCount = 0;
   private lastScheduleCompletionAttemptAt: string | null = null;
   private lastScheduleCompletionSuccessAt: string | null = null;
   private lastScheduleCompletionError: string | null = null;
@@ -304,7 +311,10 @@ export class ParitySyncService {
         deleteCount: this.skipDeleteCount,
         failureCount: this.skipFailureCount,
         rowsReceived: this.skipRowsReceived,
-        rowsApplied: this.skipRowsApplied
+        rowsApplied: this.skipRowsApplied,
+        remoteRemovalsApplied: this.skipRemoteRemovalsApplied,
+        remoteRemovalsPreserved: this.skipRemoteRemovalsPreserved,
+        localRemovalCount: this.skipLocalRemovalCount
       },
       scheduleCompletionSync: {
         enabled: enabled && this.config.paritySync.scheduleCompletionSyncEnabled,
@@ -403,15 +413,24 @@ export class ParitySyncService {
         operation: "list-skips"
       }) as SkipSyncListResponse;
       const remoteSkips = sanitizeSkipRows(response.skips ?? [], this.config.paritySync.deviceId);
-      const dates = uniqueSorted(remoteSkips.map((skip) => skip.skipDate));
-      const applied = this.dependencies.mergeRemoteSkippedDates?.(dates) ?? 0;
+      const fallbackApplied = (): SchedulerRemoteSkipMergeResult => {
+        const dates = uniqueSorted(remoteSkips.map((skip) => skip.skipDate));
+        return {
+          added: this.dependencies.mergeRemoteSkippedDates?.(dates) ?? 0,
+          remoteRemovalsApplied: 0,
+          remoteRemovalsPreserved: 0
+        };
+      };
+      const mergeResult = this.dependencies.applyRemoteSkippedDates?.(remoteSkips) ?? fallbackApplied();
 
       this.skipRowsReceived = remoteSkips.length;
-      this.skipRowsApplied += applied;
+      this.skipRowsApplied += mergeResult.added;
+      this.skipRemoteRemovalsApplied += mergeResult.remoteRemovalsApplied;
+      this.skipRemoteRemovalsPreserved += mergeResult.remoteRemovalsPreserved;
       this.skipSyncCount += 1;
       this.lastSkipSuccessAt = new Date().toISOString();
       this.lastSkipError = null;
-      this.logger.info(`Supabase skip sync ${source} received ${remoteSkips.length} skip row(s); applied ${applied} local skip date(s).`);
+      this.logger.info(`Supabase skip sync ${source} received ${remoteSkips.length} skip row(s); applied ${mergeResult.added} local skip date(s), removed ${mergeResult.remoteRemovalsApplied} remote-managed skip(s), and preserved ${mergeResult.remoteRemovalsPreserved} local-only skip(s).`);
     } catch (error) {
       this.skipFailureCount += 1;
       this.lastSkipError = sanitizeError(error);
@@ -447,6 +466,7 @@ export class ParitySyncService {
         source: "desktop-local"
       });
       this.skipUploadCount += 1;
+      this.dependencies.markSkipDateUploaded?.(sanitizedDate);
       this.lastSkipSuccessAt = new Date().toISOString();
       this.lastSkipError = null;
       this.logger.info(`Supabase skip upsert sent for ${sanitizedDate}. Scheduling state only; no configured-site action was attempted.`);
@@ -482,6 +502,8 @@ export class ParitySyncService {
         source: "desktop-local"
       });
       this.skipDeleteCount += 1;
+      this.skipLocalRemovalCount += 1;
+      this.dependencies.clearRemoteSkipMetadata?.(sanitizedDate);
       this.lastSkipSuccessAt = new Date().toISOString();
       this.lastSkipError = null;
       this.logger.info(`Supabase skip delete sent for ${sanitizedDate}. Scheduling state only; no configured-site action was attempted.`);

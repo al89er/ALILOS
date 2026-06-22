@@ -35,6 +35,25 @@ test("settings UI exposes parity sync controls with safety wording", () => {
   assert.doesNotMatch(html, /service[_-]?role key value|SUPABASE_SERVICE_ROLE_KEY|sb_secret_/i);
 });
 
+test("desktop schedule UI exposes arbitrary skip date manager", () => {
+  const html = readRepoFile("src", "renderer", "index.html");
+  const renderer = readRepoFile("src", "renderer", "renderer.ts");
+  const preload = readRepoFile("src", "preload", "preload.ts");
+  const main = readRepoFile("src", "main", "main.ts");
+
+  assert.match(html, /id="skip-date-input"/);
+  assert.match(html, /id="add-skip-date"/);
+  assert.match(html, /Add whole-day skip/);
+  assert.match(renderer, /skippedDateDetails/);
+  assert.match(renderer, /Remove skip/);
+  assert.match(renderer, /window\.alilos\.unskipDate\(skip\.date\)/);
+  assert.match(renderer, /window\.alilos\.skipDate\(dateKey\)/);
+  assert.match(preload, /schedule:skip-date/);
+  assert.match(preload, /schedule:unskip-date/);
+  assert.match(main, /schedule:skip-date/);
+  assert.match(main, /schedule:unskip-date/);
+});
+
 test("renderer loads and saves parity settings without exposing key values", () => {
   const renderer = readRepoFile("src", "renderer", "renderer.ts");
 

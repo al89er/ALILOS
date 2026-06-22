@@ -177,9 +177,11 @@ Pass: webapp reads sanitized dashboard data through the Edge Function and expose
 4. Confirm desktop receives/applies the skip after sync.
 5. Toggle the same future date off.
 6. Confirm the webapp uses `delete-skip`.
-7. Confirm desktop no longer applies the remote whole-day skip after sync.
+7. Confirm desktop no longer applies that remote-managed whole-day skip after sync.
+8. Confirm local-only or unknown/legacy desktop skips remain until explicitly removed in the desktop Schedule tab skip-date manager.
+9. If a stuck skip remains, remove it from the desktop skipped-date list and confirm this only changes scheduling state.
 
-Pass: skip upsert/delete round trip works and affects scheduling only.
+Pass: skip upsert/delete ON and OFF propagation works, local-only skips are preserved, and all changes affect scheduling only.
 
 ### 5. Schedule/Completion Visibility
 
@@ -221,7 +223,7 @@ DEPLOY1 passes only if:
 
 - Webapp can read dashboard data via `alilos-dashboard-read`.
 - Desktop status publishing succeeds.
-- Skip calendar upsert/delete round trip works.
+- Skip calendar upsert/delete ON and OFF round trip works; remote removals clear only remote-managed or uploaded/synced desktop skips.
 - Safe commands are created and processed.
 - Command results appear.
 - Schedule state appears when schedule/completion sync is enabled and rows exist.

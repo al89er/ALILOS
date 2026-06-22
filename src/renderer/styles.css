@@ -538,6 +538,25 @@ button:disabled {
   font-variant-numeric: tabular-nums;
 }
 
+.skip-date-manager {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 12px;
+}
+
+.skip-date-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.skip-date-item button {
+  min-width: 120px;
+}
+
 .diagnostic-box {
   display: grid;
   gap: 10px;
@@ -608,6 +627,8 @@ dd[data-status="blocked"] {
   .panel-grid,
   .settings-editor-grid,
   .inline-fields,
+  .skip-date-manager,
+  .skip-date-item,
   .placeholder-list,
   .confirmation-grid {
     grid-template-columns: 1fr;

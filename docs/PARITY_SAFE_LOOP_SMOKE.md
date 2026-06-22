@@ -209,7 +209,8 @@ Expected:
 5. Confirm desktop receives/applies the skip state after sync.
 6. Select the same date again to untoggle it.
 7. Confirm the row is deleted or no longer returned by the skip-sync path.
-8. Confirm desktop no longer applies that remote whole-day skip after sync.
+8. Confirm desktop no longer applies that remote-managed whole-day skip after sync.
+9. Confirm local-only or unknown/legacy desktop skips remain unless explicitly removed from the desktop Schedule tab skip-date manager.
 
 Expected:
 
@@ -218,6 +219,7 @@ Expected:
 - The webapp uses publishable/anon credentials only.
 - The Edge Function keeps service-role use server-side.
 - Skip/unskip affects scheduling only.
+- Remote removals clear only desktop skips known to be remote-managed or uploaded/synced.
 - No command request or configured website action is created.
 
 ### 5. Schedule/Completion Sync Visibility
@@ -271,7 +273,7 @@ Expected:
 ## Expected Overall Results
 
 - Webapp shows online or recent desktop status.
-- Skip calendar reflects whole-day skip upsert and delete changes.
+- Skip calendar reflects whole-day skip upsert and delete changes, including OFF propagation for remote-managed skips.
 - Safe commands produce command status/results.
 - Dashboard updates after status refresh.
 - Schedule state appears when schedule/completion sync is enabled and rows exist.

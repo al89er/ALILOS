@@ -221,6 +221,9 @@ app.whenReady().then(() => {
   paritySyncService = new ParitySyncService(config, logger, configStore.supabaseEnvLocal, {
     buildDeviceStatusPayload: buildParityDeviceStatusPayload,
     mergeRemoteSkippedDates: (dates) => scheduler.mergeRemoteSkippedDates(dates),
+    applyRemoteSkippedDates: (skips) => scheduler.applyRemoteSkippedDates(skips),
+    markSkipDateUploaded: (dateKey) => scheduler.markSkipDateUploaded(dateKey),
+    clearRemoteSkipMetadata: (dateKey) => scheduler.clearRemoteSkipMetadata(dateKey),
     runAttendanceDryRun: async (confirmationId) => {
       const result = await confirmationService.runAttendanceDryRun(confirmationId);
       return {
@@ -335,35 +338,37 @@ app.whenReady().then(() => {
   ipcMain.handle("dashboard:get-snapshot", buildSnapshot);
   ipcMain.handle("schedule:skip-today", async () => {
     const dateKey = formatDateKey(new Date());
-    scheduler.skipToday();
-    await paritySyncService.upsertSkipDate(dateKey, "Desktop skip today");
-    reminderService.clearLogMarkersForDate(dateKey);
-    await broadcastSnapshot();
-    return buildSnapshot();
+    return skipDateFromUi(dateKey, "Desktop skip today");
   });
   ipcMain.handle("schedule:unskip-today", async () => {
     const dateKey = formatDateKey(new Date());
-    scheduler.unskipToday();
-    await paritySyncService.deleteSkipDate(dateKey);
-    reminderService.clearLogMarkersForDate(dateKey);
-    await broadcastSnapshot();
-    return buildSnapshot();
+    return unskipDateFromUi(dateKey);
   });
   ipcMain.handle("schedule:skip-tomorrow", async () => {
     const dateKey = formatDateKey(addDays(new Date(), 1));
-    scheduler.skipTomorrow();
-    await paritySyncService.upsertSkipDate(dateKey, "Desktop skip tomorrow");
-    reminderService.clearLogMarkersForDate(dateKey);
-    await broadcastSnapshot();
-    return buildSnapshot();
+    return skipDateFromUi(dateKey, "Desktop skip tomorrow");
   });
   ipcMain.handle("schedule:unskip-tomorrow", async () => {
     const dateKey = formatDateKey(addDays(new Date(), 1));
-    scheduler.unskipTomorrow();
-    await paritySyncService.deleteSkipDate(dateKey);
-    reminderService.clearLogMarkersForDate(dateKey);
-    await broadcastSnapshot();
-    return buildSnapshot();
+    return unskipDateFromUi(dateKey);
+  });
+  ipcMain.handle("schedule:skip-date", async (_event, dateKey: unknown) => {
+    const sanitizedDate = normalizeDateKey(dateKey);
+    if (!sanitizedDate) {
+      logger.warn("Skip date request rejected because the date key was invalid.");
+      return buildSnapshot();
+    }
+
+    return skipDateFromUi(sanitizedDate, "Desktop skip date manager");
+  });
+  ipcMain.handle("schedule:unskip-date", async (_event, dateKey: unknown) => {
+    const sanitizedDate = normalizeDateKey(dateKey);
+    if (!sanitizedDate) {
+      logger.warn("Unskip date request rejected because the date key was invalid.");
+      return buildSnapshot();
+    }
+
+    return unskipDateFromUi(sanitizedDate);
   });
   ipcMain.handle("schedule:recalculate-today", async () => {
     scheduler.recalculateToday();
@@ -654,6 +659,22 @@ app.whenReady().then(() => {
     }
   });
 });
+
+async function skipDateFromUi(dateKey: string, reason: string): Promise<DashboardSnapshot> {
+  scheduler.skipDateKey(dateKey);
+  await paritySyncService.upsertSkipDate(dateKey, reason);
+  reminderService.clearLogMarkersForDate(dateKey);
+  await broadcastSnapshot();
+  return buildSnapshot();
+}
+
+async function unskipDateFromUi(dateKey: string): Promise<DashboardSnapshot> {
+  scheduler.unskipDateKey(dateKey);
+  await paritySyncService.deleteSkipDate(dateKey);
+  reminderService.clearLogMarkersForDate(dateKey);
+  await broadcastSnapshot();
+  return buildSnapshot();
+}
 
 app.on("second-instance", () => {
   if (!mainWindow) {
@@ -1566,6 +1587,11 @@ function formatDateKey(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function normalizeDateKey(value: unknown): string | null {
+  const text = String(value ?? "").trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : null;
 }
 
 function addDays(date: Date, days: number): Date {

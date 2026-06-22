@@ -1,6 +1,9 @@
 import type {
   AppConfig,
   DailySchedule,
+  SchedulerRemoteSkipInput,
+  SchedulerRemoteSkipMergeResult,
+  SchedulerSkippedDateDetail,
   ScheduleAction,
   ScheduleActionSnapshot,
   ScheduleActionStatus,
@@ -39,6 +42,7 @@ export class Scheduler {
       schedule,
       actions,
       skippedDates: [...this.config.scheduler.skippedDates].sort(),
+      skippedDateDetails: this.skippedDateDetails(),
       summary: buildSummary(isWeekend, isTodaySkipped, actions)
     };
   }
@@ -59,27 +63,130 @@ export class Scheduler {
     this.unskipDate(formatDateKey(addDays(new Date(), 1)));
   }
 
-  mergeRemoteSkippedDates(dateKeys: string[]): number {
-    const current = new Set(this.config.scheduler.skippedDates);
-    let added = 0;
+  skipDateKey(dateKey: string): boolean {
+    return this.skipDate(dateKey, "local");
+  }
 
-    for (const dateKey of dateKeys) {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey) || current.has(dateKey)) {
+  unskipDateKey(dateKey: string): boolean {
+    return this.unskipDate(dateKey);
+  }
+
+  mergeRemoteSkippedDates(dateKeys: string[]): number {
+    return this.applyRemoteSkippedDates(dateKeys.map((skipDate) => ({
+      skipDate,
+      actionKey: null,
+      source: "manual-import" as const
+    }))).added;
+  }
+
+  applyRemoteSkippedDates(remoteSkips: SchedulerRemoteSkipInput[]): SchedulerRemoteSkipMergeResult {
+    const now = new Date().toISOString();
+    const current = new Set(this.config.scheduler.skippedDates);
+    const remoteByDate = new Map<string, SchedulerRemoteSkipInput>();
+
+    for (const remoteSkip of remoteSkips) {
+      if (!isDateKey(remoteSkip.skipDate)) {
         continue;
       }
 
-      current.add(dateKey);
-      added += 1;
+      const existing = remoteByDate.get(remoteSkip.skipDate);
+      remoteByDate.set(remoteSkip.skipDate, {
+        skipDate: remoteSkip.skipDate,
+        actionKey: existing?.actionKey ?? remoteSkip.actionKey,
+        source: remoteSkip.source
+      });
     }
 
-    if (added === 0) {
-      return 0;
+    let added = 0;
+    let remoteRemovalsApplied = 0;
+    let remoteRemovalsPreserved = 0;
+
+    for (const remoteSkip of remoteByDate.values()) {
+      const existingMetadata = this.config.scheduler.skipMetadataByDate[remoteSkip.skipDate];
+      if (!current.has(remoteSkip.skipDate)) {
+        current.add(remoteSkip.skipDate);
+        added += 1;
+        this.config.scheduler.skipMetadataByDate[remoteSkip.skipDate] = {
+          source: "remote-managed",
+          scope: "whole-day",
+          actionKey: remoteSkip.actionKey,
+          remoteSource: remoteSkip.source,
+          lastSeenRemoteAt: now,
+          updatedAt: now
+        };
+        continue;
+      }
+
+      this.config.scheduler.skipMetadataByDate[remoteSkip.skipDate] = {
+        source: existingMetadata?.source ?? "unknown-legacy",
+        scope: "whole-day",
+        actionKey: remoteSkip.actionKey ?? existingMetadata?.actionKey ?? null,
+        remoteSource: remoteSkip.source,
+        lastSeenRemoteAt: now,
+        updatedAt: now
+      };
+    }
+
+    for (const [dateKey, metadata] of Object.entries(this.config.scheduler.skipMetadataByDate)) {
+      if (!isDateKey(dateKey) || remoteByDate.has(dateKey)) {
+        continue;
+      }
+
+      const isRemoteOwned = metadata.source === "remote-managed" || metadata.source === "uploaded-synced";
+      if (isRemoteOwned) {
+        if (current.delete(dateKey)) {
+          remoteRemovalsApplied += 1;
+        }
+        delete this.config.scheduler.skipMetadataByDate[dateKey];
+        continue;
+      }
+
+      if (metadata.lastSeenRemoteAt) {
+        remoteRemovalsPreserved += 1;
+        this.config.scheduler.skipMetadataByDate[dateKey] = {
+          ...metadata,
+          remoteSource: null,
+          lastSeenRemoteAt: null,
+          updatedAt: now
+        };
+      }
     }
 
     this.config.scheduler.skippedDates = [...current].sort();
+
+    if (added > 0 || remoteRemovalsApplied > 0 || remoteRemovalsPreserved > 0) {
+      this.configStore.save(this.config);
+      this.logger.info(`Supabase remote skip sync applied ${added} add(s), ${remoteRemovalsApplied} removal(s), and preserved ${remoteRemovalsPreserved} local-only skip(s). Scheduling state only; no configured-site action was attempted.`);
+    }
+
+    return { added, remoteRemovalsApplied, remoteRemovalsPreserved };
+  }
+
+  markSkipDateUploaded(dateKey: string): void {
+    if (!isDateKey(dateKey) || !this.config.scheduler.skippedDates.includes(dateKey)) {
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const current = this.config.scheduler.skipMetadataByDate[dateKey];
+    this.config.scheduler.skipMetadataByDate[dateKey] = {
+      source: "uploaded-synced",
+      scope: "whole-day",
+      actionKey: current?.actionKey ?? null,
+      remoteSource: "desktop-local",
+      lastSeenRemoteAt: now,
+      updatedAt: now
+    };
     this.configStore.save(this.config);
-    this.logger.info(`Applied ${added} remote skip date(s) from Supabase. Scheduling state only; no configured-site action was attempted.`);
-    return added;
+  }
+
+  clearRemoteSkipMetadata(dateKey: string): void {
+    if (!isDateKey(dateKey)) {
+      return;
+    }
+
+    delete this.config.scheduler.skipMetadataByDate[dateKey];
+    this.configStore.save(this.config);
   }
 
   recalculateToday(): DailySchedule {
@@ -153,29 +260,67 @@ export class Scheduler {
     }));
   }
 
-  private skipDate(dateKey: string): void {
-    if (this.config.scheduler.skippedDates.includes(dateKey)) {
-      this.logger.info(`Skip requested for ${dateKey}, but it was already skipped.`);
-      return;
-    }
-
-    this.config.scheduler.skippedDates.push(dateKey);
-    this.config.scheduler.skippedDates.sort();
-    this.configStore.save(this.config);
-    this.logger.info(`Skipped action schedule for ${dateKey}.`);
+  private skippedDateDetails(): SchedulerSkippedDateDetail[] {
+    return [...this.config.scheduler.skippedDates]
+      .sort()
+      .map((date) => {
+        const metadata = this.config.scheduler.skipMetadataByDate[date];
+        return {
+          date,
+          source: metadata?.source ?? "unknown-legacy",
+          scope: metadata?.scope ?? "whole-day",
+          actionKey: metadata?.actionKey ?? null,
+          remoteSource: metadata?.remoteSource ?? null,
+          lastSeenRemoteAt: metadata?.lastSeenRemoteAt ?? null
+        };
+      });
   }
 
-  private unskipDate(dateKey: string): void {
+  private skipDate(dateKey: string, source: "local" | "remote-managed" = "local"): boolean {
+    if (!isDateKey(dateKey)) {
+      this.logger.warn(`Skip requested for invalid date key.`);
+      return false;
+    }
+
+    if (this.config.scheduler.skippedDates.includes(dateKey)) {
+      this.logger.info(`Skip requested for ${dateKey}, but it was already skipped.`);
+      return false;
+    }
+
+    const now = new Date().toISOString();
+    this.config.scheduler.skippedDates.push(dateKey);
+    this.config.scheduler.skippedDates.sort();
+    this.config.scheduler.skipMetadataByDate[dateKey] = {
+      source,
+      scope: "whole-day",
+      actionKey: null,
+      remoteSource: source === "remote-managed" ? "manual-import" : null,
+      lastSeenRemoteAt: source === "remote-managed" ? now : null,
+      updatedAt: now
+    };
+    this.configStore.save(this.config);
+    this.logger.info(`Skipped action schedule for ${dateKey}.`);
+    return true;
+  }
+
+  private unskipDate(dateKey: string): boolean {
+    if (!isDateKey(dateKey)) {
+      this.logger.warn(`Unskip requested for invalid date key.`);
+      return false;
+    }
+
     const nextSkippedDates = this.config.scheduler.skippedDates.filter((skippedDate) => skippedDate !== dateKey);
 
     if (nextSkippedDates.length === this.config.scheduler.skippedDates.length) {
       this.logger.info(`Unskip requested for ${dateKey}, but it was not skipped.`);
-      return;
+      return false;
     }
 
     this.config.scheduler.skippedDates = nextSkippedDates;
+    delete this.config.scheduler.skipMetadataByDate[dateKey];
     this.configStore.save(this.config);
     this.logger.info(`Unskipped action schedule for ${dateKey}.`);
+    return true;
   }
 
   private logStatusTransitions(dateKey: string, actions: ScheduleActionSnapshot[]): void {
@@ -305,6 +450,10 @@ function timeFromMinutes(totalMinutes: number): string {
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function isDateKey(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
 
 function addDays(date: Date, days: number): Date {

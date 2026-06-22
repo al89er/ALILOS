@@ -10,7 +10,7 @@
 - PARITY4 adds gated status publishing through the Edge Function/API proxy path. It remains disabled by default, uses publishable/anon keys only, sends sanitized device/status payloads, optionally sends generated status events when `logUploadEnabled` is true, and does not process remote commands.
 - PARITY4B adds the Supabase Edge Function at `/functions/v1/alilos-parity-status`. The function requires a registered non-personal `device_id`, uses the service-role key only from the Edge Function environment, writes sanitized `heartbeats` and optional generated `event_logs`, and leaves direct `anon` / `authenticated` table privileges closed.
 - PARITY4C documents the deployment/smoke runbook in `docs/PARITY_STATUS_DEPLOYMENT.md` and a placeholder-only payload in `docs/examples/parity-status-smoke.json`; no deployment, secrets, RLS changes, command processing, webapp code, or default sync enablement are included.
-- PARITY5 adds disabled-by-default skip-date sync through `supabase/functions/alilos-skip-sync`. Remote rows are scheduling-only, preserve local skips on disagreement, and cannot trigger configured-site action, command processing, or webapp behavior.
+- PARITY5 adds disabled-by-default skip-date sync through `supabase/functions/alilos-skip-sync`. DEPLOY1C tracks remote-managed skip ownership locally: remote rows are scheduling-only, remote deletion removes only remote-managed/uploaded-synced local skips, local-only/legacy skips are preserved unless explicitly removed in the desktop Schedule tab, and no skip path can trigger configured-site action.
 - PARITY6 adds disabled-by-default schedule/completion sync through `supabase/functions/alilos-schedule-completion-sync`. It backs up sanitized local schedules/completion markers, surfaces remote-only completion markers as warnings, and cannot trigger configured-site action, command processing, or webapp behavior.
 - PARITY7 adds disabled-by-default command request/result processing through `supabase/functions/alilos-command-sync`. It handles `request-status-refresh`, `request-dry-run`, `recalculate-today-schedule`, and `cancel-confirmation`; PARITY10B adds guarded `perform-configured-action` handling behind `paritySync.remoteActionEnabled`.
 - PARITY8 adds a dependency-free static read-only web/PWA monitor under `webapp/` and the `supabase/functions/alilos-dashboard-read` read proxy. It has no command buttons and falls back to mock data when live read config/data is unavailable.
@@ -70,7 +70,7 @@ These are local safety checks. They are not runtime app checks.
 | `src/worker/automation-monitor.ts` | Phase 6A due-action monitoring and simulated dry-run telemetry. |
 | `src/worker/automation-audit.ts` | Bounded sanitized automation audit event persistence. |
 | `src/worker/heartbeat-service.ts` | Disabled-by-default sanitized Supabase heartbeat sender/status. |
-| `src/worker/parity-sync-service.ts` | Disabled-by-default Supabase parity-sync service; status publishing, skip sync, schedule/completion sync, and dry-run/non-clicking command sync remain individually gated. |
+| `src/worker/parity-sync-service.ts` | Disabled-by-default Supabase parity-sync service; status publishing, skip sync, schedule/completion sync, and dry-run/non-clicking command sync remain individually gated. Skip sync reports rows received/applied, remote removals applied/preserved, local removals, and sanitized errors. |
 | `src/worker/confirmation-service.ts` | Manual-confirm action state machine and safety checks. |
 | `src/worker/test-click-service.ts` | Guarded non-primary test-click pipeline. |
 | `src/worker/network-monitor.ts` | Internet, Perakam reachability, captive portal monitoring. |
@@ -191,7 +191,7 @@ This tab layout is renderer-only. Do not change target IDs, confirmation behavio
 - PARITY4 gated parity status publishing is added; defaults remain disabled and the desktop uses only publishable/anon credentials.
 - PARITY4B status proxy is added under `supabase/functions/alilos-parity-status`; it performs the server-side `devices` check, `heartbeats` upsert, and optional sanitized `event_logs` insert.
 - PARITY4C deployment/smoke documentation is added. Use it before any live Edge Function deploy or desktop parity sync smoke.
-- PARITY5 skip sync is added under `supabase/functions/alilos-skip-sync`; `ParitySyncService` can list, upsert, and delete skip rows only when `skipSyncEnabled` is explicitly true.
+- PARITY5 skip sync is added under `supabase/functions/alilos-skip-sync`; `ParitySyncService` can list, upsert, and delete skip rows only when `skipSyncEnabled` is explicitly true. DEPLOY1C desktop state now distinguishes local, remote-managed, uploaded/synced, and unknown/legacy skips.
 - PARITY6 schedule/completion sync is added under `supabase/functions/alilos-schedule-completion-sync`; `ParitySyncService` can fetch current-day remote state and upload sanitized local schedules/completion rows only when `scheduleCompletionSyncEnabled` is explicitly true.
 - S3D schedule/completion write-path decision is documented: future writes should use an Edge Function/API proxy plus explicit device pairing/token.
 - WEB1 web/PWA companion planning is documented in `docs/WEB_COMPANION_PLAN.md`.

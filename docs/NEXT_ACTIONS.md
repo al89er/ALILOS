@@ -44,7 +44,7 @@ Current Supabase status:
 - PARITY4 gated parity status publishing added; disabled by default, proxy-targeted, and no command processing yet.
 - PARITY4B status proxy added at `/functions/v1/alilos-parity-status`; it requires a registered device id, writes sanitized `heartbeats` and optional generated `event_logs` server-side, and keeps service-role use out of desktop/webapp clients.
 - PARITY4C deployment/smoke runbook added in `docs/PARITY_STATUS_DEPLOYMENT.md`; use placeholder-only `docs/examples/parity-status-smoke.json` for curl shape.
-- PARITY5 skip sync added at `/functions/v1/alilos-skip-sync`; it is disabled by default, supports list/upsert/delete skip rows through the proxy, and remote skip rows affect scheduling only.
+- PARITY5/DEPLOY1C skip sync added at `/functions/v1/alilos-skip-sync`; it is disabled by default, supports list/upsert/delete skip rows through the proxy, remote skip rows affect scheduling only, and remote OFF/delete removes only remote-managed or uploaded/synced local skips.
 - PARITY6 schedule/completion sync added at `/functions/v1/alilos-schedule-completion-sync`; it is disabled by default, supports current-day state fetch plus schedule/completion upserts through the proxy, and remote-only completion rows surface warnings only.
 - PARITY7 command sync added at `/functions/v1/alilos-command-sync`; it is disabled by default, supports list/claim/complete/event command processing through the proxy, and only handles dry-run/non-clicking commands.
 - PARITY8 read-only web/PWA monitor added under `webapp/`; live reads go through `/functions/v1/alilos-dashboard-read`, with static mock fallback and no command buttons.
@@ -53,6 +53,7 @@ Current Supabase status:
 - PARITY10C field-validation planning is documented in `docs/PARITY_REMOTE_ACTION_FIELD_VALIDATION.md`: disabled-gate rejection, guard-failure rejection, supervised valid-window execution, duplicate prevention, sanitized result review, and rollback.
 - DEPLOY1 safe-loop setup checklist is documented in `docs/DEPLOY1_SAFE_LOOP_CHECKLIST.md`: live deployment prerequisites, placeholder commands, desktop/webapp config checks, safe smoke sequence, pass/fail criteria, and rollback with `remoteActionEnabled=false` throughout.
 - DEPLOY1B parity sync settings UI is available in the desktop Settings tab. Use it to configure the DEPLOY1 Supabase URL, publishable/anon key, device id/label, and parity feature flags; the older Heartbeat controls are legacy status-only controls and do not enable the full safe loop.
+- DEPLOY1C adds a Schedule-tab skip-date manager for arbitrary dates. Use it to remove existing local/legacy stuck skips; do not proceed past DEPLOY1 Stage 2 until webapp skip ON and OFF both propagate correctly.
 - S3D write-path decision documented: prefer Edge Function/API proxy plus explicit device pairing/token.
 - Parity sync remains disabled by default.
 - Guarded configured-action command execution is implemented but disabled by default and remains pending PARITY10C field validation; unattended execution remains deferred.

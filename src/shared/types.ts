@@ -180,6 +180,7 @@ export interface AppConfig {
     reminders: ReminderSettings;
     schedulesByDate: Record<string, DailySchedule>;
     skippedDates: string[];
+    skipMetadataByDate: Record<string, SchedulerSkipDateMetadata>;
     notificationsByDate: Record<string, ReminderDateState>;
   };
   telegram: TelegramSettings;
@@ -350,6 +351,9 @@ export interface ParitySkipSyncSnapshot {
   failureCount: number;
   rowsReceived: number;
   rowsApplied: number;
+  remoteRemovalsApplied: number;
+  remoteRemovalsPreserved: number;
+  localRemovalCount: number;
 }
 
 export interface ParitySchedulePayload {
@@ -1006,7 +1010,41 @@ export interface ScheduleSnapshot {
   schedule: DailySchedule;
   actions: ScheduleActionSnapshot[];
   skippedDates: string[];
+  skippedDateDetails: SchedulerSkippedDateDetail[];
   summary: string;
+}
+
+export type SchedulerSkipSource = "local" | "remote-managed" | "uploaded-synced" | "unknown-legacy";
+export type SchedulerSkipScope = "whole-day" | "action-specific";
+
+export interface SchedulerSkipDateMetadata {
+  source: SchedulerSkipSource;
+  scope: SchedulerSkipScope;
+  actionKey: AttendanceActionType | null;
+  remoteSource: "desktop-local" | "webapp-command" | "manual-import" | null;
+  lastSeenRemoteAt: string | null;
+  updatedAt: string;
+}
+
+export interface SchedulerSkippedDateDetail {
+  date: string;
+  source: SchedulerSkipSource;
+  scope: SchedulerSkipScope;
+  actionKey: AttendanceActionType | null;
+  remoteSource: "desktop-local" | "webapp-command" | "manual-import" | null;
+  lastSeenRemoteAt: string | null;
+}
+
+export interface SchedulerRemoteSkipInput {
+  skipDate: string;
+  actionKey: AttendanceActionType | null;
+  source: "desktop-local" | "webapp-command" | "manual-import";
+}
+
+export interface SchedulerRemoteSkipMergeResult {
+  added: number;
+  remoteRemovalsApplied: number;
+  remoteRemovalsPreserved: number;
 }
 
 export interface AppLogEntry {
@@ -1052,6 +1090,8 @@ export interface AlilosApi {
   unskipToday: () => Promise<DashboardSnapshot>;
   skipTomorrow: () => Promise<DashboardSnapshot>;
   unskipTomorrow: () => Promise<DashboardSnapshot>;
+  skipDate: (dateKey: string) => Promise<DashboardSnapshot>;
+  unskipDate: (dateKey: string) => Promise<DashboardSnapshot>;
   recalculateTodaySchedule: () => Promise<DashboardSnapshot>;
   getAppSettings: () => Promise<AppSettingsSnapshot>;
   saveAppSettings: (settings: AppSettingsInput) => Promise<AppSettingsSnapshot>;

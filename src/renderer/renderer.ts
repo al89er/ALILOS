@@ -142,6 +142,8 @@ const unskipToday = document.querySelector<HTMLButtonElement>("#unskip-today");
 const skipTomorrow = document.querySelector<HTMLButtonElement>("#skip-tomorrow");
 const unskipTomorrow = document.querySelector<HTMLButtonElement>("#unskip-tomorrow");
 const recalculateTodaySchedule = document.querySelector<HTMLButtonElement>("#recalculate-today-schedule");
+const skipDateInput = document.querySelector<HTMLInputElement>("#skip-date-input");
+const addSkipDate = document.querySelector<HTMLButtonElement>("#add-skip-date");
 const startBrowser = document.querySelector<HTMLButtonElement>("#start-browser");
 const stopBrowser = document.querySelector<HTMLButtonElement>("#stop-browser");
 const openPerakam = document.querySelector<HTMLButtonElement>("#open-perakam");
@@ -368,6 +370,8 @@ const elements = {
   skipTomorrow: requireElement(skipTomorrow, "skip-tomorrow"),
   unskipTomorrow: requireElement(unskipTomorrow, "unskip-tomorrow"),
   recalculateTodaySchedule: requireElement(recalculateTodaySchedule, "recalculate-today-schedule"),
+  skipDateInput: requireElement(skipDateInput, "skip-date-input"),
+  addSkipDate: requireElement(addSkipDate, "add-skip-date"),
   startBrowser: requireElement(startBrowser, "start-browser"),
   stopBrowser: requireElement(stopBrowser, "stop-browser"),
   openPerakam: requireElement(openPerakam, "open-perakam"),
@@ -491,10 +495,21 @@ function render(snapshot: RendererDashboardSnapshot): void {
     })
   );
 
-  const skippedItems = snapshot.schedule.skippedDates.length > 0
-    ? snapshot.schedule.skippedDates.map((date) => {
+  const skippedItems = snapshot.schedule.skippedDateDetails.length > 0
+    ? snapshot.schedule.skippedDateDetails.map((skip) => {
       const item = document.createElement("li");
-      item.textContent = date;
+      item.className = "skip-date-item";
+
+      const text = document.createElement("span");
+      text.textContent = `${skip.date} - ${skipSourceLabel(skip.source)}; ${skip.scope === "whole-day" ? "whole day" : actionLabel(skip.actionKey ?? "clock-in")}; remote ${skip.remoteSource ?? "none"}`;
+
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "secondary-button";
+      button.textContent = "Remove skip";
+      button.addEventListener("click", () => runScheduleAction(() => window.alilos.unskipDate(skip.date)));
+
+      item.append(text, button);
       return item;
     })
     : [createEmptyListItem("No skipped dates.")];
@@ -664,7 +679,7 @@ function renderAutomationTelemetry(snapshot: RendererDashboardSnapshot): void {
   elements.paritySyncStatus.textContent = paritySync.enabled
     ? paritySync.configured ? paritySyncHealthLabel(paritySync.health) : "Needs Supabase config"
     : "Disabled";
-  elements.paritySyncDetail.textContent = `${paritySync.note} Endpoint: ${paritySync.endpointHost ?? "none"}. Last attempt: ${formatOptionalTime(paritySync.lastAttemptAt)}. Last success: ${formatOptionalTime(paritySync.lastSuccessAt)}. Published: ${paritySync.publishCount}; failures: ${paritySync.failureCount}. Skip sync ${paritySync.skipSync.enabled ? "enabled" : "disabled"}; skip last attempt ${formatOptionalTime(paritySync.skipSync.lastAttemptAt)}; skip last success ${formatOptionalTime(paritySync.skipSync.lastSuccessAt)}; skip rows received/applied ${paritySync.skipSync.rowsReceived}/${paritySync.skipSync.rowsApplied}; skip uploads/deletes ${paritySync.skipSync.uploadCount}/${paritySync.skipSync.deleteCount}; skip failures ${paritySync.skipSync.failureCount}; skip error ${paritySync.skipSync.lastError ?? "--"}. Schedule/completion sync ${paritySync.scheduleCompletionSync.enabled ? "enabled" : "disabled"}; last attempt ${formatOptionalTime(paritySync.scheduleCompletionSync.lastAttemptAt)}; last success ${formatOptionalTime(paritySync.scheduleCompletionSync.lastSuccessAt)}; fetched schedules/completions ${paritySync.scheduleCompletionSync.fetchedScheduleRows}/${paritySync.scheduleCompletionSync.fetchedCompletionRows}; uploaded schedules/completions ${paritySync.scheduleCompletionSync.scheduleUploadCount}/${paritySync.scheduleCompletionSync.completionUploadCount}; warnings/failures ${paritySync.scheduleCompletionSync.warningCount}/${paritySync.scheduleCompletionSync.failureCount}; warning ${paritySync.scheduleCompletionSync.lastWarning ?? "--"}; sync error ${paritySync.scheduleCompletionSync.lastError ?? "--"}. Command sync ${paritySync.commandSync.enabled ? "enabled" : "disabled"}; last poll ${formatOptionalTime(paritySync.commandSync.lastAttemptAt)}; last success ${formatOptionalTime(paritySync.commandSync.lastSuccessAt)}; received/claimed/completed ${paritySync.commandSync.receivedCount}/${paritySync.commandSync.claimedCount}/${paritySync.commandSync.completedCount}; rejected/failed/expired ${paritySync.commandSync.rejectedCount}/${paritySync.commandSync.failedCount}/${paritySync.commandSync.expiredCount}; processing ${paritySync.commandSync.currentCommandId ?? "--"}; command error ${paritySync.commandSync.lastError ?? "--"}. Error: ${paritySync.lastError ?? "--"}.`;
+  elements.paritySyncDetail.textContent = `${paritySync.note} Endpoint: ${paritySync.endpointHost ?? "none"}. Last attempt: ${formatOptionalTime(paritySync.lastAttemptAt)}. Last success: ${formatOptionalTime(paritySync.lastSuccessAt)}. Published: ${paritySync.publishCount}; failures: ${paritySync.failureCount}. Skip sync ${paritySync.skipSync.enabled ? "enabled" : "disabled"}; skip last attempt ${formatOptionalTime(paritySync.skipSync.lastAttemptAt)}; skip last success ${formatOptionalTime(paritySync.skipSync.lastSuccessAt)}; skip rows received/applied ${paritySync.skipSync.rowsReceived}/${paritySync.skipSync.rowsApplied}; remote removals applied/preserved ${paritySync.skipSync.remoteRemovalsApplied}/${paritySync.skipSync.remoteRemovalsPreserved}; skip uploads/deletes ${paritySync.skipSync.uploadCount}/${paritySync.skipSync.deleteCount}; local user removals ${paritySync.skipSync.localRemovalCount}; skip failures ${paritySync.skipSync.failureCount}; skip error ${paritySync.skipSync.lastError ?? "--"}. Schedule/completion sync ${paritySync.scheduleCompletionSync.enabled ? "enabled" : "disabled"}; last attempt ${formatOptionalTime(paritySync.scheduleCompletionSync.lastAttemptAt)}; last success ${formatOptionalTime(paritySync.scheduleCompletionSync.lastSuccessAt)}; fetched schedules/completions ${paritySync.scheduleCompletionSync.fetchedScheduleRows}/${paritySync.scheduleCompletionSync.fetchedCompletionRows}; uploaded schedules/completions ${paritySync.scheduleCompletionSync.scheduleUploadCount}/${paritySync.scheduleCompletionSync.completionUploadCount}; warnings/failures ${paritySync.scheduleCompletionSync.warningCount}/${paritySync.scheduleCompletionSync.failureCount}; warning ${paritySync.scheduleCompletionSync.lastWarning ?? "--"}; sync error ${paritySync.scheduleCompletionSync.lastError ?? "--"}. Command sync ${paritySync.commandSync.enabled ? "enabled" : "disabled"}; last poll ${formatOptionalTime(paritySync.commandSync.lastAttemptAt)}; last success ${formatOptionalTime(paritySync.commandSync.lastSuccessAt)}; received/claimed/completed ${paritySync.commandSync.receivedCount}/${paritySync.commandSync.claimedCount}/${paritySync.commandSync.completedCount}; rejected/failed/expired ${paritySync.commandSync.rejectedCount}/${paritySync.commandSync.failedCount}/${paritySync.commandSync.expiredCount}; processing ${paritySync.commandSync.currentCommandId ?? "--"}; command error ${paritySync.commandSync.lastError ?? "--"}. Error: ${paritySync.lastError ?? "--"}.`;
 
   const auditItems = automation.auditEvents.length > 0
     ? automation.auditEvents.map((event) => {
@@ -777,6 +792,14 @@ elements.unskipToday.addEventListener("click", () => runScheduleAction(() => win
 elements.skipTomorrow.addEventListener("click", () => runScheduleAction(() => window.alilos.skipTomorrow()));
 elements.unskipTomorrow.addEventListener("click", () => runScheduleAction(() => window.alilos.unskipTomorrow()));
 elements.recalculateTodaySchedule.addEventListener("click", () => runScheduleAction(() => window.alilos.recalculateTodaySchedule()));
+elements.addSkipDate.addEventListener("click", () => {
+  const dateKey = elements.skipDateInput.value;
+  if (!isDateKey(dateKey)) {
+    return;
+  }
+
+  runScheduleAction(() => window.alilos.skipDate(dateKey));
+});
 elements.clockInRequestConfirmation.addEventListener("click", () => {
   void runConfirmationAction(() => window.alilos.createConfirmation("clock-in"));
 });
@@ -964,6 +987,25 @@ function setControlsDisabled(disabled: boolean): void {
   elements.skipTomorrow.disabled = disabled;
   elements.unskipTomorrow.disabled = disabled;
   elements.recalculateTodaySchedule.disabled = disabled;
+  elements.skipDateInput.disabled = disabled;
+  elements.addSkipDate.disabled = disabled;
+}
+
+function isDateKey(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+function skipSourceLabel(source: RendererDashboardSnapshot["schedule"]["skippedDateDetails"][number]["source"]): string {
+  switch (source) {
+    case "remote-managed":
+      return "remote-managed";
+    case "uploaded-synced":
+      return "uploaded/synced";
+    case "local":
+      return "local";
+    default:
+      return "unknown/legacy";
+  }
 }
 
 function paritySyncHealthLabel(status: string): string {
