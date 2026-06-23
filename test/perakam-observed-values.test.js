@@ -3,7 +3,8 @@ const test = require("node:test");
 
 const {
   extractPerakamObservedValues,
-  observedStatusSummary
+  observedStatusSummary,
+  verifyObservedAttendanceValue
 } = require("../dist/worker/perakam-observed-values");
 
 const observedAt = "2026-06-22T09:00:00.000Z";
@@ -20,6 +21,32 @@ function tile(action, valueText, overrides = {}) {
     inSidebar: false,
     ...overrides
   };
+}
+
+function observed(overrides = {}) {
+  return {
+    observedDate: todayDateKey,
+    clockInTime: null,
+    clockOutTime: null,
+    source: "dashboard-tile",
+    observedAt,
+    pageState: "logged-in-dashboard",
+    confidence: "low",
+    reason: "test observed snapshot",
+    ...overrides
+  };
+}
+
+function verify(action, before, after) {
+  return verifyObservedAttendanceValue({
+    action,
+    dateKey: todayDateKey,
+    localClickResult: "click-succeeded-local",
+    before,
+    after,
+    sanitizedUrlAfterClick: "https://perakamwaktu3.upm.edu.my/[redacted]",
+    checkedAt: observedAt
+  });
 }
 
 test("Perakam dashboard tile parser reads morning and evening values", () => {
@@ -193,4 +220,62 @@ test("Perakam observed status summary is sanitized and compact", () => {
   assert.match(summary, /observedPerakam=page:logged-in-dashboard/);
   assert.match(summary, /in:08:01/);
   assert.match(summary, /out:17:05/);
+});
+
+test("post-action verification marks clock-in already present before action", () => {
+  const result = verify("clock-in", observed({ clockInTime: "07:49" }), observed({ clockInTime: "07:49" }));
+
+  assert.equal(result.status, "already-present");
+  assert.equal(result.observedValueBefore, "07:49");
+  assert.equal(result.observedValueAfter, "07:49");
+  assert.match(result.reason, /already present/);
+});
+
+test("post-action verification marks clock-in success when value appears after action", () => {
+  const result = verify("clock-in", observed(), observed({ clockInTime: "07:50", confidence: "medium" }));
+
+  assert.equal(result.status, "verified-success");
+  assert.equal(result.observedValueBefore, null);
+  assert.equal(result.observedValueAfter, "07:50");
+});
+
+test("post-action verification fails when clock-in remains missing on dashboard", () => {
+  const result = verify("clock-in", observed(), observed());
+
+  assert.equal(result.status, "verification-failed");
+  assert.equal(result.observedPageState, "logged-in-dashboard");
+});
+
+test("post-action verification supports clock-out already-present and success", () => {
+  const already = verify("clock-out", observed({ clockOutTime: "17:07" }), observed({ clockOutTime: "17:07" }));
+  const success = verify("clock-out", observed(), observed({ clockOutTime: "17:08" }));
+
+  assert.equal(already.status, "already-present");
+  assert.equal(success.status, "verified-success");
+  assert.equal(success.observedValueAfter, "17:08");
+});
+
+test("post-action verification returns unknown for stale/login/unreachable states", () => {
+  for (const pageState of ["stale-session", "login-required", "unreachable"]) {
+    const result = verify("clock-in", observed(), observed({ pageState, source: "unknown" }));
+
+    assert.equal(result.status, "verification-unknown");
+    assert.equal(result.observedPageState, pageState);
+  }
+});
+
+test("post-action verification evidence stays sanitized", () => {
+  const result = verifyObservedAttendanceValue({
+    action: "clock-in",
+    dateKey: todayDateKey,
+    localClickResult: "click-succeeded-local",
+    before: observed(),
+    after: observed({ reason: "cookie=secret https://example.test/path?token=secret link=opaque" }),
+    sanitizedUrlAfterClick: "https://perakamwaktu3.upm.edu.my/path?token=secret#access_token=secret",
+    checkedAt: observedAt
+  });
+  const serialized = JSON.stringify(result);
+
+  assert.doesNotMatch(serialized, /cookie=secret|token=secret|access_token=secret|link=opaque/);
+  assert.match(serialized, /\[redacted-url\]/);
 });

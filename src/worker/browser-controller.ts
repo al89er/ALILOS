@@ -22,13 +22,17 @@ import {
   type DashboardTileObservation,
   emptyPerakamObservedValues,
   extractPerakamObservedValues,
-  observedPageStateFromPerakamStatus
+  observedPageStateFromPerakamStatus,
+  verifyObservedAttendanceValue
 } from "./perakam-observed-values";
 
 const DEFAULT_PERAKAM_DASHBOARD_URL = "https://perakamwaktu3.upm.edu.my/";
 const LEGACY_PERAKAM_DASHBOARD_URL = "https://perakamwaktu.upm.edu.my/";
 const PERAKAM_NAVIGATION_TIMEOUT_MS = 30000;
 const MAX_BODY_TEXT_FOR_STATUS = 12000;
+const POST_ACTION_VERIFICATION_INITIAL_DELAY_MS = 2500;
+const POST_ACTION_VERIFICATION_ATTEMPTS = 4;
+const POST_ACTION_VERIFICATION_INTERVAL_MS = 5000;
 
 interface AttendanceControlDetection {
   clockInAvailable: AttendanceControlAvailability;
@@ -726,130 +730,63 @@ export class BrowserController {
   async verifyAttendanceAfterClick(
     action: AttendanceActionType,
     dateKey: string,
-    localClickResult: AttendanceVerificationResult["localClickResult"]
+    localClickResult: AttendanceVerificationResult["localClickResult"],
+    observedBefore: PerakamObservedValuesSnapshot | null = null
   ): Promise<AttendanceBrowserVerificationResult> {
     assertAttendanceAction(action);
-    const checkedAt = new Date().toISOString();
+    const before = observedBefore ?? this.getObservedPerakamValues();
+    let latest = this.getObservedPerakamValues();
 
     if (!this.perakamPage || this.perakamPage.isClosed()) {
-      return {
+      return verifyObservedAttendanceValue({
         action,
         dateKey,
         localClickResult,
-        status: "verification-unknown",
-        reason: "Perakam page is not open for read-only verification.",
+        before,
+        after: {
+          ...emptyPerakamObservedValues("unreachable", "Perakam page is not open for read-only verification."),
+          observedAt: new Date().toISOString()
+        },
         sanitizedUrlAfterClick: null,
-        evidenceSnippets: [],
-        checkedAt
-      };
+        checkedAt: new Date().toISOString()
+      });
     }
 
-    const page = this.perakamPage;
-    const sanitizedUrlAfterClick = sanitizeUrlForDisplay(page.url()) || null;
-    const [title, readyState, bodyText, markers] = await Promise.all([
-      page.title().catch(() => ""),
-      page.evaluate(() => document.readyState).catch(() => "unknown"),
-      page.evaluate((maxLength) => document.body?.innerText.slice(0, maxLength) ?? "", MAX_BODY_TEXT_FOR_STATUS).catch(() => ""),
-      page.evaluate(readPerakamPageMarkersFromDocument).catch(() => null)
-    ]);
-    const controls = await detectAttendanceControls(page, checkedAt).catch(() => unknownAttendanceControls("Unable to inspect target controls during verification.", checkedAt));
-    const classification = classifyPerakamPage(
-      sanitizedUrlAfterClick ?? "",
-      title,
-      bodyText,
-      readyState,
-      markers,
-      controls,
-      null
-    );
-    const frameResults = await Promise.all(
-      page.frames().map(async (frame) => {
-        try {
-          return await frame.evaluate(readAttendanceVerificationFromDocument, { action });
-        } catch {
-          return null;
-        }
-      })
-    );
-    const evidence = frameResults
-      .filter((result): result is { status: AttendanceVerificationStatus; reason: string; snippets: string[] } => result !== null)
-      .flatMap((result) => result.snippets)
-      .slice(0, 5);
-    const hasSuccess = frameResults.some((result) => result?.status === "verified-success");
-    const hasFailure = frameResults.some((result) => result?.status === "verification-failed");
-    const hasUnknown = frameResults.some((result) => result?.status === "verification-unknown");
-    const titleSnippet = boundedSnippet(title);
-    const evidenceSnippets = safeEvidence([
-      titleSnippet ? `Title: ${titleSnippet}` : "",
-      classification.reason,
-      ...classification.evidenceSnippets,
-      ...evidence
-    ]);
+    await delay(POST_ACTION_VERIFICATION_INITIAL_DELAY_MS);
 
-    if (classification.status === "login-required") {
-      return {
+    for (let attempt = 1; attempt <= POST_ACTION_VERIFICATION_ATTEMPTS; attempt += 1) {
+      latest = await this.refreshObservedPerakamValues(this.perakamStatus.dashboardUrl);
+      const result = verifyObservedAttendanceValue({
         action,
         dateKey,
         localClickResult,
-        status: "verification-unknown",
-        reason: "Login required after click. Local click succeeded, but server-side acceptance remains unconfirmed.",
-        sanitizedUrlAfterClick,
-        evidenceSnippets,
-        checkedAt
-      };
+        before,
+        after: latest,
+        sanitizedUrlAfterClick: sanitizeUrlForDisplay(this.perakamPage.url()) || null,
+        checkedAt: new Date().toISOString()
+      });
+
+      if (result.status === "verified-success" || result.status === "already-present" || attempt === POST_ACTION_VERIFICATION_ATTEMPTS) {
+        return {
+          ...result,
+          reason: attempt === POST_ACTION_VERIFICATION_ATTEMPTS
+            ? `${result.reason} Verification attempts=${attempt}.`
+            : `${result.reason} Verification attempts=${attempt}.`
+        };
+      }
+
+      await delay(POST_ACTION_VERIFICATION_INTERVAL_MS);
     }
 
-    if (classification.status === "stale-session") {
-      return {
-        action,
-        dateKey,
-        localClickResult,
-        status: "verification-unknown",
-        reason: "Session stale after click. Perakam showed a no-user-info page, so server-side acceptance remains unconfirmed.",
-        sanitizedUrlAfterClick,
-        evidenceSnippets,
-        checkedAt
-      };
-    }
-
-    if (hasSuccess) {
-      return {
-        action,
-        dateKey,
-        localClickResult,
-        status: "verified-success",
-        reason: classification.status === "dashboard"
-          ? "Dashboard detected after click. Read-only page evidence suggests Perakam accepted the configured action."
-          : "Read-only page evidence suggests Perakam accepted the configured action.",
-        sanitizedUrlAfterClick,
-        evidenceSnippets,
-        checkedAt
-      };
-    }
-
-    if (hasFailure) {
-      return {
-        action,
-        dateKey,
-        localClickResult,
-        status: "verification-failed",
-        reason: "Read-only page evidence shows a visible error or rejection after the click.",
-        sanitizedUrlAfterClick,
-        evidenceSnippets,
-        checkedAt
-      };
-    }
-
-    return {
+    return verifyObservedAttendanceValue({
       action,
       dateKey,
       localClickResult,
-      status: hasUnknown || evidenceSnippets.length > 0 ? "verification-unknown" : "verification-unknown",
-      reason: `${classification.reason} Local click succeeded, but server-side confirmation remains heuristic/unknown. Please visually confirm in the Perakam browser.`,
-      sanitizedUrlAfterClick,
-      evidenceSnippets,
-      checkedAt
-    };
+      before,
+      after: latest,
+      sanitizedUrlAfterClick: this.currentPerakamUrl(),
+      checkedAt: new Date().toISOString()
+    });
   }
 
   async stop(): Promise<BrowserStatusSnapshot> {

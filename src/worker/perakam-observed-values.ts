@@ -1,4 +1,6 @@
 import type {
+  AttendanceActionType,
+  AttendanceVerificationResult,
   PerakamObservedConfidence,
   PerakamObservedPageState,
   PerakamObservedSource,
@@ -115,6 +117,79 @@ export function observedStatusSummary(snapshot: PerakamObservedValuesSnapshot): 
   const clockOut = snapshot.clockOutTime ?? "--";
   const observedAt = snapshot.observedAt ?? "--";
   return `observedPerakam=page:${snapshot.pageState},date:${date},in:${clockIn},out:${clockOut},source:${snapshot.source},at:${observedAt}`;
+}
+
+export function observedValueForAction(snapshot: PerakamObservedValuesSnapshot | null | undefined, action: AttendanceActionType): string | null {
+  return action === "clock-in"
+    ? snapshot?.clockInTime ?? null
+    : snapshot?.clockOutTime ?? null;
+}
+
+export function verifyObservedAttendanceValue(input: {
+  action: AttendanceActionType;
+  dateKey: string;
+  localClickResult: AttendanceVerificationResult["localClickResult"];
+  before: PerakamObservedValuesSnapshot | null;
+  after: PerakamObservedValuesSnapshot | null;
+  sanitizedUrlAfterClick: string | null;
+  checkedAt: string;
+}): AttendanceVerificationResult {
+  const beforeValue = observedValueForAction(input.before, input.action);
+  const afterValue = observedValueForAction(input.after, input.action);
+  const actionLabel = input.action === "clock-in" ? "clock-in" : "clock-out";
+  const observedPageState = input.after?.pageState ?? input.before?.pageState ?? "unknown";
+  const observedSource = input.after?.source ?? input.before?.source ?? "unknown";
+  const observedAt = input.after?.observedAt ?? input.before?.observedAt ?? null;
+
+  if (beforeValue) {
+    return buildObservedVerification({
+      ...input,
+      status: "already-present",
+      reason: `${actionLabel} was already present before the local action; observed website value ${beforeValue}.`,
+      beforeValue,
+      afterValue,
+      observedPageState,
+      observedSource,
+      observedAt
+    });
+  }
+
+  if (afterValue) {
+    return buildObservedVerification({
+      ...input,
+      status: "verified-success",
+      reason: `${actionLabel} verified from observed website value ${afterValue}.`,
+      beforeValue,
+      afterValue,
+      observedPageState,
+      observedSource,
+      observedAt
+    });
+  }
+
+  if (observedPageState === "logged-in-dashboard") {
+    return buildObservedVerification({
+      ...input,
+      status: "verification-failed",
+      reason: `${actionLabel} was still missing after bounded read-only verification on the logged-in dashboard.`,
+      beforeValue,
+      afterValue,
+      observedPageState,
+      observedSource,
+      observedAt
+    });
+  }
+
+  return buildObservedVerification({
+    ...input,
+    status: "verification-unknown",
+    reason: `${actionLabel} could not be verified because Perakam page state was ${observedPageState}.`,
+    beforeValue,
+    afterValue,
+    observedPageState,
+    observedSource,
+    observedAt
+  });
 }
 
 function extractFromDashboardTiles(
@@ -279,6 +354,52 @@ function dashboardTileReason(
   }
 
   return parts.join("; ");
+}
+
+function buildObservedVerification(input: {
+  action: AttendanceActionType;
+  dateKey: string;
+  localClickResult: AttendanceVerificationResult["localClickResult"];
+  status: AttendanceVerificationResult["status"];
+  reason: string;
+  sanitizedUrlAfterClick: string | null;
+  checkedAt: string;
+  beforeValue: string | null;
+  afterValue: string | null;
+  observedPageState: PerakamObservedPageState;
+  observedSource: PerakamObservedSource;
+  observedAt: string | null;
+}): AttendanceVerificationResult {
+  const evidenceSnippets = safeObservedEvidence([
+    `before=${input.beforeValue ?? "--"}`,
+    `after=${input.afterValue ?? "--"}`,
+    `page=${input.observedPageState}`,
+    `source=${input.observedSource}`,
+    input.observedAt ? `observedAt=${input.observedAt}` : ""
+  ]);
+
+  return {
+    action: input.action,
+    dateKey: input.dateKey,
+    localClickResult: input.localClickResult,
+    status: input.status,
+    reason: sanitizeObservedReason(input.reason) ?? "Post-action observed value verification finished without sensitive details.",
+    sanitizedUrlAfterClick: sanitizeObservedReason(input.sanitizedUrlAfterClick),
+    evidenceSnippets,
+    checkedAt: input.checkedAt,
+    observedValueBefore: input.beforeValue,
+    observedValueAfter: input.afterValue,
+    observedPageState: input.observedPageState,
+    observedSource: input.observedSource,
+    observedAt: input.observedAt
+  };
+}
+
+function safeObservedEvidence(values: string[]): string[] {
+  return values
+    .map((value) => sanitizeObservedReason(value))
+    .filter((value): value is string => Boolean(value))
+    .slice(0, 6);
 }
 
 function observedSnapshot(input: Omit<PerakamObservedValuesSnapshot, "confidence">): PerakamObservedValuesSnapshot {

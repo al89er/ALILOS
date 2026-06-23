@@ -56,6 +56,7 @@ Current Supabase status:
 - DEPLOY1C adds a Schedule-tab skip-date manager for arbitrary dates. Use it to remove existing local/legacy stuck skips; do not proceed past DEPLOY1 Stage 2 until webapp skip ON and OFF both propagate correctly.
 - DEPLOY1 safe-loop Stages 1-4 passed. The desktop `Sync now` control can manually publish status and run enabled skip, schedule/completion, and command sync paths once without waiting for intervals; `remoteActionEnabled` remains false.
 - READONLY1 adds live observed Perakam values to the monitored desktop/webapp status path. Next field use should compare scheduled times, observed website times, and completion records during real clock-in/out windows while keeping execution in monitored modes and `remoteActionEnabled=false`.
+- READONLY2 adds post-action observed-value verification for approved local/manual-confirm clicks. Next track should be AUTO1 shadow mode only: simulate automated decisions and verification without real auto-clicking, keep `remoteActionEnabled=false`, and do not approve unattended execution.
 - S3D write-path decision documented: prefer Edge Function/API proxy plus explicit device pairing/token.
 - Parity sync remains disabled by default.
 - Guarded configured-action command execution is implemented but disabled by default and remains pending PARITY10C field validation; unattended execution remains deferred.

@@ -14,12 +14,14 @@ import type {
   DryRunSafetyCheckResult,
   NotReadyReason,
   PerakamAutoLoginSnapshot,
+  PerakamObservedValuesSnapshot,
   PerakamStatusSnapshot,
   ReadinessSnapshot,
   ScheduleActionSnapshot,
   ScheduleActionStatus,
   ScheduleSnapshot
 } from "../shared/types";
+import { observedValueForAction } from "./perakam-observed-values";
 
 const CONFIRMATION_WINDOW_MS = 60 * 1000;
 const READY_STATUSES: ScheduleActionStatus[] = ["due-now", "within-grace-period"];
@@ -29,13 +31,15 @@ interface ConfirmationServiceSources {
   getBrowserStatus: () => BrowserStatusSnapshot;
   getPerakamStatus: () => PerakamStatusSnapshot;
   refreshPerakamStatus: () => Promise<PerakamStatusSnapshot>;
+  refreshObservedPerakamValues: () => Promise<PerakamObservedValuesSnapshot>;
   getConfiguredPerakamUrl: () => string;
   getPerakamAutoLoginSnapshot: () => PerakamAutoLoginSnapshot;
   clickVisibleAttendanceControl: (action: AttendanceActionType) => Promise<AttendanceBrowserExecutionResult>;
   verifyAttendanceAfterClick: (
     action: AttendanceActionType,
     dateKey: string,
-    localClickResult: AttendanceVerificationResult["localClickResult"]
+    localClickResult: AttendanceVerificationResult["localClickResult"],
+    observedBefore: PerakamObservedValuesSnapshot | null
   ) => Promise<AttendanceVerificationResult>;
   persistCompletion: (record: AttendanceCompletionRecord) => void;
   broadcastSnapshot: () => void;
@@ -180,7 +184,12 @@ export class ConfirmationService {
       reason: "User visually confirmed the configured-action result in the Perakam browser.",
       sanitizedUrlAfterClick: completion.sanitizedUrlAfterClick,
       evidenceSnippets: [],
-      checkedAt: now.toISOString()
+      checkedAt: now.toISOString(),
+      observedValueBefore: completion.verification?.observedValueBefore ?? null,
+      observedValueAfter: completion.verification?.observedValueAfter ?? null,
+      observedPageState: completion.verification?.observedPageState ?? null,
+      observedSource: completion.verification?.observedSource ?? null,
+      observedAt: completion.verification?.observedAt ?? null
     };
 
     completion.state = "manually-verified";
@@ -250,10 +259,11 @@ export class ConfirmationService {
         result = this.buildRejectedExecutionResult(request, dryRun, now);
       } else {
         this.logger.info(`Configured-target click started for ${request.action} on ${request.dateKey}. ID: ${shortId(request.id)}.`);
+        const observedBefore = await this.captureObservedValuesBeforeAction(request.action, request.dateKey);
         clickAttemptStarted = true;
         const clickResult = await this.sources.clickVisibleAttendanceControl(request.action);
         let completion = this.markConfirmationUsedAndCompleted(request, clickResult, now);
-        const verification = await this.verifyPostClickCompletion(completion, "click-succeeded-local");
+        const verification = await this.verifyPostClickCompletion(completion, "click-succeeded-local", observedBefore);
         completion = this.applyVerificationToCompletion(completion, verification);
         result = this.buildSucceededExecutionResult(request, clickResult, completion, dryRun, now);
       }
@@ -581,7 +591,12 @@ export class ConfirmationService {
         reason: "Local click succeeded. Read-only verification is pending.",
         sanitizedUrlAfterClick: clickResult.afterUrl,
         evidenceSnippets: [],
-        checkedAt: now.toISOString()
+        checkedAt: now.toISOString(),
+        observedValueBefore: null,
+        observedValueAfter: null,
+        observedPageState: null,
+        observedSource: null,
+        observedAt: null
       },
       manuallyVerifiedAt: null
     };
@@ -610,7 +625,12 @@ export class ConfirmationService {
         reason,
         sanitizedUrlAfterClick: request.sanitizedUrl,
         evidenceSnippets: [],
-        checkedAt: now.toISOString()
+        checkedAt: now.toISOString(),
+        observedValueBefore: null,
+        observedValueAfter: null,
+        observedPageState: null,
+        observedSource: null,
+        observedAt: null
       },
       manuallyVerifiedAt: null
     };
@@ -623,14 +643,15 @@ export class ConfirmationService {
 
   private async verifyPostClickCompletion(
     completion: AttendanceCompletionRecord,
-    localClickResult: AttendanceVerificationResult["localClickResult"]
+    localClickResult: AttendanceVerificationResult["localClickResult"],
+    observedBefore: PerakamObservedValuesSnapshot | null
   ): Promise<AttendanceVerificationResult> {
     this.logger.info(`Post-click verification started for ${completion.action} on ${completion.dateKey}. ID: ${shortId(completion.confirmationId)}.`);
 
     try {
-      const verification = await this.sources.verifyAttendanceAfterClick(completion.action, completion.dateKey, localClickResult);
+      const verification = await this.sources.verifyAttendanceAfterClick(completion.action, completion.dateKey, localClickResult, observedBefore);
 
-      if (verification.status === "verified-success") {
+      if (verification.status === "verified-success" || verification.status === "already-present") {
         this.logger.info(`Post-click verification succeeded for ${completion.action} on ${completion.dateKey}. ID: ${shortId(completion.confirmationId)}.`);
         return verification;
       }
@@ -654,8 +675,25 @@ export class ConfirmationService {
         reason,
         sanitizedUrlAfterClick: completion.sanitizedUrlAfterClick,
         evidenceSnippets: [],
-        checkedAt
+        checkedAt,
+        observedValueBefore: observedBefore ? observedValueForAction(observedBefore, completion.action) : null,
+        observedValueAfter: null,
+        observedPageState: observedBefore?.pageState ?? null,
+        observedSource: observedBefore?.source ?? null,
+        observedAt: observedBefore?.observedAt ?? null
       };
+    }
+  }
+
+  private async captureObservedValuesBeforeAction(action: AttendanceActionType, dateKey: string): Promise<PerakamObservedValuesSnapshot | null> {
+    try {
+      const observed = await this.sources.refreshObservedPerakamValues();
+      const value = observedValueForAction(observed, action);
+      this.logger.info(`Pre-action observed Perakam ${action} value for ${dateKey}: ${value ? "present" : "missing"}; page=${observed.pageState}.`);
+      return observed;
+    } catch (error) {
+      this.logger.warn(`Pre-action observed Perakam value capture skipped: ${sanitizeDryRunError(error)}.`);
+      return null;
     }
   }
 
@@ -668,6 +706,8 @@ export class ConfirmationService {
 
     if (verification.status === "verified-success") {
       completion.state = "verified-success";
+    } else if (verification.status === "already-present") {
+      completion.state = "already-present";
     } else if (verification.status === "verification-failed") {
       completion.state = "verification-failed";
     } else {
@@ -1052,6 +1092,8 @@ function executionSummaryForCompletion(action: AttendanceActionType, completion:
   switch (completion.state) {
     case "verified-success":
       return `The app clicked the visible Perakam target control for ${actionLabel(action)} once at ${timeText}. Read-only verification suggests Perakam accepted it.`;
+    case "already-present":
+      return `The app clicked the visible Perakam target control for ${actionLabel(action)} once at ${timeText}. Read-only verification found the website value was already present before the click. Please visually confirm no duplicate action occurred.`;
     case "verification-failed":
       return `The app clicked the visible Perakam target control for ${actionLabel(action)} once at ${timeText}, but read-only verification found possible failure evidence. Please visually confirm in the Perakam browser. The app will not automatically retry.`;
     case "verification-unknown":

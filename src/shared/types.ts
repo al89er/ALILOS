@@ -43,10 +43,18 @@ export type AttendanceCompletionState =
   | "click-succeeded-local"
   | "verification-pending"
   | "verified-success"
+  | "already-present"
   | "verification-unknown"
   | "verification-failed"
   | "manually-verified";
-export type AttendanceVerificationStatus = "pending" | "verified-success" | "verification-unknown" | "verification-failed" | "manually-verified";
+export type AttendanceVerificationStatus =
+  | "not-started"
+  | "pending"
+  | "verified-success"
+  | "already-present"
+  | "verification-unknown"
+  | "verification-failed"
+  | "manually-verified";
 export type TestClickTargetId = "a56" | "a57";
 export type TestClickConfirmationStatus = ConfirmationStatus | "in-flight" | "used" | "failed";
 export type TestClickResultStatus = "not-started" | "rejected" | "passed" | "failed" | "succeeded";
@@ -842,6 +850,11 @@ export interface AttendanceVerificationResult {
   sanitizedUrlAfterClick: string | null;
   evidenceSnippets: string[];
   checkedAt: string;
+  observedValueBefore: string | null;
+  observedValueAfter: string | null;
+  observedPageState: PerakamObservedPageState | null;
+  observedSource: PerakamObservedSource | null;
+  observedAt: string | null;
 }
 
 export interface AttendanceCompletionRecord {

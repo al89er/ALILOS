@@ -196,6 +196,7 @@ app.whenReady().then(() => {
     getBrowserStatus: () => browserController.status(),
     getPerakamStatus: () => browserController.getPerakamStatus(config.perakam.dashboardUrl),
     refreshPerakamStatus: () => browserController.refreshPerakamStatus(config.perakam.dashboardUrl),
+    refreshObservedPerakamValues: () => browserController.refreshObservedPerakamValues(config.perakam.dashboardUrl),
     getConfiguredPerakamUrl: () => config.perakam.dashboardUrl,
     getPerakamAutoLoginSnapshot: () => buildPerakamAutoLoginSnapshot(),
     clickVisibleAttendanceControl: (action) => browserController.clickVisibleAttendanceControl(action),
@@ -1263,7 +1264,7 @@ function recordAttendanceExecutionAudit(result: AttendanceExecutionResult): void
       type: "verification-result",
       action: result.action,
       dateKey: result.dateKey,
-      status: result.verification.status === "verified-success" || result.verification.status === "manually-verified" ? "passed" : "blocked",
+      status: result.verification.status === "verified-success" || result.verification.status === "already-present" || result.verification.status === "manually-verified" ? "passed" : "blocked",
       message: result.verification.reason,
       details: {
         verificationStatus: result.verification.status,

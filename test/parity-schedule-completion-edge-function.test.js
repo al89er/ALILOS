@@ -19,6 +19,7 @@ test("schedule/completion Edge Function exposes constrained sync operations only
   assert.match(source, /"get-day-state"/);
   assert.match(source, /"upsert-schedule"/);
   assert.match(source, /"upsert-completion"/);
+  assert.match(source, /"already-present"/);
   assert.match(source, /\.from\("devices"\)/);
   assert.match(source, /\.from\("daily_schedules"\)/);
   assert.match(source, /\.from\("completion_records"\)/);

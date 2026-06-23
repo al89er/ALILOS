@@ -1313,6 +1313,7 @@ function completionStateLabel(state: string): string {
     ["click-succeeded-local", "Local click succeeded"],
     ["verification-pending", "Verification pending"],
     ["verified-success", "Verified success"],
+    ["already-present", "Already present"],
     ["verification-unknown", "Verification unknown"],
     ["verification-failed", "Verification failed"],
     ["manually-verified", "Manually verified"]

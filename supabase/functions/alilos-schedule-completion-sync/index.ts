@@ -12,10 +12,11 @@ type CompletionState =
   | "click-succeeded-local"
   | "verification-pending"
   | "verified-success"
+  | "already-present"
   | "verification-unknown"
   | "verification-failed"
   | "manually-verified";
-type VerificationState = "pending" | "verified-success" | "verification-unknown" | "verification-failed" | "manually-verified";
+type VerificationState = "pending" | "verified-success" | "already-present" | "verification-unknown" | "verification-failed" | "manually-verified";
 
 interface RequestPayload {
   deviceId: string;
@@ -54,11 +55,12 @@ const COMPLETION_STATES = new Set([
   "click-succeeded-local",
   "verification-pending",
   "verified-success",
+  "already-present",
   "verification-unknown",
   "verification-failed",
   "manually-verified"
 ]);
-const VERIFICATION_STATES = new Set(["pending", "verified-success", "verification-unknown", "verification-failed", "manually-verified"]);
+const VERIFICATION_STATES = new Set(["pending", "verified-success", "already-present", "verification-unknown", "verification-failed", "manually-verified"]);
 const FORBIDDEN_KEY_NAMES = new Set([
   "credential",
   "credentials",

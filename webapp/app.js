@@ -489,7 +489,7 @@ function renderActionCard(actionKey, prefix, schedules, completions) {
   const completion = completions.find((item) => item.actionKey === actionKey);
   elements[`${prefix}-time`].textContent = schedule?.targetTimeLocal ?? "--";
   elements[`${prefix}-state`].textContent = completion
-    ? `${completion.state} - ${completion.verificationState ?? "verification unknown"}`
+    ? `${completionStateLabel(completion.state)} - ${completionStateLabel(completion.verificationState ?? "verification-unknown")}`
     : schedule
       ? `${schedule.status} - ${schedule.source}`
       : "Schedule unavailable";
@@ -568,8 +568,8 @@ function renderSkipCalendar(skips) {
 function renderCompletions(completions) {
   elements["completion-list"].replaceChildren(...(completions.length ? completions.map((item) => listItem(
     actionLabel(item.actionKey),
-    item.state,
-    `${item.verificationState ?? "verification unknown"} - ${item.sanitizedReason ?? "No result summary"} - ${formatTime(item.updatedAt ?? item.verifiedAt ?? item.attemptedAt)}`
+    completionStateLabel(item.state),
+    `${completionStateLabel(item.verificationState ?? "verification-unknown")} - ${item.sanitizedReason ?? "No result summary"} - ${formatTime(item.updatedAt ?? item.verifiedAt ?? item.attemptedAt)}`
   )) : [listItem("Completion unknown", "No synced completion row", "Check the desktop before making decisions.")]));
   elements["completion-freshness"].textContent = latestTimestampLabel(completions);
 }
@@ -720,7 +720,7 @@ function actionLabel(value) {
 
 function actionReadinessText(schedule, completion) {
   if (completion) {
-    return `Guarded action unavailable: completion is ${completion.state}.`;
+    return `Guarded action unavailable: completion is ${completionStateLabel(completion.state)}.`;
   }
 
   if (!schedule) {
@@ -745,6 +745,23 @@ function remoteActionMaySubmit(schedule, completion) {
 
   const freshness = heartbeatFreshness(state.data.heartbeat?.lastSeenAt ?? state.data.device?.lastSeenAt ?? null);
   return freshness.state === "online";
+}
+
+function completionStateLabel(state) {
+  const labels = {
+    "not-started": "Not started",
+    "not-attempted": "Not attempted",
+    "click-attempted": "Click attempted",
+    "click-succeeded-local": "Local click succeeded",
+    "verification-pending": "Verification pending",
+    "verified-success": "Verified success",
+    "already-present": "Already present",
+    "verification-unknown": "Verification unknown",
+    "verification-failed": "Verification failed",
+    "manually-verified": "Manually verified",
+    pending: "Verification pending"
+  };
+  return labels[state] ?? "Verification unknown";
 }
 
 function inferPortalStatus(networkStatus) {

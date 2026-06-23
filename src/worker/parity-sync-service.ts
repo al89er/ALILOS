@@ -1693,6 +1693,7 @@ function sanitizeCompletionState(value: AttendanceCompletionState | null | undef
     || value === "click-succeeded-local"
     || value === "verification-pending"
     || value === "verified-success"
+    || value === "already-present"
     || value === "verification-unknown"
     || value === "verification-failed"
     || value === "manually-verified"
@@ -1703,6 +1704,7 @@ function sanitizeCompletionState(value: AttendanceCompletionState | null | undef
 function sanitizeVerificationStatus(value: AttendanceVerificationStatus | null | undefined): AttendanceVerificationStatus | null {
   return value === "pending"
     || value === "verified-success"
+    || value === "already-present"
     || value === "verification-unknown"
     || value === "verification-failed"
     || value === "manually-verified"
