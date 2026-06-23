@@ -8,13 +8,25 @@ import type {
 
 interface ExtractObservedInput {
   pageStatus: PerakamPageStatus;
+  dashboardTiles?: DashboardTileObservation[];
   dashboardTileTexts?: string[];
   kadPerakamRows?: string[];
   observedAt: string;
   todayDateKey: string;
 }
 
-const TIME_PATTERN = /\b([01]?\d|2[0-3])[:.]([0-5]\d)(?::[0-5]\d)?\b/;
+export interface DashboardTileObservation {
+  action: "clock-in" | "clock-out";
+  text: string;
+  valueText: string | null;
+  dateText: string | null;
+  valueSelector: "#wm" | "#wk";
+  visible?: boolean;
+  inSidebar?: boolean;
+}
+
+const TIME_PATTERN = /\b([01]?\d|2[0-3])[:.]([0-5]\d)(?::[0-5]\d)?\s*(AM|PM)?\b/i;
+const PLACEHOLDER_VALUE_PATTERN = /^(\?|[-]+|n\/a|na)$/i;
 
 export function emptyPerakamObservedValues(
   pageState: PerakamObservedPageState = "unknown",
@@ -41,16 +53,16 @@ export function extractPerakamObservedValues(input: ExtractObservedInput): Perak
     };
   }
 
-  const dashboard = extractFromDashboardTiles(input.dashboardTileTexts ?? []);
+  const dashboard = extractFromDashboardTiles(input.dashboardTiles ?? [], input.dashboardTileTexts ?? []);
   if (dashboard.clockInTime || dashboard.clockOutTime || dashboard.seen) {
     return observedSnapshot({
-      observedDate: input.todayDateKey,
+      observedDate: dashboard.observedDate ?? input.todayDateKey,
       clockInTime: dashboard.clockInTime,
       clockOutTime: dashboard.clockOutTime,
       source: "dashboard-tile",
       observedAt: input.observedAt,
       pageState,
-      reason: observedReason(dashboard.clockInTime, dashboard.clockOutTime, "Dashboard tile")
+      reason: dashboard.reason
     });
   }
 
@@ -105,15 +117,40 @@ export function observedStatusSummary(snapshot: PerakamObservedValuesSnapshot): 
   return `observedPerakam=page:${snapshot.pageState},date:${date},in:${clockIn},out:${clockOut},source:${snapshot.source},at:${observedAt}`;
 }
 
-function extractFromDashboardTiles(texts: string[]): { clockInTime: string | null; clockOutTime: string | null; seen: boolean } {
+function extractFromDashboardTiles(
+  tiles: DashboardTileObservation[],
+  texts: string[]
+): { clockInTime: string | null; clockOutTime: string | null; observedDate: string | null; seen: boolean; reason: string } {
+  const visibleTiles = tiles.filter((tile) => tile.visible !== false && !tile.inSidebar);
+  const clockInTile = visibleTiles.find((tile) => tile.action === "clock-in");
+  const clockOutTile = visibleTiles.find((tile) => tile.action === "clock-out");
+  const clockInValue = tileValue(clockInTile);
+  const clockOutValue = tileValue(clockOutTile);
+  const observedDate = parseDateText(clockInTile?.dateText) ?? parseDateText(clockOutTile?.dateText);
+
+  if (clockInTile || clockOutTile) {
+    return {
+      clockInTime: clockInValue,
+      clockOutTime: clockOutValue,
+      observedDate,
+      seen: true,
+      reason: dashboardTileReason(clockInTile, clockOutTile, clockInValue, clockOutValue)
+    };
+  }
+
   const safeTexts = texts.map(normalizeText).filter(Boolean);
   const combined = safeTexts.join(" ");
   const clockInTime = firstTimeAfterLabel(safeTexts, [/masa hadir/i, /klik masuk/i, /\ba50\b/i], [/masa keluar/i, /klik keluar/i, /\ba51\b/i]);
   const clockOutTime = firstTimeAfterLabel(safeTexts, [/masa keluar/i, /klik keluar/i, /\ba51\b/i], [/masa hadir/i, /klik masuk/i, /\ba50\b/i]);
+  const seen = /masa hadir|a50|masa keluar|a51/i.test(combined);
   return {
     clockInTime,
     clockOutTime,
-    seen: /masa hadir|klik masuk|a50|masa keluar|klik keluar|a51/i.test(combined)
+    observedDate: null,
+    seen,
+    reason: seen
+      ? observedReason(clockInTime, clockOutTime, "Dashboard tile text fallback")
+      : "Dashboard observed; no scoped dashboard tiles were found."
   };
 }
 
@@ -168,8 +205,80 @@ function firstTime(text: string): string | null {
     return null;
   }
 
-  const hour = match[1].padStart(2, "0");
+  let hourValue = Number.parseInt(match[1], 10);
+  const meridiem = match[3]?.toUpperCase();
+  if (meridiem === "PM" && hourValue < 12) {
+    hourValue += 12;
+  }
+  if (meridiem === "AM" && hourValue === 12) {
+    hourValue = 0;
+  }
+
+  const hour = String(hourValue).padStart(2, "0");
   return `${hour}:${match[2]}`;
+}
+
+function tileValue(tile: DashboardTileObservation | undefined): string | null {
+  if (!tile) {
+    return null;
+  }
+
+  return firstMeaningfulTime(tile.valueText) ?? firstMeaningfulTime(tile.text);
+}
+
+function firstMeaningfulTime(value: string | null | undefined): string | null {
+  const text = normalizeText(value ?? "");
+  if (!text || PLACEHOLDER_VALUE_PATTERN.test(text)) {
+    return null;
+  }
+
+  return firstTime(text);
+}
+
+function parseDateText(value: string | null | undefined): string | null {
+  const text = normalizeText(value ?? "");
+  const iso = /\b(\d{4})-(\d{2})-(\d{2})\b/.exec(text);
+  if (iso) {
+    return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  }
+
+  const local = /\b(\d{1,2})[/-](\d{1,2})[/-](\d{4})\b/.exec(text);
+  if (local) {
+    return `${local[3]}-${local[2].padStart(2, "0")}-${local[1].padStart(2, "0")}`;
+  }
+
+  return null;
+}
+
+function dashboardTileReason(
+  clockInTile: DashboardTileObservation | undefined,
+  clockOutTile: DashboardTileObservation | undefined,
+  clockInTime: string | null,
+  clockOutTime: string | null
+): string {
+  const parts = [
+    "dashboard observed",
+    clockInTile ? "clock-in tile found" : "clock-in tile missing",
+    clockOutTile ? "clock-out tile found" : "clock-out tile missing"
+  ];
+
+  if (clockInTime) {
+    parts.push(`clock-in value ${clockInTime} from #wm`);
+  } else if (clockInTile) {
+    parts.push("clock-in missing placeholder from #wm");
+  }
+
+  if (clockOutTime) {
+    parts.push(`clock-out value ${clockOutTime} from #wk`);
+  } else if (clockOutTile) {
+    parts.push("clock-out missing placeholder from #wk");
+  }
+
+  if (!clockInTime && !clockOutTime) {
+    parts.push("values missing or placeholder");
+  }
+
+  return parts.join("; ");
 }
 
 function observedSnapshot(input: Omit<PerakamObservedValuesSnapshot, "confidence">): PerakamObservedValuesSnapshot {
@@ -228,7 +337,8 @@ function normalizeText(value: string): string {
 function sanitizeObservedReason(value: string | null | undefined): string | null {
   const sanitized = String(value ?? "")
     .replace(/https?:\/\/[^\s]+/gi, "[redacted-url]")
-    .replace(/[?#][^\s]*/g, "?[redacted]")
+    .replace(/\?(token|code|session|link|magic|4Tredir)=[^\s]*/gi, "?[redacted]")
+    .replace(/#(access_token|id_token|token)=[^\s]*/gi, "#[redacted]")
     .replace(/\blink=[^\s&]+/gi, "[redacted-link]")
     .replace(/\bmagic=[^\s&]+/gi, "[redacted-magic]")
     .replace(/\b4Tredir=[^\s&]+/gi, "[redacted-redirect]")

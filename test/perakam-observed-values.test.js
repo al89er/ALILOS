@@ -9,6 +9,19 @@ const {
 const observedAt = "2026-06-22T09:00:00.000Z";
 const todayDateKey = "2026-06-22";
 
+function tile(action, valueText, overrides = {}) {
+  return {
+    action,
+    text: action === "clock-in" ? `Masa Hadir ${valueText ?? ""} Klik Masuk` : `Masa Keluar ${valueText ?? ""} Klik Keluar`,
+    valueText,
+    dateText: "22/06/2026",
+    valueSelector: action === "clock-in" ? "#wm" : "#wk",
+    visible: true,
+    inSidebar: false,
+    ...overrides
+  };
+}
+
 test("Perakam dashboard tile parser reads morning and evening values", () => {
   const result = extractPerakamObservedValues({
     pageStatus: "dashboard",
@@ -26,6 +39,93 @@ test("Perakam dashboard tile parser reads morning and evening values", () => {
   assert.equal(result.source, "dashboard-tile");
   assert.equal(result.pageState, "logged-in-dashboard");
   assert.equal(result.confidence, "high");
+});
+
+test("Perakam dashboard parser chooses dashboard tile values over duplicate sidebar anchors", () => {
+  const result = extractPerakamObservedValues({
+    pageStatus: "dashboard",
+    dashboardTiles: [
+      tile("clock-in", null, { text: "Klik Masuk", visible: true, inSidebar: true }),
+      tile("clock-out", null, { text: "Klik Keluar", visible: true, inSidebar: true }),
+      tile("clock-in", "07:49 AM"),
+      tile("clock-out", "05:07 PM")
+    ],
+    observedAt,
+    todayDateKey
+  });
+
+  assert.equal(result.observedDate, todayDateKey);
+  assert.equal(result.clockInTime, "07:49");
+  assert.equal(result.clockOutTime, "17:07");
+  assert.match(result.reason, /clock-in value 07:49 from #wm/);
+  assert.match(result.reason, /clock-out value 17:07 from #wk/);
+});
+
+test("Perakam dashboard parser does not produce values from sidebar-only anchors", () => {
+  const result = extractPerakamObservedValues({
+    pageStatus: "dashboard",
+    dashboardTiles: [
+      tile("clock-in", "07:49 AM", { inSidebar: true }),
+      tile("clock-out", "05:07 PM", { inSidebar: true })
+    ],
+    observedAt,
+    todayDateKey
+  });
+
+  assert.equal(result.clockInTime, null);
+  assert.equal(result.clockOutTime, null);
+  assert.equal(result.source, "unknown");
+  assert.equal(result.pageState, "logged-in-dashboard");
+});
+
+test("Perakam dashboard parser reads #wm and treats #wk placeholder as missing", () => {
+  const result = extractPerakamObservedValues({
+    pageStatus: "dashboard",
+    dashboardTiles: [
+      tile("clock-in", "07:49 AM"),
+      tile("clock-out", "?")
+    ],
+    observedAt,
+    todayDateKey
+  });
+
+  assert.equal(result.clockInTime, "07:49");
+  assert.equal(result.clockOutTime, null);
+  assert.equal(result.confidence, "medium");
+  assert.match(result.reason, /clock-out missing placeholder from #wk/);
+});
+
+test("Perakam dashboard parser reads #wm and #wk values with AM/PM", () => {
+  const result = extractPerakamObservedValues({
+    pageStatus: "dashboard",
+    dashboardTiles: [
+      tile("clock-in", "07:49 AM"),
+      tile("clock-out", "05:07 PM")
+    ],
+    observedAt,
+    todayDateKey
+  });
+
+  assert.equal(result.clockInTime, "07:49");
+  assert.equal(result.clockOutTime, "17:07");
+  assert.equal(result.confidence, "high");
+});
+
+test("Perakam dashboard parser ignores hidden dashboard tiles", () => {
+  const result = extractPerakamObservedValues({
+    pageStatus: "dashboard",
+    dashboardTiles: [
+      tile("clock-in", "07:49 AM", { visible: false }),
+      tile("clock-out", "05:07 PM", { visible: false })
+    ],
+    observedAt,
+    todayDateKey
+  });
+
+  assert.equal(result.clockInTime, null);
+  assert.equal(result.clockOutTime, null);
+  assert.equal(result.source, "unknown");
+  assert.equal(result.pageState, "logged-in-dashboard");
 });
 
 test("Perakam dashboard tile parser handles only morning value", () => {

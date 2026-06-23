@@ -19,6 +19,7 @@ import type {
 } from "../shared/types";
 import type { AppLogger } from "../main/logger";
 import {
+  type DashboardTileObservation,
   emptyPerakamObservedValues,
   extractPerakamObservedValues,
   observedPageStateFromPerakamStatus
@@ -166,7 +167,7 @@ export class BrowserController {
     }
 
     try {
-      const dashboardTileTexts = await page.evaluate(() => {
+      const dashboardTiles = await page.evaluate(() => {
         const isVisible = (element: Element): boolean => {
           const style = window.getComputedStyle(element);
           if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) {
@@ -175,24 +176,43 @@ export class BrowserController {
           const rect = element.getBoundingClientRect();
           return rect.width > 0 && rect.height > 0;
         };
-        const selectors = [
-          ".right_col .tile-stats",
-          ".right_col .top_tiles",
-          ".tile-stats",
-          "#a50",
-          "#a51"
+        const cleanText = (value: string | null | undefined): string => (value ?? "").replace(/\s+/g, " ").trim().slice(0, 400);
+        const selectors: Array<{ action: "clock-in" | "clock-out"; selector: string; valueSelector: "#wm" | "#wk" }> = [
+          { action: "clock-in", selector: ".right_col .top_tiles a#a50 .tile-stats", valueSelector: "#wm" },
+          { action: "clock-out", selector: ".right_col .top_tiles a#a51 .tile-stats", valueSelector: "#wk" },
+          { action: "clock-in", selector: ".top_tiles a#a50 .tile-stats", valueSelector: "#wm" },
+          { action: "clock-out", selector: ".top_tiles a#a51 .tile-stats", valueSelector: "#wk" }
         ];
-        const candidates = Array.from(new Set(selectors.flatMap((selector) => Array.from(document.querySelectorAll(selector)))));
-        return candidates
-          .filter(isVisible)
-          .map((element) => (element.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 400))
-          .filter(Boolean)
-          .slice(0, 12);
-      });
+        const seen = new Set<Element>();
+        const tiles: DashboardTileObservation[] = [];
+        for (const item of selectors) {
+          for (const element of Array.from(document.querySelectorAll(item.selector))) {
+            if (seen.has(element)) {
+              continue;
+            }
+            seen.add(element);
+            const inSidebar = Boolean(element.closest("ul.nav.child_menu"));
+            const visible = isVisible(element);
+            if (!visible || inSidebar) {
+              continue;
+            }
+            tiles.push({
+              action: item.action,
+              text: cleanText(element.textContent),
+              valueText: cleanText(element.querySelector(item.valueSelector)?.textContent),
+              dateText: cleanText(element.querySelector("#twm")?.textContent),
+              valueSelector: item.valueSelector,
+              visible,
+              inSidebar
+            });
+          }
+        }
+        return tiles.slice(0, 4);
+      }) as DashboardTileObservation[];
 
       return this.setObservedPerakamValues(extractPerakamObservedValues({
         pageStatus,
-        dashboardTileTexts,
+        dashboardTiles,
         observedAt,
         todayDateKey: localDateKey(new Date())
       }));
