@@ -54,6 +54,7 @@
 - DEPLOY1B exposes the disabled-by-default `paritySync` settings in the desktop Settings tab for safe-loop smoke setup. The UI keeps the publishable/anon key masked/blank after load, rejects service-role-looking keys, reconfigures `ParitySyncService` after save, and keeps `remoteActionEnabled=false` by default.
 - DEPLOY1 safe loop passed through Stage 4: desktop status publishing, GitHub Pages live dashboard read, skip sync ON/OFF, schedule/completion sync, and safe command sync all passed with `remoteActionEnabled=false`.
 - DEPLOY1D adds a desktop `Sync now` control that runs enabled parity sync paths once without waiting for intervals. It respects all feature flags, skips disabled sync paths, and does not bypass the remote-action gate.
+- READONLY1 adds read-only observed Perakam values to desktop status and the webapp dashboard: observed date, website clock-in/out values when visible, source, last observed timestamp, and page state. The observation only inspects the current browser page, publishes sanitized summary text through existing parity status, and never clicks attendance controls or submits forms.
 - WEB1 docs-only web/PWA companion planning is documented in `docs/WEB_COMPANION_PLAN.md`.
 - WEB2 static/read-only web companion UI design is documented in `docs/WEB_COMPANION_PLAN.md`.
 - WEB3 legacy webapp relationship is documented in `docs/WEB_COMPANION_PLAN.md`.

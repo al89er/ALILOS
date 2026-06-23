@@ -220,6 +220,7 @@ app.whenReady().then(() => {
   heartbeatService = new HeartbeatService(config, logger, buildHeartbeatPayload, configStore.supabaseEnvLocal, app.getVersion());
   paritySyncService = new ParitySyncService(config, logger, configStore.supabaseEnvLocal, {
     buildDeviceStatusPayload: buildParityDeviceStatusPayload,
+    refreshObservedPerakamValues: () => browserController.refreshObservedPerakamValues(config.perakam.dashboardUrl),
     mergeRemoteSkippedDates: (dates) => scheduler.mergeRemoteSkippedDates(dates),
     applyRemoteSkippedDates: (skips) => scheduler.applyRemoteSkippedDates(skips),
     markSkipDateUploaded: (dateKey) => scheduler.markSkipDateUploaded(dateKey),
@@ -1197,6 +1198,7 @@ function buildParityDeviceStatusPayload(): ParityDeviceStatusPayload {
       ? sanitizeHeartbeatText(`${nextAction.action}:${nextAction.status}`, 240)
       : sanitizeHeartbeatText(schedule.summary, 240),
     completionSummary: sanitizeHeartbeatText(`localCompletionRecords=${completions.length}`, 240),
+    observedPerakam: perakam.observedValues,
     lastErrorText: lastSanitizedErrorSummary(network.sanitizedError, perakam.lastError, browser.lastError, reminderService.snapshot().lastError),
     recordedAt: new Date().toISOString()
   };

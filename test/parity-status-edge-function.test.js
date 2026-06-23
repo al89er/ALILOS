@@ -51,3 +51,15 @@ test("parity status Edge Function rejects forbidden keys and tokenized strings",
   assert.ok(source.includes("\\bBearer\\s+"));
   assert.ok(source.includes("bot\\d+:"));
 });
+
+test("parity status Edge Function accepts sanitized observed Perakam summary only", () => {
+  const source = readFunctionSource();
+
+  assert.match(source, /interface ObservedPerakamPayload/);
+  assert.match(source, /validateObservedPerakam/);
+  assert.match(source, /readNullableTime/);
+  assert.match(source, /observedPerakam=page:/);
+  assert.match(source, /dashboard-tile/);
+  assert.match(source, /kad-perakam/);
+  assert.doesNotMatch(source, /cookieValue|rawObservedHtml|observedSelector/i);
+});

@@ -313,6 +313,14 @@ dd {
   line-height: 1.45;
 }
 
+.observed-ok {
+  color: var(--good);
+}
+
+.observed-missing {
+  color: var(--warn);
+}
+
 .command-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

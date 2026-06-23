@@ -18,8 +18,20 @@ interface DeviceStatusPayload {
   nextActionStatus: string | null;
   nextScheduleSummary: string | null;
   completionSummary: string | null;
+  observedPerakam: ObservedPerakamPayload;
   lastErrorText: string | null;
   recordedAt: string;
+}
+
+interface ObservedPerakamPayload {
+  observedDate: string | null;
+  clockInTime: string | null;
+  clockOutTime: string | null;
+  source: "dashboard-tile" | "kad-perakam" | "unknown";
+  observedAt: string | null;
+  pageState: "logged-in-dashboard" | "login-required" | "stale-session" | "unreachable" | "unknown";
+  confidence: "high" | "medium" | "low";
+  reason: string | null;
 }
 
 interface EventLogPayload {
@@ -278,8 +290,48 @@ function validateDeviceStatus(value: JsonObject): DeviceStatusPayload | null {
     nextActionStatus: readNullableText(value.nextActionStatus, 80),
     nextScheduleSummary: readNullableText(value.nextScheduleSummary, 240),
     completionSummary: readNullableText(value.completionSummary, 240),
+    observedPerakam: validateObservedPerakam(value.observedPerakam),
     lastErrorText: readNullableText(value.lastErrorText, 500),
     recordedAt
+  };
+}
+
+function validateObservedPerakam(value: unknown): ObservedPerakamPayload {
+  if (!isPlainObject(value)) {
+    return emptyObservedPerakam();
+  }
+
+  const sourceValue = readNullableText(value.source, 40);
+  const pageStateValue = readNullableText(value.pageState, 40);
+  const confidenceValue = readNullableText(value.confidence, 20);
+
+  return {
+    observedDate: readNullableDate(value.observedDate),
+    clockInTime: readNullableTime(value.clockInTime),
+    clockOutTime: readNullableTime(value.clockOutTime),
+    source: sourceValue === "dashboard-tile" || sourceValue === "kad-perakam" ? sourceValue : "unknown",
+    observedAt: readNullableIsoDate(value.observedAt),
+    pageState: pageStateValue === "logged-in-dashboard"
+      || pageStateValue === "login-required"
+      || pageStateValue === "stale-session"
+      || pageStateValue === "unreachable"
+      ? pageStateValue
+      : "unknown",
+    confidence: confidenceValue === "high" || confidenceValue === "medium" ? confidenceValue : "low",
+    reason: readNullableText(value.reason, 240)
+  };
+}
+
+function emptyObservedPerakam(): ObservedPerakamPayload {
+  return {
+    observedDate: null,
+    clockInTime: null,
+    clockOutTime: null,
+    source: "unknown",
+    observedAt: null,
+    pageState: "unknown",
+    confidence: "low",
+    reason: null
   };
 }
 
@@ -418,9 +470,22 @@ function readIsoDate(value: unknown): string | null {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
+function readNullableIsoDate(value: unknown): string | null {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  return readIsoDate(value);
+}
+
 function readNullableDate(value: unknown): string | null {
   const text = String(value ?? "").trim();
   return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : null;
+}
+
+function readNullableTime(value: unknown): string | null {
+  const text = String(value ?? "").trim();
+  return /^([01]\d|2[0-3]):([0-5]\d)$/.test(text) ? text : null;
 }
 
 function readNullableText(value: unknown, maxLength: number): string | null {
@@ -456,8 +521,20 @@ function buildStatusText(status: DeviceStatusPayload): string {
     `sync=${status.syncHealth}`,
     status.nextActionStatus ? `next=${status.nextActionStatus}` : null,
     status.nextScheduleSummary,
+    buildObservedPerakamStatusText(status.observedPerakam),
     status.completionSummary
   ].filter(Boolean).join("; ").slice(0, 500);
+}
+
+function buildObservedPerakamStatusText(observed: ObservedPerakamPayload): string {
+  return [
+    `observedPerakam=page:${observed.pageState}`,
+    `date:${observed.observedDate ?? "--"}`,
+    `in:${observed.clockInTime ?? "--"}`,
+    `out:${observed.clockOutTime ?? "--"}`,
+    `source:${observed.source}`,
+    `at:${observed.observedAt ?? "--"}`
+  ].join(",");
 }
 
 function isPlainObject(value: unknown): value is JsonObject {

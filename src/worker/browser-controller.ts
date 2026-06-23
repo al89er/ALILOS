@@ -10,6 +10,7 @@ import type {
   BrowserStatusSnapshot,
   PerakamAutoLoginAttemptResult,
   PerakamPageStatus,
+  PerakamObservedValuesSnapshot,
   PerakamStatusSnapshot,
   TestClickTargetId,
   TestClickTargetCandidateDiagnostic,
@@ -17,6 +18,11 @@ import type {
   TestClickTargetSnapshot
 } from "../shared/types";
 import type { AppLogger } from "../main/logger";
+import {
+  emptyPerakamObservedValues,
+  extractPerakamObservedValues,
+  observedPageStateFromPerakamStatus
+} from "./perakam-observed-values";
 
 const DEFAULT_PERAKAM_DASHBOARD_URL = "https://perakamwaktu3.upm.edu.my/";
 const LEGACY_PERAKAM_DASHBOARD_URL = "https://perakamwaktu.upm.edu.my/";
@@ -89,6 +95,8 @@ export class BrowserController {
   private lastError: string | null = null;
   private lastLoggedPerakamStatus: PerakamPageStatus | null = null;
   private lastLoggedAttendanceControlsSignature: string | null = null;
+  private lastLoggedObservedValuesSignature: string | null = null;
+  private observedPerakamValues: PerakamObservedValuesSnapshot = emptyPerakamObservedValues();
   private perakamStatus: PerakamStatusSnapshot = {
     status: "not-opened",
     dashboardUrl: "",
@@ -101,6 +109,7 @@ export class BrowserController {
     lastNavigationAt: null,
     lastCheckedAt: null,
     ...unknownAttendanceControls("Not checked."),
+    observedValues: emptyPerakamObservedValues(),
     lastError: null
   };
   private startPromise: Promise<BrowserStatusSnapshot> | null = null;
@@ -127,7 +136,73 @@ export class BrowserController {
 
   getPerakamStatus(dashboardUrl: string): PerakamStatusSnapshot {
     this.perakamStatus.dashboardUrl = sanitizeUrlForDisplay(normalizeUrl(dashboardUrl));
-    return { ...this.perakamStatus };
+    return { ...this.perakamStatus, observedValues: this.getObservedPerakamValues() };
+  }
+
+  getObservedPerakamValues(): PerakamObservedValuesSnapshot {
+    return { ...this.observedPerakamValues };
+  }
+
+  async refreshObservedPerakamValues(dashboardUrl: string): Promise<PerakamObservedValuesSnapshot> {
+    this.perakamStatus.dashboardUrl = sanitizeUrlForDisplay(normalizeUrl(dashboardUrl));
+    const observedAt = new Date().toISOString();
+    const pageStatus = this.perakamStatus.status;
+    const page = this.perakamPage && !this.perakamPage.isClosed() ? this.perakamPage : null;
+
+    if (!page) {
+      return this.setObservedPerakamValues({
+        ...emptyPerakamObservedValues("unreachable", "Perakam page is not open; observed attendance times were not read."),
+        observedAt
+      });
+    }
+
+    if (observedPageStateFromPerakamStatus(pageStatus) !== "logged-in-dashboard") {
+      return this.setObservedPerakamValues(extractPerakamObservedValues({
+        pageStatus,
+        dashboardTileTexts: [],
+        observedAt,
+        todayDateKey: localDateKey(new Date())
+      }));
+    }
+
+    try {
+      const dashboardTileTexts = await page.evaluate(() => {
+        const isVisible = (element: Element): boolean => {
+          const style = window.getComputedStyle(element);
+          if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) {
+            return false;
+          }
+          const rect = element.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        };
+        const selectors = [
+          ".right_col .tile-stats",
+          ".right_col .top_tiles",
+          ".tile-stats",
+          "#a50",
+          "#a51"
+        ];
+        const candidates = Array.from(new Set(selectors.flatMap((selector) => Array.from(document.querySelectorAll(selector)))));
+        return candidates
+          .filter(isVisible)
+          .map((element) => (element.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 400))
+          .filter(Boolean)
+          .slice(0, 12);
+      });
+
+      return this.setObservedPerakamValues(extractPerakamObservedValues({
+        pageStatus,
+        dashboardTileTexts,
+        observedAt,
+        todayDateKey: localDateKey(new Date())
+      }));
+    } catch (error) {
+      this.logger.warn(`Perakam observed values check failed: ${sanitizeError(error)}`);
+      return this.setObservedPerakamValues({
+        ...emptyPerakamObservedValues("unknown", "Perakam observed values check failed without changing page state."),
+        observedAt
+      });
+    }
   }
 
   async start(): Promise<BrowserStatusSnapshot> {
@@ -921,27 +996,49 @@ export class BrowserController {
     return this.perakamPage && !this.perakamPage.isClosed() ? sanitizeUrlForDisplay(this.perakamPage.url()) || null : null;
   }
 
-  private setPerakamSnapshot(snapshot: PerakamStatusSnapshot): void {
+  private setPerakamSnapshot(snapshot: Omit<PerakamStatusSnapshot, "observedValues"> & { observedValues?: PerakamObservedValuesSnapshot }): void {
     const previousStatus = this.perakamStatus.status;
     const previousControlsSignature = attendanceControlsSignature(this.perakamStatus);
-    this.perakamStatus = snapshot;
+    this.perakamStatus = {
+      ...snapshot,
+      observedValues: snapshot.observedValues ?? this.getObservedPerakamValues()
+    };
 
-    if (snapshot.status !== previousStatus || snapshot.status !== this.lastLoggedPerakamStatus) {
-      this.logPerakamStatus(snapshot);
-      this.lastLoggedPerakamStatus = snapshot.status;
+    if (this.perakamStatus.status !== previousStatus || this.perakamStatus.status !== this.lastLoggedPerakamStatus) {
+      this.logPerakamStatus(this.perakamStatus);
+      this.lastLoggedPerakamStatus = this.perakamStatus.status;
     }
 
-    const nextControlsSignature = attendanceControlsSignature(snapshot);
+    const nextControlsSignature = attendanceControlsSignature(this.perakamStatus);
     if (
-      snapshot.lastButtonCheckAt
+      this.perakamStatus.lastButtonCheckAt
       && nextControlsSignature !== previousControlsSignature
       && nextControlsSignature !== this.lastLoggedAttendanceControlsSignature
     ) {
       this.logger.info(
-        `Perakam target controls: morning ${snapshot.clockInAvailable}; evening ${snapshot.clockOutAvailable}.`
+        `Perakam target controls: morning ${this.perakamStatus.clockInAvailable}; evening ${this.perakamStatus.clockOutAvailable}.`
       );
       this.lastLoggedAttendanceControlsSignature = nextControlsSignature;
     }
+  }
+
+  private setObservedPerakamValues(snapshot: PerakamObservedValuesSnapshot): PerakamObservedValuesSnapshot {
+    this.observedPerakamValues = snapshot;
+    this.perakamStatus = {
+      ...this.perakamStatus,
+      observedValues: snapshot
+    };
+
+    const signature = `${snapshot.pageState}:${snapshot.source}:${snapshot.observedDate ?? "--"}:${snapshot.clockInTime ?? "--"}:${snapshot.clockOutTime ?? "--"}`;
+    if (signature !== this.lastLoggedObservedValuesSignature) {
+      this.logger.info(
+        `Perakam observed values: page=${snapshot.pageState}; source=${snapshot.source}; clock-in=${snapshot.clockInTime ? "present" : "missing"}; clock-out=${snapshot.clockOutTime ? "present" : "missing"}.`
+      );
+      this.lastLoggedObservedValuesSignature = signature;
+    }
+
+    this.onStatusChanged();
+    return { ...snapshot };
   }
 
   private logPerakamStatus(snapshot: PerakamStatusSnapshot): void {
@@ -976,11 +1073,23 @@ export class BrowserController {
 }
 
 function sanitizeError(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
+  const raw = error instanceof Error ? error.message : "Unknown browser controller error.";
+  return raw
+    .replace(/https?:\/\/[^\s]+/gi, "[redacted-url]")
+    .replace(/[?#][^\s]*/g, "?[redacted]")
+    .replace(/\blink=[^\s&]+/gi, "[redacted-link]")
+    .replace(/\bmagic=[^\s&]+/gi, "[redacted-magic]")
+    .replace(/\b4Tredir=[^\s&]+/gi, "[redacted-redirect]")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 240) || "Unknown browser controller error.";
+}
 
-  return "Unknown browser controller error.";
+function localDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function normalizeUrl(url: string): string {

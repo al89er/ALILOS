@@ -10,6 +10,7 @@ import type {
   ParityCompletionPayload,
   ParityDeviceStatusPayload,
   ParityEventLogPayload,
+  PerakamObservedValuesSnapshot,
   ParitySchedulePayload,
   ParitySkipDatePayload,
   SchedulerRemoteSkipMergeResult,
@@ -112,6 +113,7 @@ interface CommandSyncClaimResponse {
 
 interface ParitySyncDependencies {
   buildDeviceStatusPayload: () => ParityDeviceStatusPayload;
+  refreshObservedPerakamValues?: () => Promise<PerakamObservedValuesSnapshot>;
   mergeRemoteSkippedDates?: (dates: string[]) => number;
   applyRemoteSkippedDates?: (skips: ParitySkipDatePayload[]) => SchedulerRemoteSkipMergeResult;
   markSkipDateUploaded?: (dateKey: string) => void;
@@ -380,6 +382,7 @@ export class ParitySyncService {
     this.lastCheckedAt = this.lastAttemptAt;
 
     try {
+      await this.refreshObservedValuesForStatus();
       const body = this.buildRequestBody(source);
       await this.publish(settings, body);
       this.lastSuccessAt = new Date().toISOString();
@@ -968,6 +971,18 @@ export class ParitySyncService {
     return { deviceStatus, events };
   }
 
+  private async refreshObservedValuesForStatus(): Promise<void> {
+    if (!this.dependencies.refreshObservedPerakamValues) {
+      return;
+    }
+
+    try {
+      await this.dependencies.refreshObservedPerakamValues();
+    } catch (error) {
+      this.logger.warn(`Perakam observed values refresh skipped: ${sanitizeError(error)}`);
+    }
+  }
+
   private async publish(settings: EffectiveParitySyncSettings, body: ParitySyncRequestBody): Promise<void> {
     const endpoint = new URL("/functions/v1/alilos-parity-status", settings.supabaseUrl);
     const fetchFn = this.dependencies.fetchFn ?? fetch;
@@ -1168,6 +1183,10 @@ function buildStatusEvent(payload: ParityDeviceStatusPayload, source: string): P
       executionMode: payload.executionMode,
       browserState: payload.browserState,
       configuredSiteStatus: payload.configuredSiteStatus,
+      observedPageState: payload.observedPerakam.pageState,
+      observedSource: payload.observedPerakam.source,
+      observedClockInPresent: Boolean(payload.observedPerakam.clockInTime),
+      observedClockOutPresent: Boolean(payload.observedPerakam.clockOutTime),
       captivePortalStatus: payload.captivePortalStatus,
       commandProcessing: false,
       directTableWrite: false
@@ -1555,8 +1574,22 @@ function sanitizeDeviceStatusPayload(payload: ParityDeviceStatusPayload): Parity
     nextActionStatus: payload.nextActionStatus,
     nextScheduleSummary: sanitizeStatusText(payload.nextScheduleSummary, 240),
     completionSummary: sanitizeStatusText(payload.completionSummary, 240),
+    observedPerakam: sanitizeObservedPerakam(payload.observedPerakam),
     lastErrorText: sanitizeStatusText(payload.lastErrorText, 500),
     recordedAt: sanitizeIsoText(payload.recordedAt)
+  };
+}
+
+function sanitizeObservedPerakam(snapshot: PerakamObservedValuesSnapshot | null | undefined): PerakamObservedValuesSnapshot {
+  return {
+    observedDate: sanitizeDateText(snapshot?.observedDate ?? null) ?? null,
+    clockInTime: sanitizeTimeText(snapshot?.clockInTime),
+    clockOutTime: sanitizeTimeText(snapshot?.clockOutTime),
+    source: snapshot?.source === "dashboard-tile" || snapshot?.source === "kad-perakam" ? snapshot.source : "unknown",
+    observedAt: sanitizeNullableIsoText(snapshot?.observedAt ?? null),
+    pageState: isObservedPageState(snapshot?.pageState) ? snapshot.pageState : "unknown",
+    confidence: snapshot?.confidence === "high" || snapshot?.confidence === "medium" ? snapshot.confidence : "low",
+    reason: sanitizeStatusText(snapshot?.reason, 240)
   };
 }
 
@@ -1642,7 +1675,8 @@ function sanitizeActionKey(value: AttendanceActionType | null | undefined): Atte
 
 function sanitizeTimeText(value: string | null | undefined): string | null {
   const text = String(value ?? "").trim();
-  return /^\d{2}:\d{2}$/.test(text) ? text : null;
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(text);
+  return match ? `${match[1]}:${match[2]}` : null;
 }
 
 function sanitizeScheduleSource(value: ParitySchedulePayload["source"] | null | undefined): ParitySchedulePayload["source"] | null {
@@ -1704,6 +1738,14 @@ function sanitizeNullableIsoText(value: string | null): string | null {
 function sanitizeDateText(value: string | null): string | null {
   const text = String(value ?? "").trim();
   return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : null;
+}
+
+function isObservedPageState(value: unknown): value is PerakamObservedValuesSnapshot["pageState"] {
+  return value === "logged-in-dashboard"
+    || value === "login-required"
+    || value === "stale-session"
+    || value === "unreachable"
+    || value === "unknown";
 }
 
 function localDateKey(date: Date): string {

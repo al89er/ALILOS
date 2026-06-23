@@ -15,6 +15,7 @@ import type {
   TestClickTargetId,
   TestClickTargetSnapshot
 } from "../shared/types";
+import { emptyPerakamObservedValues } from "./perakam-observed-values";
 
 const TEST_CLICK_CONFIRMATION_WINDOW_MS = 60 * 1000;
 const TEST_CLICK_ALLOWED_PERAKAM_STATUSES = ["reachable", "likely-logged-in"] as const;
@@ -779,6 +780,7 @@ function emptyPerakamStatus(): PerakamStatusSnapshot {
     clockInReason: "Not checked.",
     clockOutReason: "Not checked.",
     lastButtonCheckAt: null,
+    observedValues: emptyPerakamObservedValues(),
     lastError: null
   };
 }

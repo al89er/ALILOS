@@ -76,6 +76,22 @@
           <p id="last-error" class="muted">No sanitized error reported.</p>
         </section>
 
+        <section class="panel" aria-labelledby="observed-title">
+          <div class="section-heading">
+            <h2 id="observed-title">Observed Perakam Values</h2>
+            <span id="observed-freshness" class="status-text">Not observed</span>
+          </div>
+          <dl class="metric-grid">
+            <div><dt>Scheduled clock-in</dt><dd id="observed-scheduled-in">--</dd></div>
+            <div><dt>Observed clock-in</dt><dd id="observed-clock-in">--</dd></div>
+            <div><dt>Scheduled clock-out</dt><dd id="observed-scheduled-out">--</dd></div>
+            <div><dt>Observed clock-out</dt><dd id="observed-clock-out">--</dd></div>
+            <div><dt>Page state</dt><dd id="observed-page-state">unknown</dd></div>
+            <div><dt>Source</dt><dd id="observed-source">unknown</dd></div>
+          </dl>
+          <p id="observed-note" class="muted">Observed values are read-only and unavailable until the desktop sees a logged-in Perakam dashboard.</p>
+        </section>
+
         <section class="panel" aria-labelledby="schedule-title">
           <div class="section-heading">
             <h2 id="schedule-title">Schedule And Completion</h2>

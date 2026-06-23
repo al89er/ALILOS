@@ -21,6 +21,14 @@ const ids = [
   "network-status",
   "portal-status",
   "last-error",
+  "observed-freshness",
+  "observed-scheduled-in",
+  "observed-clock-in",
+  "observed-scheduled-out",
+  "observed-clock-out",
+  "observed-page-state",
+  "observed-source",
+  "observed-note",
   "morning-time",
   "morning-state",
   "morning-readiness",
@@ -333,6 +341,7 @@ function render(message = state.source === "live" ? "Live read proxy" : "Mock da
   elements["last-error"].textContent = heartbeat?.lastErrorText ?? "No sanitized error reported.";
 
   renderActionCards(data.schedules ?? [], data.completions ?? []);
+  renderObservedPerakam(data.schedules ?? [], heartbeat);
   renderSchedules(data.schedules ?? []);
   renderCompletions(data.completions ?? []);
   renderSkipCalendar(data.skips ?? []);
@@ -353,9 +362,126 @@ function renderTabs() {
   }
 }
 
+function renderObservedPerakam(schedules, heartbeat) {
+  const observed = parseObservedPerakamStatus(heartbeat?.statusText);
+  const clockInSchedule = schedules.find((item) => item.actionKey === "clock-in");
+  const clockOutSchedule = schedules.find((item) => item.actionKey === "clock-out");
+
+  elements["observed-scheduled-in"].textContent = clockInSchedule?.targetTimeLocal ?? "--";
+  elements["observed-scheduled-out"].textContent = clockOutSchedule?.targetTimeLocal ?? "--";
+  elements["observed-clock-in"].textContent = observed.clockInTime ?? missingObservedText(observed.pageState);
+  elements["observed-clock-out"].textContent = observed.clockOutTime ?? missingObservedText(observed.pageState);
+  elements["observed-page-state"].textContent = observed.pageState;
+  elements["observed-source"].textContent = observed.source;
+  elements["observed-freshness"].textContent = observed.observedAt ? formatTime(observed.observedAt) : "Not observed";
+  elements["observed-note"].textContent = observed.reason;
+  elements["observed-note"].className = observed.clockInTime || observed.clockOutTime ? "muted observed-ok" : "muted observed-missing";
+}
+
 function renderActionCards(schedules, completions) {
   renderActionCard("clock-in", "morning", schedules, completions);
   renderActionCard("clock-out", "evening", schedules, completions);
+}
+
+function parseObservedPerakamStatus(statusText) {
+  const empty = {
+    observedDate: null,
+    clockInTime: null,
+    clockOutTime: null,
+    source: "unknown",
+    observedAt: null,
+    pageState: "unknown",
+    reason: "Observed values are missing or stale. Use desktop Sync now after opening the Perakam dashboard."
+  };
+  const text = String(statusText ?? "");
+  const match = /observedPerakam=([^;]+)/.exec(text);
+  if (!match) {
+    return empty;
+  }
+
+  const values = Object.fromEntries(match[1].split(",").map((part) => {
+    const separator = part.indexOf(":");
+    return separator > 0
+      ? [part.slice(0, separator).trim(), part.slice(separator + 1).trim()]
+      : [part.trim(), ""];
+  }));
+  const pageState = sanitizeObservedEnum(values.page, ["logged-in-dashboard", "login-required", "stale-session", "unreachable", "unknown"], "unknown");
+  const source = sanitizeObservedEnum(values.source, ["dashboard-tile", "kad-perakam", "unknown"], "unknown");
+  const observedAt = sanitizeIso(values.at);
+  const clockInTime = sanitizeTime(values.in);
+  const clockOutTime = sanitizeTime(values.out);
+  return {
+    observedDate: sanitizeDate(values.date),
+    clockInTime,
+    clockOutTime,
+    source,
+    observedAt,
+    pageState,
+    reason: observedReason(pageState, source, clockInTime, clockOutTime)
+  };
+}
+
+function missingObservedText(pageState) {
+  if (pageState === "login-required" || pageState === "stale-session") {
+    return "not readable";
+  }
+
+  if (pageState === "unreachable") {
+    return "unreachable";
+  }
+
+  return "not observed";
+}
+
+function observedReason(pageState, source, clockInTime, clockOutTime) {
+  if (clockInTime && clockOutTime) {
+    return `Observed from ${source}; both website values are present.`;
+  }
+
+  if (clockInTime || clockOutTime) {
+    return `Observed from ${source}; one website value is present.`;
+  }
+
+  if (pageState === "logged-in-dashboard") {
+    return "Perakam dashboard was observed, but website clock-in/out values are missing.";
+  }
+
+  if (pageState === "login-required") {
+    return "Perakam login is required before website values can be read.";
+  }
+
+  if (pageState === "stale-session") {
+    return "Perakam session is stale; website values were not read.";
+  }
+
+  if (pageState === "unreachable") {
+    return "Perakam page is not currently reachable from the desktop browser.";
+  }
+
+  return "Observed values are missing or stale. Use desktop Sync now after opening the Perakam dashboard.";
+}
+
+function sanitizeObservedEnum(value, allowed, fallback) {
+  return allowed.includes(value) ? value : fallback;
+}
+
+function sanitizeTime(value) {
+  const text = String(value ?? "").trim();
+  return /^([01]\d|2[0-3]):([0-5]\d)$/.test(text) ? text : null;
+}
+
+function sanitizeDate(value) {
+  const text = String(value ?? "").trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : null;
+}
+
+function sanitizeIso(value) {
+  const text = String(value ?? "").trim();
+  if (text === "--" || !text) {
+    return null;
+  }
+  const date = new Date(text);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
 function renderActionCard(actionKey, prefix, schedules, completions) {
@@ -722,7 +848,7 @@ function sampleDashboard(inputMonthKey) {
       appStatus: "manual-confirm",
       networkStatus: "online",
       configuredSiteStatus: "dashboard",
-      statusText: "Browser status unavailable in static preview.",
+      statusText: `Browser status unavailable in static preview.; observedPerakam=page:unknown,date:--,in:--,out:--,source:unknown,at:${now}`,
       lastErrorText: null,
       lastSeenAt: now
     },

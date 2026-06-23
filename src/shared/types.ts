@@ -288,6 +288,28 @@ export interface ParitySyncSettings {
   scheduleCompletionSyncEnabled: boolean;
 }
 
+export type PerakamObservedSource = "dashboard-tile" | "kad-perakam" | "unknown";
+
+export type PerakamObservedPageState =
+  | "logged-in-dashboard"
+  | "login-required"
+  | "stale-session"
+  | "unreachable"
+  | "unknown";
+
+export type PerakamObservedConfidence = "high" | "medium" | "low";
+
+export interface PerakamObservedValuesSnapshot {
+  observedDate: string | null;
+  clockInTime: string | null;
+  clockOutTime: string | null;
+  source: PerakamObservedSource;
+  observedAt: string | null;
+  pageState: PerakamObservedPageState;
+  confidence: PerakamObservedConfidence;
+  reason: string | null;
+}
+
 export interface ParityDeviceStatusPayload {
   deviceId: string;
   deviceLabel: string;
@@ -303,6 +325,7 @@ export interface ParityDeviceStatusPayload {
   nextActionStatus: ScheduleActionStatus | null;
   nextScheduleSummary: string | null;
   completionSummary: string | null;
+  observedPerakam: PerakamObservedValuesSnapshot;
   lastErrorText: string | null;
   recordedAt: string;
 }
@@ -734,6 +757,7 @@ export interface PerakamStatusSnapshot {
   clockInReason: string;
   clockOutReason: string;
   lastButtonCheckAt: string | null;
+  observedValues: PerakamObservedValuesSnapshot;
   lastError: string | null;
 }
 

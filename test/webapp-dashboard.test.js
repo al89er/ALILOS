@@ -42,6 +42,7 @@ test("webapp implements required dashboard sections and safe command controls", 
     "Morning action",
     "Evening action",
     "Device Status",
+    "Observed Perakam Values",
     "Schedule And Completion",
     "Command Sync",
     "Safety Notices"
@@ -66,6 +67,8 @@ test("webapp implements required dashboard sections and safe command controls", 
   assert.match(html, /Request guarded action/);
   assert.match(html, /Credentials stay local/);
   assert.match(app, /renderActionCards/);
+  assert.match(app, /renderObservedPerakam/);
+  assert.match(app, /parseObservedPerakamStatus/);
   assert.match(app, /actionReadinessText/);
   assert.match(app, /Guarded request available for synced target/);
   assert.match(app, /window\.confirm/);
@@ -76,6 +79,56 @@ test("webapp implements required dashboard sections and safe command controls", 
   assert.doesNotMatch(html, /data-command-type="perform/i);
   assert.doesNotMatch(html, /password|raw JSON|<form/i);
   assert.match(manifest, /"display": "standalone"/);
+});
+
+test("webapp renders observed Perakam values from sanitized heartbeat status text", async () => {
+  const context = createWebappContext({
+    ALILOS_CONFIG: {
+      supabaseUrl: "https://live-project.supabase.co",
+      supabaseAnonKey: "anon-live-key",
+      deviceId: "11111111-1111-4111-8111-111111111111"
+    },
+    fetch: async () => ({
+      ok: true,
+      status: 200,
+      json: async () => liveDashboardPayload({
+        statusText: "worker=running; observedPerakam=page:logged-in-dashboard,date:2026-06-22,in:08:01,out:17:05,source:dashboard-tile,at:2026-06-22T09:00:00.000Z"
+      })
+    })
+  });
+
+  await context.loadDashboard();
+
+  assert.equal(context.elements["observed-scheduled-in"].textContent, "07:45");
+  assert.equal(context.elements["observed-scheduled-out"].textContent, "17:05");
+  assert.equal(context.elements["observed-clock-in"].textContent, "08:01");
+  assert.equal(context.elements["observed-clock-out"].textContent, "17:05");
+  assert.equal(context.elements["observed-page-state"].textContent, "logged-in-dashboard");
+  assert.equal(context.elements["observed-source"].textContent, "dashboard-tile");
+});
+
+test("webapp marks observed values missing when Perakam login is required", async () => {
+  const context = createWebappContext({
+    ALILOS_CONFIG: {
+      supabaseUrl: "https://live-project.supabase.co",
+      supabaseAnonKey: "anon-live-key",
+      deviceId: "11111111-1111-4111-8111-111111111111"
+    },
+    fetch: async () => ({
+      ok: true,
+      status: 200,
+      json: async () => liveDashboardPayload({
+        statusText: "worker=running; observedPerakam=page:login-required,date:--,in:--,out:--,source:unknown,at:2026-06-22T09:00:00.000Z"
+      })
+    })
+  });
+
+  await context.loadDashboard();
+
+  assert.equal(context.elements["observed-clock-in"].textContent, "not readable");
+  assert.equal(context.elements["observed-clock-out"].textContent, "not readable");
+  assert.equal(context.elements["observed-page-state"].textContent, "login-required");
+  assert.match(context.elements["observed-note"].textContent, /login is required/);
 });
 
 test("webapp skip dates calendar renders month navigation and skipped-date state", () => {
@@ -292,7 +345,7 @@ function createElement() {
   };
 }
 
-function liveDashboardPayload() {
+function liveDashboardPayload(overrides = {}) {
   const now = new Date().toISOString();
   return {
     success: true,
@@ -309,9 +362,13 @@ function liveDashboardPayload() {
       configuredSiteStatus: "dashboard",
       statusText: "desktop online",
       lastErrorText: null,
-      lastSeenAt: now
+      lastSeenAt: now,
+      ...overrides
     },
-    schedules: [],
+    schedules: [
+      { actionKey: "clock-in", targetTimeLocal: "07:45", windowStartLocal: "07:45", windowEndLocal: "07:50", source: "local-generated", status: "active", updatedAt: now },
+      { actionKey: "clock-out", targetTimeLocal: "17:05", windowStartLocal: "17:05", windowEndLocal: "17:10", source: "local-generated", status: "active", updatedAt: now }
+    ],
     skips: [],
     completions: [],
     eventLogs: [],

@@ -36,6 +36,16 @@ function createStatusPayload(overrides = {}) {
     nextActionStatus: "upcoming",
     nextScheduleSummary: "clock-out:upcoming",
     completionSummary: "localCompletionRecords=0",
+    observedPerakam: {
+      observedDate: null,
+      clockInTime: null,
+      clockOutTime: null,
+      source: "unknown",
+      observedAt: null,
+      pageState: "unknown",
+      confidence: "low",
+      reason: null
+    },
     lastErrorText: null,
     recordedAt: "2026-06-19T00:00:00.000Z",
     ...overrides
@@ -769,8 +779,13 @@ test("sync now triggers enabled parity tasks once", async () => {
     config.paritySync.remoteActionEnabled = false;
     const logger = createLogger();
     const requests = [];
+    let observedRefreshCount = 0;
     const service = new ParitySyncService(config, logger, { supabaseUrl: "", publishableKey: "" }, {
       buildDeviceStatusPayload: () => createStatusPayload(),
+      refreshObservedPerakamValues: async () => {
+        observedRefreshCount += 1;
+        return createStatusPayload().observedPerakam;
+      },
       applyRemoteSkippedDates: () => ({ added: 0, remoteRemovalsApplied: 0, remoteRemovalsPreserved: 0 }),
       fetchFn: async (url, init) => {
         const body = JSON.parse(init.body);
@@ -802,6 +817,7 @@ test("sync now triggers enabled parity tasks once", async () => {
     assert.equal(requests[1].body.operation, "list-skips");
     assert.equal(requests[2].body.operation, "get-day-state");
     assert.equal(requests[3].body.operation, "list-pending");
+    assert.equal(observedRefreshCount, 1);
     assert.match(status.lastManualSyncResult, /status, skip, schedule\/completion, command/);
     assert.equal(status.featureFlags.remoteActionEnabled, false);
   } finally {

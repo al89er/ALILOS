@@ -55,6 +55,7 @@ Current Supabase status:
 - DEPLOY1B parity sync settings UI is available in the desktop Settings tab. Use it to configure the DEPLOY1 Supabase URL, publishable/anon key, device id/label, and parity feature flags; the older Heartbeat controls are legacy status-only controls and do not enable the full safe loop.
 - DEPLOY1C adds a Schedule-tab skip-date manager for arbitrary dates. Use it to remove existing local/legacy stuck skips; do not proceed past DEPLOY1 Stage 2 until webapp skip ON and OFF both propagate correctly.
 - DEPLOY1 safe-loop Stages 1-4 passed. The desktop `Sync now` control can manually publish status and run enabled skip, schedule/completion, and command sync paths once without waiting for intervals; `remoteActionEnabled` remains false.
+- READONLY1 adds live observed Perakam values to the monitored desktop/webapp status path. Next field use should compare scheduled times, observed website times, and completion records during real clock-in/out windows while keeping execution in monitored modes and `remoteActionEnabled=false`.
 - S3D write-path decision documented: prefer Edge Function/API proxy plus explicit device pairing/token.
 - Parity sync remains disabled by default.
 - Guarded configured-action command execution is implemented but disabled by default and remains pending PARITY10C field validation; unattended execution remains deferred.
